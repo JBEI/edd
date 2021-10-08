@@ -190,10 +190,12 @@ class MeasurementNameTransform(models.Model):
         help_text=_("Name of this Measurement Type in EDD."),
         verbose_name=_("EDD Measurement Type"),
     )
+    parser = VarCharField(blank=True, null=True)
 
     def to_json(self):
         return {
             "id": self.pk,
             "input_type_name": self.input_type_name,
             "edd_type_name": self.edd_type_name,
+            "parser": self.parser,
         }

@@ -16,6 +16,7 @@ from openpyxl.utils.cell import get_column_letter
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from edd.load.models import DefaultUnit, MeasurementNameTransform
+from main.models import MeasurementType, Protocol
 
 from .. import exceptions, reporting
 
@@ -717,25 +718,10 @@ class MeasurementMapper:
     loa_name: str
     df: pd.DataFrame
     units: Dict
-    mes_unit_map: Dict
-    mtype_map = Dict
 
     def __init__(self, name=None, df=None):
         self.loa_name = name
         self.df = df
-
-        # get the default units for measurements from the database
-        self.mes_unit_map = {}
-        du_obj = DefaultUnit.objects.all()
-        for obj in du_obj:
-            self.mes_unit_map[obj.measurement_type.type_name] = obj.unit.unit_name
-
-        # get the mapping between input measurement type names and expected
-        # edd measurement type names from database
-        self.mtype_map = {}
-        mtype_obj = MeasurementNameTransform.objects.all()
-        for obj in mtype_obj:
-            self.mtype_map[obj.input_type_name] = obj.edd_type_name
 
     def set_line_name(self, name):
         self.loa_name = name
@@ -750,14 +736,26 @@ class MeasurementMapper:
         self.df.columns.values[0] = "Time"
         self.df.columns.values[1] = "Value"
 
-        # check measurement type to rename for EDD
-        if mtype_name in self.mtype_map.keys():
-            self.df["Measurement Type"] = self.mtype_map[mtype_name]
-            mtype_name = self.mtype_map[mtype_name]
-        else:
-            self.df["Measurement Type"] = mtype_name
+        # get EDD name for current measurement if mapping exists
+        mes_transform_qs = MeasurementNameTransform.objects.all().filter(
+            input_type_name=mtype_name, parser="ambr"
+        )
+        if len(mes_transform_qs) == 1:
+            mtype_name = mes_transform_qs[0].edd_type_name
 
-        self.df["Units"] = self.mes_unit_map[mtype_name]
+        # get default unit record for current measurement type
+        mes_type_qs = MeasurementType.objects.all().filter(type_name=mtype_name)
+        prot_type_qs = Protocol.objects.all().filter(name="AMBR250")
+        if len(mes_type_qs) == 1 and len(prot_type_qs) == 1:
+            du_qs = DefaultUnit.objects.all().filter(
+                measurement_type=mes_type_qs[0], protocol=prot_type_qs[0], parser="ambr"
+            )
+        if len(du_qs) == 1:
+            du_obj = du_qs[0]
+
+        # populating the dataframe
+        self.df["Measurement Type"] = mtype_name
+        self.df["Units"] = du_obj.unit.unit_name
         # dropping records with NaN values
         self.df = self.df[self.df["Value"].notna()]
 

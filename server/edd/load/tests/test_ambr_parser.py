@@ -2,14 +2,11 @@ from uuid import uuid4
 
 import pytest
 
+from main.tests.factory import MeasurementTypeFactory, ProtocolFactory, UnitFactory
+
 from .. import parsers
 from . import factory
-from .factory import (
-    DefaultUnitFactory,
-    MeasurementNameTransformFactory,
-    MeasurementTypeFactory,
-    MeasurementUnitFactory,
-)
+from .factory import DefaultUnitFactory, MeasurementNameTransformFactory
 
 
 @pytest.mark.django_db
@@ -34,8 +31,11 @@ def setup_default_units():
 
     for mes_type, mes_unit in mes_map.items():
         mes_obj = MeasurementTypeFactory(type_name=mes_type)
-        unit_obj = MeasurementUnitFactory(unit_name=mes_unit)
-        DefaultUnitFactory.create(measurement_type=mes_obj, unit=unit_obj)
+        unit_obj = UnitFactory(unit_name=mes_unit)
+        prot_obj = ProtocolFactory(name="AMBR250")
+        DefaultUnitFactory.create(
+            measurement_type=mes_obj, unit=unit_obj, protocol=prot_obj, parser="ambr"
+        )
 
 
 @pytest.mark.django_db
@@ -48,8 +48,13 @@ def setup_mtype_transform():
 
     for input_type_name, edd_type_name in mtype_map.items():
         MeasurementNameTransformFactory.create(
-            input_type_name=input_type_name, edd_type_name=edd_type_name
+            input_type_name=input_type_name, edd_type_name=edd_type_name, parser="ambr",
         )
+
+
+@pytest.mark.django_db
+def setup_protocol():
+    ProtocolFactory.create(name="AMBR250",)
 
 
 @pytest.mark.django_db
@@ -60,14 +65,14 @@ def test_AmbrExcelParser_success():
     # setup measurement unit transform from input measurement type to
     # expected edd type names
     setup_mtype_transform()
+    # setup protocol name in test database
+    setup_protocol()
 
     path = "ambr_export_test_data.xlsx"
     parser = parsers.AmbrExcelParser(uuid4())
 
     with factory.load_test_file(path) as file:
         parsed = parser.parse(file)
-        if parsed:
-            return
     verify_parse_result(parsed)
 
 

@@ -69,18 +69,18 @@ class CategoryAdmin(admin.ModelAdmin):
 
 class DefaultUnitAdmin(admin.ModelAdmin):
     def get_fields(self, request, obj=None):
-        return [("measurement_type", "unit")]
+        return [("measurement_type", "unit", "protocol", "parser")]
 
     def get_list_display(self, request):
-        return ["measurement_type", "unit"]
+        return ["measurement_type", "unit", "protocol", "parser"]
 
 
 class MeasurementNameTransformAdmin(admin.ModelAdmin):
     def get_fields(self, request, obj=None):
-        return [("input_type_name", "edd_type_name")]
+        return [("input_type_name", "edd_type_name", "parser")]
 
     def get_list_display(self, request):
-        return ["input_type_name", "edd_type_name"]
+        return ["input_type_name", "edd_type_name", "parser"]
 
 
 admin.site.register(models.Category, CategoryAdmin)

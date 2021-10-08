@@ -3,7 +3,7 @@ import json
 import environ
 import factory
 
-from main import models as main_models
+from main.tests.factory import MeasurementTypeFactory, UnitFactory
 
 from .. import models
 
@@ -55,29 +55,12 @@ class ParserFactory(factory.django.DjangoModelFactory):
     layout = factory.SubFactory(LayoutFactory)
     mime_type = factory.Faker("mime_type")
 
-
-class MeasurementTypeFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = main_models.MeasurementType
-        django_get_or_create = ("type_name",)
-
-    type_name = ""
-
-
-class MeasurementUnitFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = main_models.MeasurementUnit
-        django_get_or_create = ("unit_name",)
-
-    unit_name = ""
-
-
 class DefaultUnitFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.DefaultUnit
 
-    measurement_type = factory.SubFactory(LayoutFactory)
-    unit = factory.SubFactory(LayoutFactory)
+    measurement_type = factory.SubFactory(MeasurementTypeFactory)
+    unit = factory.SubFactory(UnitFactory)
 
 
 class MeasurementNameTransformFactory(factory.django.DjangoModelFactory):

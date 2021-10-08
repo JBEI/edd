@@ -106,6 +106,7 @@ class AssayFactory(factory.django.DjangoModelFactory):
 class MeasurementTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.MeasurementType
+        django_get_or_create = ("type_name",)
 
     type_name = factory.Faker("domain_word")
 
