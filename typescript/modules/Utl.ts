@@ -208,7 +208,7 @@ interface FileDropZoneOptions {
     /** Callback for warning result returned from server. */
     processWarningFn?: (file: Dropzone.DropzoneFile, response: any) => void;
     /** Assign false to prevent clicking; otherwise defaults to clickable Dropzone. */
-    clickable?: false;
+    clickable?: boolean | string | HTMLElement | (string | HTMLElement)[];
 }
 
 /**
