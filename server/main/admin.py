@@ -5,6 +5,8 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.contrib.admin.widgets import AutocompleteSelect
+from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.db import connection
 from django.db.models import Count, Q
@@ -25,10 +27,10 @@ from .forms import (
     MetadataTypeAutocompleteWidget,
     RegistryAutocompleteWidget,
     RegistryValidator,
-    UserAutocompleteWidget,
 )
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 class AttachmentTabular(admin.TabularInline):
@@ -193,6 +195,14 @@ class EDDObjectAdmin(admin.ModelAdmin):
 
 
 class ProtocolAdminForm(forms.ModelForm):
+
+    owned_by = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_active=True),
+        widget=AutocompleteSelect(
+            models.Protocol._meta.get_field("owned_by"), admin.site,
+        ),
+    )
+
     class Meta:
         model = models.Protocol
         fields = (
@@ -205,9 +215,6 @@ class ProtocolAdminForm(forms.ModelForm):
             "categorization",
         )
         help_texts = {
-            "owned_by": _(
-                "(A user who is allowed to edit this protocol, even if not an Admin.)"
-            ),
             "default_units": _(
                 "(When measurement data are imported without units, this will "
                 "automatically be assigned.)"
@@ -223,13 +230,6 @@ class ProtocolAdminForm(forms.ModelForm):
             "default_units": _("Default Units"),
             "categorization": _("SBML Categorization"),
         }
-        widgets = {"owned_by": UserAutocompleteWidget()}
-
-    def clean(self):
-        super().clean()
-        c_user = self.cleaned_data.get("owned_by", None)
-        if c_user is not None:
-            self.instance.owner = c_user
 
 
 class ProtocolAdmin(EDDObjectAdmin):
@@ -684,7 +684,9 @@ class UserPermissionInline(admin.TabularInline):
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "user":
-            kwargs["widget"] = UserAutocompleteWidget()
+            kwargs["widget"] = AutocompleteSelect(
+                models.UserPermission._meta.get_field("user"), admin.site,
+            )
         return db_field.formfield(**kwargs)
 
 
@@ -693,6 +695,13 @@ class GroupPermissionInline(admin.TabularInline):
 
     model = models.GroupPermission
     extra = 1
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "group":
+            kwargs["widget"] = AutocompleteSelect(
+                models.GroupPermission._meta.get_field("group"), admin.site,
+            )
+        return db_field.formfield(**kwargs)
 
 
 class StudyAdmin(EDDObjectAdmin):
