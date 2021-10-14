@@ -648,6 +648,36 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         # first and second strain cover seven of the lines
         assert response.data["count"] == 7
 
+    def test_lines_list_replicate_grouping(self):
+        # create three new lines with matching replicate IDs
+        replicate_type = models.MetadataType.system("Replicate")
+        replicate_id = "abcd-fake-replicate-uuid"
+        for _ in range(3):
+            factory.LineFactory(
+                study=self.study, metadata={replicate_type.pk: replicate_id}
+            )
+        # query lines, with big page size and replicate grouping flag set
+        url = reverse("rest:lines-list")
+        self.client.force_login(self.readonly_user)
+        response = self.client.get(
+            url, {"in_study": self.study.slug, "page_size": 50, "replicates": "yes"}
+        )
+        self._check_status(response, status.HTTP_200_OK)
+        # replicates only count as one more item in page
+        assert response.data["count"] == 11
+        # replicates have individual records in page
+        assert len(response.data["results"]) == 13
+
+    def test_lines_list_replicate_declined(self):
+        # explicitly declining replicate grouping should also work
+        url = reverse("rest:lines-list")
+        self.client.force_login(self.readonly_user)
+        response = self.client.get(
+            url, {"in_study": self.study.slug, "replicates": "no"}
+        )
+        self._check_status(response, status.HTTP_200_OK)
+        assert response.data["count"] == 10
+
 
 class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
     """

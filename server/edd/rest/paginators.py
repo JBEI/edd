@@ -1,4 +1,4 @@
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import BasePagination, PageNumberPagination
 from rest_framework.response import Response
 
 
@@ -37,3 +37,22 @@ class LinkHeaderPagination(ClientConfigurablePagination):
             headers["Link"] = ", ".join(links)
         headers["X-Total-Count"] = str(self.page.paginator.count)
         return Response(data, headers=headers)
+
+
+class ReplicatePagination(BasePagination):
+    """
+    A custom pagination that runs a double query to group together replicates.
+    The returned page will contain `page_size` number of *replicates*, which
+    may result in several more Line objects than `page_size`.
+    """
+
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+
+    def get_paginated_response(self, data):
+        return self.wrapped.get_paginated_response(data)
+
+    def paginate_queryset(self, queryset, request, view=None):
+        keys = {k: None for k in queryset.values_list("replicate_key", flat=True)}
+        subset = self.wrapped.paginate_queryset(list(keys.keys()), request, view)
+        return list(queryset.filter(replicate_key__in=subset))

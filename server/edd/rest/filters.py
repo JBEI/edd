@@ -73,6 +73,15 @@ class EDDObjectFilter(filters.FilterSet):
         model = models.EDDObject
         fields = []
 
+    @classmethod
+    def truthy(cls, value):
+        """
+        Utility to check if a string filter value is Boolean True for filtering.
+        Accepts case-insensitive "true", "yes", "t", "y", "1" as True. All
+        other values are treated as False.
+        """
+        return str(value).lower() in {"true", "t", "yes", "y", "1"}
+
 
 class StudyFilter(EDDObjectFilter):
     contact = django_filters.ModelChoiceFilter(
@@ -99,7 +108,7 @@ class LineFilter(EDDObjectFilter):
     )
     control = django_filters.BooleanFilter(
         field_name="control",
-        help_text=_("Filter on lines marked as controls (True/1/yes or false/0/no)"),
+        help_text=_("Filter on Lines marked as controls (True/1/yes or false/0/no)"),
     )
     experimenter = django_filters.ModelChoiceFilter(
         field_name="experimenter",
@@ -110,6 +119,10 @@ class LineFilter(EDDObjectFilter):
         field_name="study",
         help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method=filter_in_study,
+    )
+    replicates = django_filters.CharFilter(
+        help_text=_("Flag to organize Lines by grouping together replicates"),
+        method="group_replicates",
     )
     strain = django_filters.CharFilter(
         field_name="strains",
@@ -137,6 +150,21 @@ class LineFilter(EDDObjectFilter):
         match_uuid = Q(strains__registry_id__in=uuid_values)
         match_url = Q(strains__registry_url__in=url_values)
         return queryset.filter(match_uuid | match_url)
+
+    def group_replicates(self, queryset, name, value):
+        if self.truthy(value):
+            replicate_type = models.MetadataType.system("Replicate")
+            # extract replicate key from metadata
+            replicate = Func(
+                F("metadata"),
+                Value(f"{replicate_type.id}"),
+                function="jsonb_extract_path_text",
+                output_field=CharField(),
+            )
+            # define fallback of line's UUID when no metadata replicate value
+            replicate_key = Coalesce(replicate, Cast("uuid", output_field=CharField()))
+            return queryset.annotate(replicate_key=replicate_key)
+        return queryset
 
 
 class AssayFilter(EDDObjectFilter):

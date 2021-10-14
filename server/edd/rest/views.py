@@ -94,6 +94,19 @@ class LinesViewSet(StudyInternalsFilterMixin, viewsets.ReadOnlyModelViewSet):
         qs = qs.select_related("created", "updated")
         return qs.prefetch_related("strains")
 
+    @property
+    def paginator(self):
+        """
+        The paginator instance associated with the view, or `None`.
+        """
+        if not hasattr(self, "_paginator"):
+            self._paginator = super().paginator
+            repl_param = self.request.query_params.get("replicates", None)
+            using_replicates = filters.LineFilter.truthy(repl_param)
+            if using_replicates and self._paginator is not None:
+                self._paginator = paginators.ReplicatePagination(self._paginator)
+        return self._paginator
+
 
 class AssaysViewSet(StudyInternalsFilterMixin, viewsets.ReadOnlyModelViewSet):
     """API endpoint that allows Assays to be searched, viewed."""
