@@ -277,15 +277,18 @@ class EDDObject(EDDMetadata, EDDSerialize):
         )
 
     def to_json(self, depth=0):
+        # these may not be included in .select_related()
+        updated = getattr(self, "updated", None)
+        created = getattr(self, "created", None)
         return {
             "id": self.pk,
             "name": self.name,
             "description": self.description,
             "active": self.active,
             "meta": self.metadata,
-            # Always include expanded created/updated objects instead of IDs
-            "modified": self.updated.to_json(depth) if self.updated else None,
-            "created": self.created.to_json(depth) if self.created else None,
+            # Always include expanded created/updated objects if present, instead of IDs
+            "modified": updated.to_json(depth) if updated else None,
+            "created": created.to_json(depth) if created else None,
         }
 
     def to_json_str(self, depth=0):
@@ -892,12 +895,12 @@ class Line(EDDObject):
         # TODO export should handle multi-valued fields better than this
         table_generator.define_field_column(
             cls._meta.get_field("strains"),
-            lookup=lambda line: "|".join(line.strain_names),
+            lookup=lambda line: "|".join(filter(None, line.strain_names)),
         )
         # TODO export should handle multi-valued fields better than this
         table_generator.define_field_column(
             cls._meta.get_field("carbon_source"),
-            lookup=lambda line: "|".join(line.cs_names),
+            lookup=lambda line: "|".join(filter(None, line.cs_names)),
         )
         table_generator.define_field_column(
             cls._meta.get_field("experimenter"),
