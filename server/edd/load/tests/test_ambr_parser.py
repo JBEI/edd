@@ -59,14 +59,14 @@ def setup_protocol():
 
 @pytest.mark.django_db
 def test_AmbrExcelParser_success():
-    # setup default units in the test database to configure measurement types
-    # and corresponding units in the ambr parser
-    setup_default_units()
+    # setup protocol name in test database
+    setup_protocol()
     # setup measurement unit transform from input measurement type to
     # expected edd type names
     setup_mtype_transform()
-    # setup protocol name in test database
-    setup_protocol()
+    # setup default units in the test database to configure measurement types
+    # and corresponding units in the ambr parser
+    setup_default_units()
 
     path = "ambr_export_test_data.xlsx"
     parser = parsers.AmbrExcelParser(uuid4())
