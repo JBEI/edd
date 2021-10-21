@@ -15,9 +15,6 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils.cell import get_column_letter
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-from edd.load.models import DefaultUnit, MeasurementNameTransform
-from main.models import MeasurementType, Protocol
-
 from .. import exceptions, reporting
 
 logger = logging.getLogger(__name__)
@@ -658,46 +655,23 @@ class MultiSheetExcelParserMixin:
         :raises EDDImportError: if the file format or content is bad
         """
 
-        parsed_result = pd.DataFrame()
+        # parsed_result = pd.DataFrame()
         wb = pd.read_excel(file, sheet_name=None)
 
         # for each worksheet in the workbook
         for name, sheet in wb.items():
-            parsed_result = self.get_parsed_records(name, sheet, parsed_result)
+            # parsed_result = self.get_parsed_records(name, sheet, parsed_result)
+            self._parse_sheet_rows(name, sheet)
 
         # convert parsed_result into a openpyxl worksheet
         wb = Workbook()
         ws = wb.active
-        for r in dataframe_to_rows(parsed_result, index=True, header=True):
+        for r in dataframe_to_rows(self.parsed_result, index=True, header=True):
             ws.append(r)
 
         # passing the rows in the worksheet for verification
         # and processing in database
         return self._parse_rows(ws.iter_rows())
-
-    def get_parsed_records(self, name, sheet, parsed_result):
-
-        # for every two columns in the worksheet
-        # corresponding to each measurement type in the sheet
-        mapper = MeasurementMapper()
-        for i in range(0, int(sheet.shape[1]), 2):
-            two_cols = sheet[sheet.columns[i : i + 2]]
-
-            # dropping all rows with nan values in the worksheet
-            two_cols = two_cols.dropna()
-            if not two_cols.dropna().empty:
-                # decimate the data
-                two_cols = two_cols.iloc[::10, :]
-
-                # using mapper to map data into the EDD import format
-                # and convert in to a pandas dataframe
-                # set the line name and the dataframe with the two columns
-                # with data for the next measurement type
-                mapper.set_line_name(name)
-                mapper.set_data(two_cols)
-                parsed_df = mapper.map_data()
-                parsed_result = parsed_result.append(parsed_df)
-        return parsed_result
 
     def _raw_cell_value(self, cell):
         """
@@ -711,55 +685,6 @@ class MultiSheetExcelParserMixin:
         if isinstance(val, str):
             return val.strip()
         return val
-
-
-class MeasurementMapper:
-
-    loa_name: str
-    df: pd.DataFrame
-    units: Dict
-
-    def __init__(self, name=None, df=None):
-        self.loa_name = name
-        self.df = df
-
-    def set_line_name(self, name):
-        self.loa_name = name
-
-    def set_data(self, df):
-        self.df = df
-
-    def map_data(self):
-
-        mtype_name = self.df[self.df.columns[1:2]].columns.values[0]
-        self.df["Line Name"] = self.loa_name
-        self.df.columns.values[0] = "Time"
-        self.df.columns.values[1] = "Value"
-
-        # get EDD name for current measurement if mapping exists
-        mes_transform_qs = MeasurementNameTransform.objects.all().filter(
-            input_type_name=mtype_name, parser="ambr"
-        )
-        if len(mes_transform_qs) == 1:
-            mtype_name = mes_transform_qs[0].edd_type_name
-
-        # get default unit record for current measurement type
-        mes_type_qs = MeasurementType.objects.all().filter(type_name=mtype_name)
-        prot_type_qs = Protocol.objects.all().filter(name="AMBR250")
-        if len(mes_type_qs) == 1 and len(prot_type_qs) == 1:
-            du_qs = DefaultUnit.objects.all().filter(
-                measurement_type=mes_type_qs[0], protocol=prot_type_qs[0], parser="ambr"
-            )
-        if len(du_qs) == 1:
-            du_obj = du_qs[0]
-
-        # populating the dataframe
-        self.df["Measurement Type"] = mtype_name
-        self.df["Units"] = du_obj.unit.unit_name
-        # dropping records with NaN values
-        self.df = self.df[self.df["Value"].notna()]
-
-        return self.df
 
 
 class CsvParserMixin:
