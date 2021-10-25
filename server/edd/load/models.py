@@ -186,9 +186,8 @@ class MeasurementNameTransform(models.Model):
         verbose_name=_("Input Measurement Type"),
     )
 
-    edd_type_name = VarCharField(
-        help_text=_("Name of this Measurement Type in EDD."),
-        verbose_name=_("EDD Measurement Type"),
+    edd_type_name = models.ForeignKey(
+        edd_models.MeasurementType, on_delete=models.deletion.CASCADE
     )
     parser = VarCharField(blank=True, null=True)
 
@@ -196,6 +195,6 @@ class MeasurementNameTransform(models.Model):
         return {
             "id": self.pk,
             "input_type_name": self.input_type_name,
-            "edd_type_name": self.edd_type_name,
+            "edd_type_name": self.edd_type_name.type_name,
             "parser": self.parser,
         }

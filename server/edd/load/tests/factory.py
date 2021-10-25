@@ -55,6 +55,7 @@ class ParserFactory(factory.django.DjangoModelFactory):
     layout = factory.SubFactory(LayoutFactory)
     mime_type = factory.Faker("mime_type")
 
+
 class DefaultUnitFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.DefaultUnit
@@ -68,4 +69,4 @@ class MeasurementNameTransformFactory(factory.django.DjangoModelFactory):
         model = models.MeasurementNameTransform
 
     input_type_name = ""
-    edd_type_name = ""
+    edd_type_name = factory.SubFactory(MeasurementTypeFactory)

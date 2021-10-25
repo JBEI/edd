@@ -6,7 +6,6 @@ def bootstrap(apps, schema_editor):
     Layout = apps.get_model("load", "Layout")
     LAYOUT_GENERIC = Layout.objects.create(name="Generic", description="")
     LAYOUT_SKYLINE = Layout.objects.create(name="Skyline", description="")
-    LAYOUT_AMBR = Layout.objects.create(name="Ambr", description="")
     ParserMapping = apps.get_model("load", "ParserMapping")
     XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     CSV = "text/csv"
@@ -29,11 +28,6 @@ def bootstrap(apps, schema_editor):
         layout=LAYOUT_SKYLINE,
         mime_type=CSV,
         parser_class="edd.load.parsers.SkylineCsvParser",
-    )
-    ParserMapping.objects.create(
-        layout=LAYOUT_AMBR,
-        mime_type=XLSX,
-        parser_class="edd.load.parsers.AmbrExcelParser",
     )
     Category = apps.get_model("load", "Category")
     CATEGORY_PROTEOMICS = Category.objects.create(

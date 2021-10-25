@@ -2,72 +2,12 @@ from uuid import uuid4
 
 import pytest
 
-from main.tests.factory import MeasurementTypeFactory, ProtocolFactory, UnitFactory
-
 from .. import parsers
 from . import factory
-from .factory import DefaultUnitFactory, MeasurementNameTransformFactory
-
-
-@pytest.mark.django_db
-def setup_default_units():
-    mes_map = {
-        "Temperature": "°C",
-        "Stir speed": "rpm",
-        "pH": "n/a",
-        "Air flow": "lpm",
-        "Dissolved Oxygen": "% maximum measured",
-        "Volume": "mL",
-        "OUR": "mM/L/h",
-        "CER": "mM/L/h",
-        "RQ": "n/a",
-        "Feed volume pumped": "mL",
-        "Antifoam volume pumped": "mL",
-        "Acid volume pumped": "mL",
-        "Base volume pumped": "mL",
-        "Volume sampled": "mL",
-        "Volume of inocula": "mL",
-    }
-
-    for mes_type, mes_unit in mes_map.items():
-        mes_obj = MeasurementTypeFactory(type_name=mes_type)
-        unit_obj = UnitFactory(unit_name=mes_unit)
-        prot_obj = ProtocolFactory(name="AMBR250")
-        DefaultUnitFactory.create(
-            measurement_type=mes_obj, unit=unit_obj, protocol=prot_obj, parser="ambr"
-        )
-
-
-@pytest.mark.django_db
-def setup_mtype_transform():
-    mtype_map = {
-        "DO": "Dissolved Oxygen",
-        "Feed#1 volume pumped": "Feed volume pumped",
-        "Volume - sampled": "Volume sampled",
-    }
-
-    for input_type_name, edd_type_name in mtype_map.items():
-        MeasurementNameTransformFactory.create(
-            input_type_name=input_type_name, edd_type_name=edd_type_name, parser="ambr",
-        )
-
-
-@pytest.mark.django_db
-def setup_protocol():
-    ProtocolFactory.create(name="AMBR250",)
 
 
 @pytest.mark.django_db
 def test_AmbrExcelParser_success():
-    # setup protocol name in test database
-    setup_protocol()
-    # setup measurement unit transform from input measurement type to
-    # expected edd type names
-    setup_mtype_transform()
-    # setup default units in the test database to configure measurement types
-    # and corresponding units in the ambr parser
-    setup_default_units()
-
     path = "ambr_export_test_data.xlsx"
     parser = parsers.AmbrExcelParser(uuid4())
 

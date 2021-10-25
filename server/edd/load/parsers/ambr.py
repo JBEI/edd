@@ -51,14 +51,13 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
             input_type_name=mtype_name, parser="ambr"
         )
         if len(mes_transform_qs) == 1:
-            mtype_name = mes_transform_qs[0].edd_type_name
+            mtype_name = mes_transform_qs[0].edd_type_name.type_name
 
         # get default unit record for current measurement type
         mes_type_qs = MeasurementType.objects.all().filter(type_name=mtype_name)
-        prot_type_qs = Protocol.objects.all().filter(name="AMBR250")
-        if len(mes_type_qs) == 1 and len(prot_type_qs) == 1:
+        if len(mes_type_qs) == 1:
             du_qs = DefaultUnit.objects.all().filter(
-                measurement_type=mes_type_qs[0], protocol=prot_type_qs[0], parser="ambr"
+                measurement_type=mes_type_qs[0], parser="ambr"
             )
         if len(du_qs) == 1:
             du_obj = du_qs[0]
