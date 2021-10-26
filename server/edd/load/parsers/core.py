@@ -9,11 +9,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Sequence, Set, Tuple
 from uuid import UUID
 
-import pandas as pd
 from django.utils.translation import gettext_lazy as _
-from openpyxl import Workbook, load_workbook
+from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
-from openpyxl.utils.dataframe import dataframe_to_rows
 
 from .. import exceptions, reporting
 
@@ -655,23 +653,22 @@ class MultiSheetExcelParserMixin:
         :raises EDDImportError: if the file format or content is bad
         """
 
-        # parsed_result = pd.DataFrame()
-        wb = pd.read_excel(file, sheet_name=None)
+        wb = load_workbook(file, read_only=False, data_only=True)
+        logger.debug("In parse(). workbook has %d sheets" % len(wb.worksheets))
 
-        # for each worksheet in the workbook
-        for name, sheet in wb.items():
-            # parsed_result = self.get_parsed_records(name, sheet, parsed_result)
-            self._parse_sheet_rows(name, sheet)
+        # set the headers for the worksheet
+        self.worksheet.append(
+            ["Line Name", "Measurement Type", "Value", "Time", "Units"]
+        )
 
-        # convert parsed_result into a openpyxl worksheet
-        wb = Workbook()
-        ws = wb.active
-        for r in dataframe_to_rows(self.parsed_result, index=True, header=True):
-            ws.append(r)
+        for index in range(len(wb.worksheets)):
+            sheet_name = wb.sheetnames[index]
+            sheet = wb.worksheets[index]
+            self._parse_sheet_rows(sheet_name, sheet)
 
         # passing the rows in the worksheet for verification
         # and processing in database
-        return self._parse_rows(ws.iter_rows())
+        return self._parse_rows(self.worksheet.iter_rows())
 
     def _raw_cell_value(self, cell):
         """
