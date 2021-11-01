@@ -202,8 +202,9 @@ def search_strain(request):
     ice = registry.StrainRegistry()
     with ice.login(request.user):
         search = ice.search(request.GET.get("term", ""))
-        results = list(itertools.islice(search, 20))
-    return JsonResponse({"rows": results})
+        return JsonResponse(
+            {"rows": [entry.payload for entry in itertools.islice(search, 20)]}
+        )
 
 
 def search_study_writable(request):
