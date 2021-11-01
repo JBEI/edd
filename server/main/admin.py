@@ -22,12 +22,7 @@ from edd.search.solr import StudySearch
 from edd.utilities import S3MediaStorage
 
 from . import models
-from .forms import (
-    MeasurementTypeAutocompleteWidget,
-    MetadataTypeAutocompleteWidget,
-    RegistryAutocompleteWidget,
-    RegistryValidator,
-)
+from .forms import MeasurementTypeAutocompleteWidget, RegistryAutocompleteWidget
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -284,25 +279,15 @@ class StrainAdmin(EDDObjectAdmin):
         "created",
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.ice_validator = RegistryValidator()
-
     def has_add_permission(self, request):
-        """ Disable adding via admin interface. Strains are automatically added when referenced
-            via the main.forms.RegistryValidator. """
+        """
+        Disable adding via admin interface. Strains are automatically added
+        when referenced via the `main.forms.RegistryValidator`.
+        """
         return False
 
     def get_fields(self, request, obj=None):
-        self.ice_validator = RegistryValidator(existing_strain=obj)
-        # existing strain with link to ICE
         return ["name", "description", "registry_url", "study_list"]
-
-    def formfield_for_dbfield(self, db_field, **kwargs):
-        if db_field.name == "registry_id":
-            kwargs["widget"] = RegistryAutocompleteWidget()
-            kwargs["validators"] = [self.ice_validator.validate]
-        return super().formfield_for_dbfield(db_field, **kwargs)
 
     def get_readonly_fields(self, request, obj=None):
         if obj and not obj.registry_id:
@@ -311,12 +296,11 @@ class StrainAdmin(EDDObjectAdmin):
         return ["name", "description", "registry_url", "study_list"]
 
     def get_queryset(self, request):
+        num_lines = Count("line")
+        num_studies = Count("line__study", distinct=True)
         q = super().get_queryset(request)
-        q = q.annotate(
-            num_lines=Count("line"), num_studies=Count("line__study", distinct=True)
-        )
-        q = q.select_related("created__mod_by")
-        return q
+        q = q.annotate(num_lines=num_lines, num_studies=num_studies)
+        return q.select_related("created__mod_by")
 
     def hyperlink_strain(self, instance):
         if instance.registry_url:
@@ -384,16 +368,6 @@ class StrainAdmin(EDDObjectAdmin):
     num_studies.admin_order_field = "num_studies"
     num_studies.short_description = "# Studies"
 
-    def save_model(self, request, obj, form, change):
-        if self.ice_validator.count != 0:
-            messages.error(
-                request, _("A strain record already exists for that ICE entry!")
-            )
-            return
-        if self.ice_validator.entry:
-            obj.registry_url = self.ice_validator.entry.url
-        super().save_model(request, obj, form, change)
-
     def study_list(self, instance):
         qs = models.Study.objects.filter(line__strains=instance).distinct()
         return render_study_links(qs)
@@ -420,7 +394,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         return ["type_name", "short_name", "_study_count", "type_source"]
 
     def get_merge_autowidget(self):
-        return MeasurementTypeAutocompleteWidget
+        return MeasurementTypeAutocompleteWidget()
 
     def get_merge_form(self, request):
         class MergeForm(forms.Form):
@@ -832,7 +806,9 @@ class WorklistColumnInline(admin.TabularInline):
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "meta_type":
-            kwargs["widget"] = MetadataTypeAutocompleteWidget()
+            kwargs["widget"] = AutocompleteSelect(
+                models.WorklistColumn._meta.get_field("meta_type"), admin.site,
+            )
         return db_field.formfield(**kwargs)
 
 
