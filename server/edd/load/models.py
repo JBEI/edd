@@ -152,3 +152,49 @@ class CategoryLayout(models.Model):
         ),
         verbose_name=_("Display order"),
     )
+
+
+class DefaultUnit(models.Model):
+    class Meta:
+        db_table = "default_unit"
+
+    measurement_type = models.ForeignKey(
+        edd_models.MeasurementType, on_delete=models.deletion.CASCADE
+    )
+    unit = models.ForeignKey(
+        edd_models.MeasurementUnit, on_delete=models.deletion.CASCADE
+    )
+    protocol = models.ForeignKey(
+        edd_models.Protocol, blank=True, null=True, on_delete=models.deletion.CASCADE
+    )
+    parser = VarCharField(blank=True, null=True)
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "type_name": self.measurement_type.type_name,
+            "unit_name": self.unit.unit_name,
+        }
+
+
+class MeasurementNameTransform(models.Model):
+    class Meta:
+        db_table = "measurement_name_transform"
+
+    input_type_name = VarCharField(
+        help_text=_("Name of this Measurement Type in input."),
+        verbose_name=_("Input Measurement Type"),
+    )
+
+    edd_type_name = models.ForeignKey(
+        edd_models.MeasurementType, on_delete=models.deletion.CASCADE
+    )
+    parser = VarCharField(blank=True, null=True)
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "input_type_name": self.input_type_name,
+            "edd_type_name": self.edd_type_name.type_name,
+            "parser": self.parser,
+        }
