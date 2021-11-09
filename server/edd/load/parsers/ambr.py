@@ -85,13 +85,14 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
         # appending mapped measurements to parsed worksheet
         for i in range(1, len(mes_data)):
             # dropping records with NaN values
-            if not np.isnan(float(mes_data[i])):
-                self.worksheet.append(
-                    [
-                        name,
-                        mtype_name,
-                        float(mes_data[i]),
-                        float(time_data[i]),
-                        du_obj.unit.unit_name,
-                    ]
-                )
+            if mes_data[i] is not None:
+                if not np.isnan(float(mes_data[i])):
+                    self.worksheet.append(
+                        [
+                            name,
+                            mtype_name,
+                            float(mes_data[i]),
+                            float(time_data[i]),
+                            du_obj.unit.unit_name,
+                        ]
+                    )
