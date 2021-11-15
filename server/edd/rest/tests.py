@@ -711,12 +711,35 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         self._check_status(response, status.HTTP_200_OK)
         assert response.data["count"] == 0
 
+    def test_protocols_list(self):
+        url = reverse("rest:protocols-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url)
+        self._check_status(response, status.HTTP_200_OK)
+        assert "count" in response.data
+
+    def test_protocols_list_in_study(self):
+        study = factory.StudyFactory()
+        url = reverse("rest:protocols-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"in_study": study.slug})
+        self._check_status(response, status.HTTP_200_OK)
+        assert response.data["count"] == 0
+
     def test_types_list(self):
         url = reverse("rest:types-list")
         self.client.force_login(self.admin)
         response = self.client.get(url)
         self._check_status(response, status.HTTP_200_OK)
         assert "count" in response.data
+
+    def test_types_list_in_study(self):
+        study = factory.StudyFactory()
+        url = reverse("rest:types-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"in_study": study.slug})
+        self._check_status(response, status.HTTP_200_OK)
+        assert response.data["count"] == 0
 
     def test_units_list(self):
         url = reverse("rest:units-list")
@@ -725,9 +748,24 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         self._check_status(response, status.HTTP_200_OK)
         assert "count" in response.data
 
-    def test_users_list(self):
+    def test_units_list_in_study(self):
+        study = factory.StudyFactory()
+        url = reverse("rest:units-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"in_study": study.slug})
+        self._check_status(response, status.HTTP_200_OK)
+        assert response.data["count"] == 0
+
+    def test_users_list_without_study(self):
         url = reverse("rest:users-list")
         self.client.force_login(self.admin)
         response = self.client.get(url)
+        self._check_status(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_users_list_with_study(self):
+        study = factory.StudyFactory()
+        url = reverse("rest:users-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"in_study": study.slug})
         self._check_status(response, status.HTTP_200_OK)
         assert "count" in response.data

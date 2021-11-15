@@ -17,18 +17,23 @@ User = get_user_model()
 
 
 def filter_in_study(queryset, name, value):
-    q = Q(study__slug=value)
+    pk = fuzzy_study_subquery(value)
+    return queryset.filter(study_id__in=pk)
+
+
+def fuzzy_study_subquery(value):
+    q = Q(slug=value)
     # try to convert to a PK
     try:
-        q = q | Q(study_id=int(value))
+        q = q | Q(id=int(value))
     except ValueError:
         pass
     # try to convert to a UUID
     try:
-        q = q | Q(study__uuid=UUID(value))
+        q = q | Q(uuid=UUID(value))
     except ValueError:
         pass
-    return queryset.filter(q)
+    return models.Study.objects.filter(q).values_list("pk", flat=True)
 
 
 class EDDObjectFilter(filters.FilterSet):
@@ -446,10 +451,18 @@ class MeasurementTypesFilter(filters.FilterSet):
         field_name="type_group",
         help_text=_("One of the measurement type codes: '_', 'm', 'g', 'p'"),
     )
+    in_study = django_filters.CharFilter(
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
+        method="used_in_study",
+    )
 
     class Meta:
         model = models.MeasurementType
         fields = []
+
+    def used_in_study(self, queryset, name, value):
+        pk = fuzzy_study_subquery(value)
+        return queryset.filter(measurement__study_id__in=pk).distinct()
 
 
 class MetadataTypesFilter(filters.FilterSet):
@@ -473,7 +486,7 @@ class MetadataTypesFilter(filters.FilterSet):
 
     class Meta:
         model = models.MetadataType
-        fields = []
+        fields = ["id"]
 
     def used_in_study(self, queryset, name, value):
         # lines and assays in the study
@@ -486,22 +499,67 @@ class MetadataTypesFilter(filters.FilterSet):
         # get the distinct keys used
         line_keys_qs = lines.values_list(keys, flat=True).distinct()
         assay_keys_qs = assays.values_list(keys, flat=True).distinct()
+        keys_qs = line_keys_qs.union(assay_keys_qs)
         # get all keys used in the study
-        return queryset.filter(pk__in=line_keys_qs.union(assay_keys_qs))
+        return queryset.filter(pk__in=keys_qs)
 
 
 class MeasurementUnitFilter(filters.FilterSet):
     unit_name = django_filters.CharFilter(field_name="unit_name", lookup_expr="iregex",)
+    in_study = django_filters.CharFilter(
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
+        method="used_in_study",
+    )
 
     class Meta:
         model = models.MeasurementUnit
         fields = []
 
+    def used_in_study(self, queryset, name, value):
+        pk = fuzzy_study_subquery(value)
+        x_unit = queryset.filter(measurement_x__study_id__in=pk).distinct()
+        y_unit = queryset.filter(measurement_y__study_id__in=pk).distinct()
+        return x_unit.union(y_unit).order_by("pk")
+
 
 class ProtocolFilter(EDDObjectFilter):
+    in_study = django_filters.CharFilter(
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
+        method="used_in_study",
+    )
+
     class Meta:
         model = models.Protocol
         fields = ["owned_by", "variant_of", "default_units"]
+
+    def used_in_study(self, queryset, name, value):
+        pk = fuzzy_study_subquery(value)
+        return queryset.filter(assay__study_id__in=pk).distinct()
+
+
+class UserFilter(filters.FilterSet):
+    # set as required to limit to just users linked to a single study
+    # there's no good reason to advertise our entire user list
+    in_study = django_filters.CharFilter(
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
+        method="used_in_study",
+        required=True,
+    )
+
+    class Meta:
+        model = User
+        fields = []
+
+    def used_in_study(self, queryset, name, value):
+        study = fuzzy_study_subquery(value)
+        study_contact = User.profiles.filter(contact_study_set=study)
+        line_contacts = User.profiles.filter(line_contact_set__study=study)
+        line_experimenters = User.profiles.filter(line_experimenter_set__study=study)
+        assay_experimenters = User.profiles.filter(assay_experimenter_set__study=study)
+        experimenters = User.profiles.filter(measurement_experimenter_set__study=study)
+        return study_contact.union(
+            line_contacts, line_experimenters, assay_experimenters, experimenters,
+        )
 
 
 __all__ = [
@@ -517,4 +575,5 @@ __all__ = [
     MetadataTypesFilter,
     ProtocolFilter,
     StudyFilter,
+    UserFilter,
 ]
