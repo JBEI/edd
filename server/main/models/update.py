@@ -158,6 +158,10 @@ class Update(models.Model, EDDSerialize):
             return None
         return self.mod_by.email
 
+    @property
+    def int_timestamp(self):
+        return arrow.get(self.mod_time).int_timestamp
+
     def to_json(self, depth=0):
         """ Converts object to a dict appropriate for JSON serialization. If the depth argument
             is positive, the dict will expand links to other objects, rather than inserting a

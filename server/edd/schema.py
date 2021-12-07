@@ -4,9 +4,7 @@ import logging
 
 import graphene
 from graphene_django import DjangoObjectType
-from graphene_django.filter import DjangoFilterConnectionField
 
-from edd.rest import filters
 from main import models
 
 logger = logging.getLogger(__name__)
@@ -112,40 +110,12 @@ class MeasurementNode(StudyAccessMixin, DjangoObjectType):
         model = models.Measurement
 
 
-class MeasurementValueNode(StudyAccessMixin, DjangoObjectType):
-    _filter_joins = ["measurement", "assay", "line", "study"]
-
-    class Meta:
-        interfaces = (graphene.Node,)
-        model = models.MeasurementValue
-
-
 class Query(graphene.ObjectType):
     study = graphene.relay.Node.Field(StudyNode)
     line = graphene.relay.Node.Field(LineNode)
     assay = graphene.relay.Node.Field(AssayNode)
     measurement = graphene.relay.Node.Field(MeasurementNode)
     unit = graphene.relay.Node.Field(UnitNode)
-    value = graphene.relay.Node.Field(MeasurementValueNode)
-
-    all_studies = DjangoFilterConnectionField(
-        StudyNode, filterset_class=filters.StudyFilter
-    )
-    all_lines = DjangoFilterConnectionField(
-        LineNode, filterset_class=filters.LineFilter
-    )
-    all_assays = DjangoFilterConnectionField(
-        AssayNode, filterset_class=filters.AssayFilter
-    )
-    all_measurements = DjangoFilterConnectionField(
-        MeasurementNode, filterset_class=filters.MeasurementFilter
-    )
-    all_units = DjangoFilterConnectionField(
-        UnitNode, filterset_class=filters.MeasurementUnitFilter
-    )
-    all_values = DjangoFilterConnectionField(
-        MeasurementValueNode, filterset_class=filters.MeasurementValueFilter
-    )
 
 
 schema = graphene.Schema(query=Query)

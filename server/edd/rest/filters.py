@@ -36,6 +36,12 @@ def fuzzy_study_subquery(value):
     return models.Study.objects.filter(q).values_list("pk", flat=True)
 
 
+class ModelChoiceInFilter(
+    django_filters.BaseInFilter, django_filters.ModelChoiceFilter
+):
+    pass
+
+
 class EDDObjectFilter(filters.FilterSet):
     active = django_filters.BooleanFilter(
         field_name="active",
@@ -183,13 +189,20 @@ class AssayFilter(EDDObjectFilter):
         help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method=filter_in_study,
     )
+    line = ModelChoiceInFilter(
+        field_name="line",
+        help_text=_("IDs of line(s) to limit assays"),
+        queryset=models.Line.objects.all(),
+    )
+    protocol = ModelChoiceInFilter(
+        field_name="protocol",
+        help_text=_("IDs of protocol(s) to limit assays"),
+        queryset=models.Protocol.objects.all(),
+    )
 
     class Meta:
         model = models.Assay
-        fields = {
-            "line": ["exact", "in"],
-            "protocol": ["exact", "in"],
-        }
+        fields = []
 
 
 class MeasurementFilter(filters.FilterSet):
@@ -199,9 +212,9 @@ class MeasurementFilter(filters.FilterSet):
             "Filter on currently active/visible items (True/1/yes or false/0/no)"
         ),
     )
-    assay = django_filters.ModelChoiceFilter(
+    assay = ModelChoiceInFilter(
         field_name="assay",
-        help_text=_("ID of an assay to limit measurements"),
+        help_text=_("IDs of assay(s) to limit measurements"),
         queryset=models.Assay.objects.all(),
     )
     created_before = django_filters.IsoDateTimeFilter(
@@ -221,17 +234,7 @@ class MeasurementFilter(filters.FilterSet):
             "One of the compartment codes, 0, 1, 2 for N/A, Intracellular, Extracellular"
         ),
     )
-    in_study = django_filters.CharFilter(
-        field_name="study",
-        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
-        method=filter_in_study,
-    )
-    line = django_filters.ModelChoiceFilter(
-        field_name="assay__line",
-        help_text=_("ID of a line to limit measurements"),
-        queryset=models.Line.objects.all(),
-    )
-    measurement_format = django_filters.ChoiceFilter(
+    format = django_filters.ChoiceFilter(
         choices=models.Measurement.Format.CHOICE,
         field_name="measurement_format",
         help_text=_(
@@ -239,14 +242,40 @@ class MeasurementFilter(filters.FilterSet):
             "format values is supported"
         ),
     )
+    in_study = django_filters.CharFilter(
+        field_name="study",
+        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
+        method=filter_in_study,
+    )
+    line = ModelChoiceInFilter(
+        field_name="assay__line",
+        help_text=_("IDs of line(s) to limit measurements"),
+        queryset=models.Line.objects.all(),
+    )
+    protocol = ModelChoiceInFilter(
+        field_name="assay__protocol",
+        help_text=_("IDs of protocol(s) to limit measurements"),
+        queryset=models.Protocol.objects.all(),
+    )
+    type = ModelChoiceInFilter(
+        field_name="measurement_type",
+        help_text=_("IDs of measurement type(s) to limit measurements"),
+        queryset=models.MeasurementType.objects.all(),
+    )
+    x_units = ModelChoiceInFilter(
+        field_name="x_units",
+        help_text=_("IDs of unit(s) used on the x-axis to limit measurements"),
+        queryset=models.MeasurementUnit.objects.all(),
+    )
+    y_units = ModelChoiceInFilter(
+        field_name="y_units",
+        help_text=_("IDs of unit(s) used on the y-axis to limit measurements"),
+        queryset=models.MeasurementUnit.objects.all(),
+    )
 
     class Meta:
         model = models.Measurement
-        fields = {
-            "measurement_type": ["exact", "in"],
-            "x_units": ["exact", "in"],
-            "y_units": ["exact", "in"],
-        }
+        fields = []
 
 
 export_via_lookup = {
@@ -404,42 +433,6 @@ class ExportLineFilter(ExportFilter):
         return self._filter_ids_and_in_study(queryset)
 
 
-class MeasurementValueFilter(filters.FilterSet):
-    assay = django_filters.ModelChoiceFilter(
-        field_name="measurement__assay",
-        help_text=_("ID of an assay to limit measurements"),
-        queryset=models.Assay.objects.all(),
-    )
-    created_before = django_filters.IsoDateTimeFilter(
-        field_name="updated__mod_time",
-        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
-        lookup_expr="lte",
-    )
-    created_after = django_filters.IsoDateTimeFilter(
-        field_name="updated__mod_time",
-        help_text=_("Use an ISO-8601-like datetime: 2020-01-01 00:00:00"),
-        lookup_expr="gte",
-    )
-    in_study = django_filters.CharFilter(
-        field_name="study",
-        help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
-        method=filter_in_study,
-    )
-    line = django_filters.ModelChoiceFilter(
-        field_name="measurement__assay__line",
-        help_text=_("ID of a line to limit measurements"),
-        queryset=models.Line.objects.all(),
-    )
-    x__gt = django_filters.NumberFilter(field_name="x", lookup_expr="0__gte")
-    x__lt = django_filters.NumberFilter(field_name="x", lookup_expr="0__lte")
-    y__gt = django_filters.NumberFilter(field_name="y", lookup_expr="0__gte")
-    y__lt = django_filters.NumberFilter(field_name="y", lookup_expr="0__lte")
-
-    class Meta:
-        model = models.MeasurementValue
-        fields = {"measurement": ["exact", "in"]}
-
-
 class MeasurementTypesFilter(filters.FilterSet):
     type_name = django_filters.CharFilter(
         field_name="type_name",
@@ -552,14 +545,14 @@ class UserFilter(filters.FilterSet):
 
     def used_in_study(self, queryset, name, value):
         study = fuzzy_study_subquery(value)
-        study_contact = User.profiles.filter(contact_study_set=study)
-        line_contacts = User.profiles.filter(line_contact_set__study=study)
-        line_experimenters = User.profiles.filter(line_experimenter_set__study=study)
-        assay_experimenters = User.profiles.filter(assay_experimenter_set__study=study)
-        experimenters = User.profiles.filter(measurement_experimenter_set__study=study)
+        study_contact = queryset.filter(contact_study_set__in=study)
+        line_contacts = queryset.filter(line_contact_set__study__in=study)
+        line_experimenters = queryset.filter(line_experimenter_set__study__in=study)
+        assay_experimenters = queryset.filter(assay_experimenter_set__study__in=study)
+        experimenters = queryset.filter(measurement_experimenter_set__study__in=study)
         return study_contact.union(
             line_contacts, line_experimenters, assay_experimenters, experimenters,
-        )
+        ).order_by("pk")
 
 
 __all__ = [
@@ -571,7 +564,6 @@ __all__ = [
     MeasurementFilter,
     MeasurementTypesFilter,
     MeasurementUnitFilter,
-    MeasurementValueFilter,
     MetadataTypesFilter,
     ProtocolFilter,
     StudyFilter,

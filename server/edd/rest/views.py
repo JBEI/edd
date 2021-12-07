@@ -4,6 +4,7 @@ import logging
 from uuid import UUID
 
 from django.contrib.auth import get_user_model
+from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
@@ -129,7 +130,12 @@ class MeasurementsViewSet(StudyInternalsFilterMixin, viewsets.ReadOnlyModelViewS
 
     def get_queryset(self):
         qs = models.Measurement.objects.order_by("pk")
-        return qs.select_related("update_ref")
+        prefetch = Prefetch(
+            "measurementvalue_set",
+            queryset=models.MeasurementValue.objects.order_by("x"),
+            to_attr="values",
+        )
+        return qs.prefetch_related(prefetch)
 
 
 class ExportCsvContentNegotiation(DefaultContentNegotiation):
@@ -239,19 +245,6 @@ class StreamingExportViewSet(BaseExportViewSet):
         return response
 
 
-class MeasurementValuesViewSet(
-    StudyInternalsFilterMixin, viewsets.ReadOnlyModelViewSet
-):
-    """API endpoint that allows Values to be searched, viewed, and edited."""
-
-    filterset_class = filters.MeasurementValueFilter
-    serializer_class = serializers.MeasurementValueSerializer
-    _filter_joins = ["measurement", "assay", "line", "study"]
-
-    def get_queryset(self):
-        return models.MeasurementValue.objects.order_by("pk").select_related("updated")
-
-
 class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that provides search/detail access to all MeasurementTypes.
@@ -294,6 +287,12 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
         return self.serializer_lookup.get(group, serializers.MeasurementTypeSerializer)
 
 
+class CompartmentViewSet(viewsets.ReadOnlyModelViewSet):
+    # fake having a model by converting JSON of all compartments to a list
+    queryset = list(models.Measurement.Compartment.to_json().values())
+    serializer_class = serializers.CompartmentSerializer
+
+
 class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that supports viewing and searching EDD's metadata types.
@@ -324,9 +323,10 @@ class UsersViewSet(viewsets.ReadOnlyModelViewSet):
     the current set of EDD user accounts.
     """
 
+    filterset_class = filters.UserFilter
     permission_classes = [IsAuthenticated]
     serializer_class = serializers.UserSerializer
 
     def get_queryset(self):
         User = get_user_model()
-        return User.objects.order_by("pk")
+        return User.profiles.order_by("pk")

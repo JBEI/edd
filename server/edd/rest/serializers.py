@@ -1,8 +1,3 @@
-"""
-Defines serializers for EDD's nascent REST API, as supported by the Django Rest Framework
-(http://www.django-rest-framework.org/)
-"""
-
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -10,17 +5,32 @@ from main import models
 
 
 class UpdateSerializer(serializers.ModelSerializer):
+    by = serializers.IntegerField(source="mod_by_id")
+    time = serializers.IntegerField(source="int_timestamp")
+
     class Meta:
-        model = models.Update
-        fields = ("mod_time", "mod_by", "path", "origin")
         depth = 0
+        fields = ("time", "by")
+        model = models.Update
 
 
 class UserSerializer(serializers.ModelSerializer):
+    initials = serializers.CharField(
+        allow_blank=True, required=False, source="profile.initials"
+    )
+
     class Meta:
-        model = get_user_model()
         depth = 0
-        fields = ("email", "first_name", "is_active", "last_name", "pk", "username")
+        fields = (
+            "email",
+            "first_name",
+            "initials",
+            "is_active",
+            "last_name",
+            "pk",
+            "username",
+        )
+        model = get_user_model()
 
 
 class EDDObjectSerializer(serializers.ModelSerializer):
@@ -43,6 +53,13 @@ class EDDObjectSerializer(serializers.ModelSerializer):
         )
 
 
+class StrainSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Strain
+        depth = 0
+        fields = ("name", "registry_id", "registry_url")
+
+
 class AssaySerializer(EDDObjectSerializer):
     class Meta:
         model = models.Assay
@@ -54,9 +71,29 @@ class AssaySerializer(EDDObjectSerializer):
         )
 
 
+class CompartmentSerializer(serializers.Serializer):
+    # Compartment is a static list in code, but treat as database record anyway
+    pk = serializers.IntegerField(read_only=True, source="id")
+    code = serializers.CharField(read_only=True)
+    name = serializers.CharField(read_only=True)
+
+
+class ValueSerializer(serializers.ModelSerializer):
+    # force-cast Decimal to Float; prevents value repr as strings instead of numbers
+    x = serializers.ListField(child=serializers.FloatField())
+    y = serializers.ListField(child=serializers.FloatField())
+
+    class Meta:
+        model = models.MeasurementValue
+        fields = ("x", "y")
+
+
 class MeasurementSerializer(serializers.ModelSerializer):
     pk = serializers.IntegerField(read_only=True)
-    update_ref = UpdateSerializer(read_only=True)
+    compartment = serializers.CharField(read_only=True)
+    type = serializers.IntegerField(read_only=True, source="measurement_type_id")
+    format = serializers.CharField(read_only=True, source="measurement_format")
+    values = ValueSerializer(many=True)
 
     class Meta:
         model = models.Measurement
@@ -64,23 +101,14 @@ class MeasurementSerializer(serializers.ModelSerializer):
             "assay",
             "compartment",
             "experimenter",
-            "measurement_format",
-            "measurement_type",
+            "format",
             "pk",
+            "type",
             "study",
-            "update_ref",
+            "values",
             "x_units",
             "y_units",
         )
-
-
-class MeasurementValueSerializer(serializers.ModelSerializer):
-    pk = serializers.IntegerField(read_only=True)
-    updated = UpdateSerializer(read_only=True)
-
-    class Meta:
-        model = models.MeasurementValue
-        fields = ("measurement", "pk", "study", "updated", "x", "y")
 
 
 class StudySerializer(EDDObjectSerializer):
@@ -112,9 +140,10 @@ class StudySerializer(EDDObjectSerializer):
 
 
 class LineSerializer(EDDObjectSerializer):
-    strains = serializers.SlugRelatedField(
-        many=True, read_only=True, slug_field="registry_url"
+    replicate = serializers.CharField(
+        allow_blank=True, required=False, source="replicate_key",
     )
+    strains = StrainSerializer(many=True, read_only=True)
 
     class Meta:
         model = models.Line
@@ -123,6 +152,7 @@ class LineSerializer(EDDObjectSerializer):
             "contact",
             "control",
             "experimenter",
+            "replicate",
             "strains",
             "study",
         )
@@ -148,67 +178,54 @@ class MetadataTypeSerializer(serializers.ModelSerializer):
 
 
 class MeasurementTypeSerializer(serializers.ModelSerializer):
+    family = serializers.CharField(read_only=True, source="type_group")
+    name = serializers.CharField(read_only=True, source="type_name")
+
     class Meta:
         model = models.MeasurementType
         depth = 0
-        fields = ("alt_names", "pk", "type_group", "type_name", "type_source", "uuid")
+        fields = ("family", "name", "pk", "uuid")
 
 
 class MetaboliteSerializer(MeasurementTypeSerializer):
+    cid = serializers.IntegerField(read_only=True, source="pubchem_cid")
+
     class Meta:
         model = models.Metabolite
         depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields + (
-            "carbon_count",
-            "charge",
-            "id_map",
-            "molar_mass",
-            "molecular_formula",
-            "smiles",
-            "tags",
-        )
+        fields = MeasurementTypeSerializer.Meta.fields + ("cid",)
 
 
 class ProteinIdSerializer(MeasurementTypeSerializer):
+    accession = serializers.CharField(read_only=True, source="accession_id")
+
     class Meta:
         model = models.ProteinIdentifier
         depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields + (
-            "accession_id",
-            "length",
-            "mass",
-        )
+        fields = MeasurementTypeSerializer.Meta.fields + ("accession",)
 
 
 class GeneIdSerializer(MeasurementTypeSerializer):
     class Meta:
         model = models.GeneIdentifier
         depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields + (
-            "gene_length",
-            "location_end",
-            "location_in_genome",
-            "location_start",
-            "positive_strand",
-        )
+        fields = MeasurementTypeSerializer.Meta.fields
 
 
 class PhosphorSerializer(MeasurementTypeSerializer):
     class Meta:
         model = models.Phosphor
         depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields + (
-            "emission_wavelength",
-            "excitation_wavelength",
-            "reference_type",
-        )
+        fields = MeasurementTypeSerializer.Meta.fields
 
 
 class MeasurementUnitSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(read_only=True, source="unit_name")
+
     class Meta:
         model = models.MeasurementUnit
         depth = 0
-        fields = ("alternate_names", "display", "pk", "type_group", "unit_name")
+        fields = ("display", "pk", "name")
 
 
 class ProtocolSerializer(EDDObjectSerializer):

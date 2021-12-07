@@ -560,13 +560,6 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         self._check_status(response, status.HTTP_200_OK)
         assert response.data["count"] == 30
 
-    def test_values_list(self):
-        url = reverse("rest:values-list")
-        self.client.force_login(self.admin)
-        response = self.client.get(url, {"in_study": self.study.slug})
-        self._check_status(response, status.HTTP_200_OK)
-        assert response.data["count"] == 30
-
 
 class LinesTests(EddApiTestCaseMixin, APITestCase):
     """
