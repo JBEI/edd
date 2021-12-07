@@ -19,6 +19,7 @@ study_url_patterns = [
     path("load/", include("edd.load.urls", namespace="load")),
     # kept verbose name of description for link backward-compatibility
     path("experiment-description/", login_required(views.StudyLinesView.as_view())),
+    # deprecating these *data/ URLs in favor of access/ and REST API links
     path("assaydata/", login_required(views.study_assay_table_data), name="assaydata"),
     path("edddata/", login_required(views.study_edddata), name="edddata"),
     path(
@@ -34,6 +35,8 @@ study_url_patterns = [
             ]
         ),
     ),
+    # end deprecated section, access/ definition here
+    path("access/", login_required(views.study_access), name="access"),
     path(
         "permissions/",
         login_required(views.StudyPermissionJSONView.as_view()),

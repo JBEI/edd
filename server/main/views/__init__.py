@@ -2,6 +2,7 @@
 
 from .ajax import (
     StudyPermissionJSONView,
+    study_access,
     study_assay_table_data,
     study_edddata,
     study_measurements,
@@ -18,6 +19,7 @@ from .study import (
 )
 
 __all__ = [
+    study_access,
     study_assay_table_data,
     study_edddata,
     study_measurements,

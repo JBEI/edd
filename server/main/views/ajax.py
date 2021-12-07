@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.views import generic
 from requests import codes
 
@@ -123,6 +124,26 @@ def study_assay_table_data(request, pk=None, slug=None):
                 },
             },
             "EDDData": query.get_edddata_study(model),
+        },
+        encoder=utilities.JSONEncoder,
+    )
+
+
+# /study/<study_id>/access/
+def study_access(request, pk=None, slug=None):
+    model = load_study(request, pk=pk, slug=slug)
+    return JsonResponse(
+        {
+            "study": {"pk": model.pk, "slug": model.slug, "uuid": model.uuid},
+            "urlAssay": reverse("rest:assays-list"),
+            "urlCompartment": reverse("rest:compartments-list"),
+            "urlLine": reverse("rest:lines-list"),
+            "urlMeasurement": reverse("rest:measurements-list"),
+            "urlMetadata": reverse("rest:metadata_types-list"),
+            "urlProtocol": reverse("rest:protocols-list"),
+            "urlType": reverse("rest:types-list"),
+            "urlUnit": reverse("rest:units-list"),
+            "urlUser": reverse("rest:users-list"),
         },
         encoder=utilities.JSONEncoder,
     )
