@@ -43,18 +43,6 @@ export function groupBy<T>(list: T[], key: string): { [key: string]: T[] } {
 }
 
 /**
- * Function decorator to debounce frequent callbacks. By default will wait 100
- * milliseconds after last call to trigger the wrapped function.
- */
-export function debounce(fn: () => void, wait = 100): () => void {
-    let timer;
-    return (...args) => {
-        window.clearTimeout(timer);
-        timer = window.setTimeout(fn, wait, ...args);
-    };
-}
-
-/**
  * Sets a value on a target object, following the given dotted-path. e.g.
  * setObjectValue(x, "foo.bar", 42); will find the foo property of x, then set
  * the bar property of that object to 42.
@@ -280,57 +268,5 @@ export class FileDropZone {
                 }
             }
         });
-    }
-}
-
-/**
- * Wraps a "contact" value that can be number, UserRecord, or BasicContact.
- */
-export class EDDContact {
-    constructor(private readonly self: number | UserRecord | BasicContact) {}
-    as_contact(): BasicContact {
-        return { "extra": this.display(), "user_id": this.id() };
-    }
-    display(fallback?: string): string {
-        fallback = fallback || "--";
-        if (this.is_userrecord()) {
-            return ((this.self || {}) as UserRecord).uid;
-        } else if (this.is_basiccontact()) {
-            const basic = (this.self || {}) as BasicContact;
-            const user = EDDData.Users[basic.user_id] || ({} as UserRecord);
-            return basic.extra || user.uid || fallback;
-        } else if (typeof this.self === "number") {
-            const user = EDDData.Users[this.self as number] || ({} as UserRecord);
-            return user.uid || fallback;
-        }
-        return fallback;
-    }
-    equals(other: number | UserRecord | BasicContact): boolean {
-        return (
-            // when both are IDs, using normal equality works
-            (this.self !== undefined && this.self === other) ||
-            // when both are UserRecord, use propertyEqual on "id"
-            JS.propertyEqual(this.self, other, "id") ||
-            // when both are BasicContact, use propertyEqual on both "user_id" and "extra"
-            (JS.propertyEqual(this.self, other, "user_id") &&
-                JS.propertyEqual(this.self, other, "extra"))
-        );
-    }
-    id(): number {
-        if (this.is_userrecord()) {
-            return ((this.self || {}) as UserRecord).id;
-        } else if (this.is_basiccontact()) {
-            return ((this.self || {}) as BasicContact).user_id;
-        } else if (typeof this.self === "number") {
-            return this.self as number;
-        }
-        return null;
-    }
-    private is_basiccontact(): boolean {
-        const self = this.self || {};
-        return JS.hasOwnProp(self, "user_id") || JS.hasOwnProp(self, "extra");
-    }
-    private is_userrecord(): boolean {
-        return JS.hasOwnProp(this.self || {}, "id");
     }
 }

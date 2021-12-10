@@ -1,6 +1,6 @@
 "use strict";
 
-import { Access, Item } from "./Access";
+import { Item, LazyAccess, Query, QueryFilter } from "./Access";
 
 /**
  * Describes an entry in a FilterSection; e.g. a Strain.
@@ -23,7 +23,7 @@ const ALLOW = () => true;
  * filtering and rendering functionality, without the generics of a specific
  * type in FilterSection<U>.
  */
-export abstract class FilterLayer {
+abstract class FilterLayer {
     /**
      * Builds the DOM nodes to render this FilterLayer.
      */
@@ -52,107 +52,211 @@ export abstract class FilterLayer {
     allowItem(): (item: Item) => boolean {
         return ALLOW;
     }
+    /**
+     * Accept a query definition, update with this layer's criterea, and
+     * return the modified definition.
+     */
+    buildQueryFilter(query: QueryFilter): QueryFilter {
+        return query;
+    }
 }
 
 /**
  * Top-level object controlling filtering of data for display in EDD.
  */
-export class Filter extends FilterLayer {
-    private readonly layers: FilterLayer[] = [];
+export class Filter {
     private measurementLayer: MeasurementFilterLayer;
+    private pager: JQuery = null;
+    private pagerLabelTemplate: string;
     private root: JQuery = null;
+    private _assayMeta: MetadataTypeRecord[] = null;
 
-    private constructor(private readonly access: Access) {
-        super();
-        this.measurementLayer = new MeasurementFilterLayer();
+    private readonly query: Query = {
+        "page": 1,
+        "size": 500,
+        "sort": [],
+        "filter": {
+            "active": "true",
+        },
+    };
+
+    private constructor(
+        private readonly lazy: LazyAccess,
+        private readonly layers: FilterLayer[],
+    ) {
+        this.pager = $(".pager-nav");
+        this.pagerLabelTemplate = this.pager.find(".pager-label").text();
+        this.setupPagerEvents();
     }
 
     /**
-     * Create the filter from information known in initial EDDData request.
+     * Create the filter from information pulled from LazyAccess.
      */
-    static create(access: Access): Filter {
-        const self = new Filter(access);
-        const lines = access.lines();
-        self.layers.push(LineNameFilterSection.create(access.lines()));
-        self.layers.push(StrainFilterSection.create(access.strains()));
-        // layers for line metadata
-        access.metadataForLineTable(lines).forEach((t) => {
-            self.layers.push(MetadataFilterSection.create(lines, t));
-        });
-        self.layers.push(ProtocolFilterSection.create(access.protocols()));
-        // layers for assay metadata
-        const assays = access.assays();
-        access.metadataForAssayTable(assays).forEach((t) => {
-            self.layers.push(MetadataFilterSection.create(assays, t));
-        });
-        // layer for types of measurements at the end
-        self.layers.push(self.measurementLayer);
-        return self;
-    }
-
-    allowAssay(): (assay: AssayRecord) => boolean {
-        // get every section to give callback for Array.filter()
-        const predicates = this.layers.map((s) => s.allowAssay());
-        // remove any ALLOW to speed up iteration
-        const active = predicates.filter((p) => p !== ALLOW);
-        // predicate accepts anything that satisfies every active layer
-        return (assay) => active.every((p) => p(assay));
-    }
-
-    allowItem(): (item: Item) => boolean {
-        // get every section to give callback for Array.filter()
-        const predicates = this.layers.map((s) => s.allowItem());
-        // remove any ALLOW to speed up iteration
-        const active = predicates.filter((p) => p !== ALLOW);
-        // predicate accepts anything that satisfies every active layer
-        return (item) => active.every((p) => p(item));
-    }
-
-    assays(): AssayRecord[] {
-        // run initial filter on assays
-        const assays = this.access.assays().filter((assay) => this.allowAssay());
-        // find assays where at least one measurement passes filters
-        return assays.filter((assay) => {
-            const items = assay.measurements.map((m) => this.access.item(m));
-            return items.some(this.allowItem());
+    static create(root: HTMLElement, lazy: LazyAccess): Promise<Filter> {
+        const forAssay = lazy.query("for_context", "A");
+        const forLine = lazy.query("for_context", "L");
+        return Promise.all([
+            lazy.line.progress(lazy.progress, 1).eager(),
+            lazy.assay.progress(lazy.progress, 1).eager(),
+            lazy.metaType.progress(lazy.progress, 1).eager(forLine),
+            lazy.metaType.progress(lazy.progress, 1).eager(forAssay),
+            lazy.protocol.progress(lazy.progress, 1).eager(),
+        ]).then(([lines, assays, lineMeta, assayMeta, protocols]) => {
+            const mLayer = new MeasurementFilterLayer();
+            const layers: FilterLayer[] = [
+                LineNameFilterSection.create(lines),
+                StrainFilterSection.create(lines),
+                ...lineMeta
+                    .filter((t) => t.input_type !== "replicate")
+                    .map((t) => MetadataFilterSection.create(lines, t)),
+                ProtocolFilterSection.create(protocols),
+                ...assayMeta.map((t) => MetadataFilterSection.create(assays, t)),
+                mLayer,
+            ];
+            const self = new Filter(lazy, layers);
+            self._assayMeta = assayMeta;
+            self.measurementLayer = mLayer;
+            $(root).append(self.createElements());
+            return self;
         });
     }
 
-    createElements(): JQuery {
+    /**
+     * Accessor for Assay Metadata types used in this Filter.
+     */
+    assayMeta(): MetadataTypeRecord[] {
+        return this._assayMeta;
+    }
+
+    private buildQueryFilter(query: QueryFilter): QueryFilter {
+        this.layers.forEach((layer) => {
+            query = layer.buildQueryFilter(query);
+        });
+        return query;
+    }
+
+    private createElements(): JQuery {
         this.root = $(`<div class="filter-section"></div>`);
         this.layers.forEach((section) => {
             if (section.isUseful()) {
                 this.root.append(section.createElements());
             }
         });
+        // when the filter sections change state, reset the page state
+        this.root.on("eddfilter", () => {
+            this.query.page = 1;
+        });
         return this.root;
     }
 
-    isUseful(): boolean {
-        return this.layers.length > 0;
-    }
-
-    measurements(): Item[] {
-        return this.access.measurementItems().filter(this.allowItem());
-    }
-
-    refresh(subset: Item[]): void {
-        this.layers.forEach((layer) => layer.refresh(subset));
+    /**
+     * Return Assay objects that satisfy current filter state.
+     */
+    limitAssays(items: Item[]): AssayRecord[] {
+        const limited = this.limitItems(items);
+        const assays = new Map<number, AssayRecord>();
+        for (const item of limited) {
+            assays.set(item.assay.pk, item.assay);
+        }
+        return Array.from(assays.values());
     }
 
     /**
-     * Update the filter with newly-downloaded measurement information.
+     * Return Measurement Item objects that satisfy current Filter state.
      */
-    update(payload: AssayValues): void {
-        this.access.updateAssayValues(payload);
-        const categories = payload.measures.map((value): MeasurementClass => {
+    limitItems(items: Item[]): Item[] {
+        // get every section to give callback for Array.filter()
+        const predicates = this.layers.map((s) => s.allowItem());
+        // remove any ALLOW to speed up iteration
+        const active = predicates.filter((p) => p !== ALLOW);
+        // predicate accepts anything that satisfies every active layer
+        return items.filter((item) => active.every((p) => p(item)));
+    }
+
+    /**
+     * Query for Measurement Item objects using all Filter state that supports
+     * querying. The resolved Promise should use `limitItems` to fully filter
+     * the Items based on Filter state.
+     */
+    measurements(): JQuery.Promise<Item[]> {
+        const qf = this.buildQueryFilter({ ...this.query.filter });
+        return this.lazy.measurement
+            .progress(this.lazy.progress, 10)
+            .fetch({ ...this.query, "filter": qf })
+            .then((rpi) => this.processMeasurements(rpi));
+    }
+
+    private processMeasurements(rpi: RestPageInfo<MeasurementRecord>): Item[] {
+        // if any compartment-specific measurements are seen, update the filter
+        const categories = rpi.results.map((m): MeasurementClass => {
             return {
-                "compartment": this.access.findCompartment(value.comp),
-                "measurementType": this.access.findMeasurementType(value.type),
+                "compartment": this.lazy.compartment.get(m.compartment),
+                "measurementType": this.lazy.type.get(m.type),
             };
         });
-        // pass to measurementLayer so it can update its options
         this.measurementLayer.update(categories);
+        this.updatePager(rpi);
+        // up-front lookup of assay and line for each measurement
+        return rpi.results.map((m): Item => this.lazy.item(m));
+    }
+
+    refresh(subset: Item[]): void {
+        this.layers.forEach((layer) => {
+            if (layer.isUseful()) {
+                layer.refresh(subset);
+            }
+        });
+    }
+
+    private setupPagerEvents() {
+        this.pager.find(".pager-prev").on("click", (event) => {
+            const item = $(event.currentTarget);
+            event.preventDefault();
+            if (!item.hasClass("disabled")) {
+                item.addClass("disabled");
+                this.query.page--;
+                $.event.trigger("eddfilter");
+            }
+        });
+        this.pager.find(".pager-next").on("click", (event) => {
+            const item = $(event.currentTarget);
+            event.preventDefault();
+            if (!item.hasClass("disabled")) {
+                item.addClass("disabled");
+                this.query.page++;
+                $.event.trigger("eddfilter");
+            }
+        });
+    }
+
+    private updatePager(rpi: RestPageInfo<MeasurementRecord>): void {
+        this.pager.find(".pager-prev").toggleClass("disabled", !rpi.previous);
+        this.pager.find(".pager-next").toggleClass("disabled", !rpi.next);
+        if (!rpi.previous) {
+            // first page; know we're bound 1 at beginning
+            const start = 1;
+            const end = rpi.results.length;
+            this.updatePagerLabel(`${start}-${end}`, `${rpi.count}`);
+        } else if (!rpi.next) {
+            // last page; know we're bound to count at end
+            const end = rpi.count;
+            const start = 1 + end - rpi.results.length;
+            this.updatePagerLabel(`${start}-${end}`, `${rpi.count}`);
+        } else {
+            // in-between; use length as page size and calculate start and end
+            const pageSize = rpi.results.length;
+            const end = this.query.page * pageSize;
+            const start = 1 + end - pageSize;
+            this.updatePagerLabel(`${start}-${end}`, `${rpi.count}`);
+        }
+        this.pager.removeClass("hidden");
+    }
+
+    private updatePagerLabel(range: string, total: string): void {
+        let label = this.pagerLabelTemplate;
+        label = label.replace(/@range/, range);
+        label = label.replace(/@total/, total);
+        this.pager.find(".pager-label").text(label);
     }
 }
 
@@ -160,17 +264,17 @@ export class Filter extends FilterLayer {
  * Base class for filtering an individual type. A list of these sections are
  * collected into an overall filtering widget.
  */
-export abstract class FilterSection<U, K> extends FilterLayer {
+abstract class FilterSection<U, K> extends FilterLayer {
     private static counter = 1;
-    readonly items: FilterValue<U>[] = [];
-    // use value of section_index to build unique ID attributes for HTML elements
-    readonly section_index: number;
+    readonly values: FilterValue<U>[] = [];
+    // use value of sectionIndex to build unique ID attributes for HTML elements
+    readonly sectionIndex: number;
     protected section: JQuery = null;
     protected list: JQuery = null;
 
     protected constructor(readonly title: string) {
         super();
-        this.section_index = FilterSection.counter++;
+        this.sectionIndex = FilterSection.counter++;
     }
 
     allowItem(): (item: Item) => boolean {
@@ -181,8 +285,12 @@ export abstract class FilterSection<U, K> extends FilterLayer {
         return (item) => this.keysItem(item).some((v) => selected.has(v));
     }
 
+    protected checkboxId(i: number): string {
+        return `filter-${this.sectionIndex}-${i}`;
+    }
+
     protected createCheckbox(item: FilterValue<U>, i: number): JQuery {
-        const id = `filter-${this.section_index}-${i}`;
+        const id = this.checkboxId(i);
         const label = this.valueToDisplay(item.value);
         return $(`
           <label for="${id}">
@@ -195,6 +303,7 @@ export abstract class FilterSection<U, K> extends FilterLayer {
     createElements(): JQuery {
         this.section = $(`<div class="filter-column"></div>`);
         this.section.append(this.createHeading());
+        // TODO: add autocomplete, visible when values.length > X
         this.section.append(this.createList());
         this.section.toggleClass("hidden", !this.isUseful());
         this.registerHandlers();
@@ -219,14 +328,14 @@ export abstract class FilterSection<U, K> extends FilterLayer {
     }
 
     protected createListItems(): void {
-        this.items.forEach((item, i) => {
+        this.values.forEach((item, i) => {
             const li = $("<li></li>").append(this.createCheckbox(item, i));
             this.list.append(li);
         });
     }
 
     isUseful(): boolean {
-        return this.items.length > 1;
+        return this.values.length > 1;
     }
 
     /**
@@ -240,15 +349,22 @@ export abstract class FilterSection<U, K> extends FilterLayer {
     protected abstract keyValue(value: U): K;
 
     refresh(subset: Item[]): void {
-        // find all relevant key values for incoming subset Items
-        const keys = new Set<K>();
-        for (const item of subset) {
-            this.keysItem(item).forEach((key) => keys.add(key));
+        if (this.isUseful() && this.list !== null) {
+            // find all relevant key values for incoming subset Items
+            const keys = new Set<K>();
+            for (const item of subset) {
+                this.keysItem(item).forEach((key) => keys.add(key));
+            }
+            // set filter values dimmed property based on incoming subset
+            this.values.forEach((item, index) => {
+                const id = this.checkboxId(index);
+                item.dimmed = !keys.has(this.keyValue(item.value));
+                this.list
+                    .find(`input#${id}`)
+                    .parent("label")
+                    .toggleClass("text-muted", item.dimmed);
+            });
         }
-        // set filter items dimmed property based on incoming subset
-        this.items.forEach((item, index) => {
-            item.dimmed = !keys.has(this.keyValue(item.value));
-        });
     }
 
     protected registerHandlers(): void {
@@ -256,21 +372,21 @@ export abstract class FilterSection<U, K> extends FilterLayer {
         this.section.on("change", "input", (event) => {
             const box = $(event.target);
             const index = box.data("index");
-            this.items[index].selected = box.prop("checked");
-            const anySelected = this.items.some((item) => item.selected);
+            this.values[index].selected = box.prop("checked");
+            const anySelected = this.values.some((item) => item.selected);
             this.section.find(".filter-clear").toggleClass("invisible", !anySelected);
-            $.event.trigger("eddfilter");
+            this.section.trigger("eddfilter");
         });
         // clicking the clear button for the section
         this.section.on("click", ".filter-clear", (event) => {
             const button = $(event.currentTarget);
             if (!button.hasClass("invisible")) {
-                this.items.forEach((item) => {
-                    item.selected = false;
+                this.values.forEach((checkbox) => {
+                    checkbox.selected = false;
                 });
                 this.section.find("input[type=checkbox]").prop("checked", false);
                 button.addClass("invisible");
-                $.event.trigger("eddfilter");
+                this.section.trigger("eddfilter");
                 button.blur();
             }
         });
@@ -279,12 +395,16 @@ export abstract class FilterSection<U, K> extends FilterLayer {
     /**
      * Set of key values for currently active / selected items in this FilterSection.
      */
-    protected selectedKeys(): Set<K> {
+    selectedKeys(): Set<K> {
         const keys = new Set<K>();
-        this.items
-            .filter((item) => item.selected)
-            .forEach((item) => keys.add(this.keyValue(item.value)));
+        this.selectedValues().forEach((checkbox) =>
+            keys.add(this.keyValue(checkbox.value)),
+        );
         return keys;
+    }
+
+    selectedValues(): FilterValue<U>[] {
+        return this.values.filter((checkbox) => checkbox.selected);
     }
 
     /**
@@ -295,7 +415,7 @@ export abstract class FilterSection<U, K> extends FilterLayer {
 
 abstract class EDDRecordFilter<U extends EDDRecord> extends FilterSection<U, number> {
     protected keyValue(value: EDDRecord): number {
-        return value.id;
+        return value.pk;
     }
 
     valueToDisplay(value: U) {
@@ -303,11 +423,11 @@ abstract class EDDRecordFilter<U extends EDDRecord> extends FilterSection<U, num
     }
 }
 
-export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
+class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
     private labels: JQuery[] = [];
     static create(source: LineRecord[]): LineNameFilterSection {
-        const section = new LineNameFilterSection("Line");
-        section.items.push(...source.map((line) => new FilterValue(line)));
+        const section = new LineNameFilterSection("Line Name");
+        section.values.push(...source.map((line) => new FilterValue(line)));
         return section;
     }
 
@@ -325,50 +445,76 @@ export class LineNameFilterSection extends EDDRecordFilter<LineRecord> {
         if (selected.size === 0) {
             return ALLOW;
         }
-        return (assay) => selected.has(assay.lid);
+        return (assay) => selected.has(assay.line);
+    }
+
+    buildQueryFilter(query: QueryFilter): QueryFilter {
+        const values = this.selectedValues();
+        if (values) {
+            query.line = values.map((v) => v.value.pk).join(",");
+        } else {
+            delete query.line;
+        }
+        return query;
     }
 
     isUseful(): boolean {
         // this section doubles as color key legend,
         // so always display if there's at least one item,
         // instead of more than one
-        return this.items.length > 0;
+        return this.values.length > 0;
     }
 
     protected keysItem(item: Item): number[] {
-        return [item.line.id];
+        return [item.line?.pk];
     }
 
     refresh(subset: Item[]): void {
         super.refresh(subset);
         // set proper colors on every line label
         this.labels.forEach((label, index) => {
-            const item = this.items[index];
-            if (item.dimmed) {
-                label.css("color", "inherit");
+            const checkbox = this.values[index];
+            if (checkbox.dimmed) {
+                label.css("color", "inherit").parent().detach().appendTo(this.list);
             } else {
-                label.css("color", item?.value.color || null);
+                label.css("color", checkbox.value.color || null);
             }
         });
     }
 }
 
-export class StrainFilterSection extends EDDRecordFilter<StrainRecord> {
-    static create(source: StrainRecord[]): StrainFilterSection {
+class StrainFilterSection extends FilterSection<StrainRecord, string> {
+    static create(source: LineRecord[]): StrainFilterSection {
         const section = new StrainFilterSection("Strain");
-        section.items.push(...source.map((s) => new FilterValue(s)));
+        const map = new Map<string, StrainRecord>();
+        source.forEach((line) => {
+            line.strains.forEach((strain) => {
+                map.set(section.keyValue(strain), strain);
+            });
+        });
+        map.forEach((s) => {
+            section.values.push(new FilterValue(s));
+        });
         return section;
     }
 
-    protected keysItem(item: Item): number[] {
-        return item.line.strain;
+    protected keysItem(item: Item): string[] {
+        return item.line?.strains?.map((value) => this.keyValue(value));
+    }
+
+    protected keyValue(value: StrainRecord): string {
+        return value.registry_id;
+    }
+
+    valueToDisplay(value: StrainRecord): string {
+        return value.name;
     }
 }
 
-export class ProtocolFilterSection extends EDDRecordFilter<ProtocolRecord> {
+class ProtocolFilterSection extends EDDRecordFilter<ProtocolRecord> {
     static create(source: ProtocolRecord[]): ProtocolFilterSection {
         const section = new ProtocolFilterSection("Protocol");
-        section.items.push(...source.map((p) => new FilterValue(p)));
+        section.values.push(...source.map((p) => new FilterValue(p)));
         return section;
     }
 
@@ -377,17 +523,27 @@ export class ProtocolFilterSection extends EDDRecordFilter<ProtocolRecord> {
         if (selected.size === 0) {
             return ALLOW;
         }
-        return (assay) => selected.has(assay.pid);
+        return (assay) => selected.has(assay.protocol);
+    }
+
+    buildQueryFilter(query: QueryFilter): QueryFilter {
+        const values = this.selectedValues();
+        if (values) {
+            query.protocol = values.map((v) => v.value.pk).join(",");
+        } else {
+            delete query.protocol;
+        }
+        return query;
     }
 
     protected keysItem(item: Item): number[] {
-        return [item.assay.pid];
+        return [item.assay?.protocol];
     }
 }
 
-export class MetadataFilterSection extends FilterSection<string, string> {
+class MetadataFilterSection extends FilterSection<string, string> {
     protected constructor(private metadataType: MetadataTypeRecord) {
-        super(metadataType.name);
+        super(metadataType.type_name);
     }
 
     static create(
@@ -397,12 +553,12 @@ export class MetadataFilterSection extends FilterSection<string, string> {
         const section = new MetadataFilterSection(meta);
         const values = new Set<string>();
         source.forEach((x) => {
-            if (Object.prototype.hasOwnProperty.call(x.meta, `${meta.id}`)) {
-                values.add(x.meta[meta.id]);
+            if (Object.prototype.hasOwnProperty.call(x.metadata, `${meta.pk}`)) {
+                values.add(x.metadata[meta.pk]);
             }
         });
         values.forEach((v) => {
-            section.items.push(new FilterValue(v));
+            section.values.push(new FilterValue(v));
         });
         return section;
     }
@@ -412,14 +568,14 @@ export class MetadataFilterSection extends FilterSection<string, string> {
         if (selected.size === 0) {
             return ALLOW;
         }
-        return (assay) => selected.has(assay.meta[this.metadataType.id]);
+        return (assay) => selected.has(assay.metadata[this.metadataType.pk]);
     }
 
     protected keysItem(item: Item): string[] {
-        if (this.metadataType.context === "L") {
-            return [item.line.meta[this.metadataType.id]];
-        } else if (this.metadataType.context === "A") {
-            return [item.assay.meta[this.metadataType.id]];
+        if (this.metadataType.for_context === "L") {
+            return [item.line?.metadata?.[this.metadataType.pk]];
+        } else if (this.metadataType.for_context === "A") {
+            return [item.assay?.metadata?.[this.metadataType.pk]];
         }
         return [];
     }
@@ -428,12 +584,17 @@ export class MetadataFilterSection extends FilterSection<string, string> {
         return value;
     }
 
+    refresh(subset: Item[]): void {
+        // TODO: find any new values for metadata, add to this.values
+        super.refresh(subset);
+    }
+
     valueToDisplay(value: string): string {
         return value;
     }
 }
 
-export class MeasurementFilterLayer extends FilterLayer {
+class MeasurementFilterLayer extends FilterLayer {
     private sections: MeasurementFilterSection[];
 
     constructor() {
@@ -472,8 +633,22 @@ export class MeasurementFilterLayer extends FilterLayer {
         return ALLOW;
     }
 
+    buildQueryFilter(query: QueryFilter): QueryFilter {
+        const types = new Set<number>();
+        for (const section of this.sections) {
+            const selected = section.selectedValues();
+            selected.forEach((v) => types.add(v.value.measurementType.pk));
+        }
+        if (types.size > 0) {
+            query.type = Array.from(types).join(",");
+        } else {
+            delete query.type;
+        }
+        return query;
+    }
+
     refresh(subset: Item[]): void {
-        // not doing anything
+        // not doing anything, handle with update() instead
     }
 
     update(types: MeasurementClass[]): void {
@@ -505,7 +680,7 @@ abstract class MeasurementFilterSection extends FilterSection<
         }
         const hash = this.keyValue(value);
         if (!this.itemHashes.has(hash)) {
-            this.items.push(new FilterValue(value));
+            this.values.push(new FilterValue(value));
             this.itemHashes.add(hash);
             this.dirty = true;
         }
@@ -518,7 +693,7 @@ abstract class MeasurementFilterSection extends FilterSection<
     }
 
     isUseful(): boolean {
-        return this.items.length > 0;
+        return this.values.length > 0;
     }
 
     keysItem(item: Item): string[] {
@@ -526,7 +701,7 @@ abstract class MeasurementFilterSection extends FilterSection<
     }
 
     keyValue(value: MeasurementClass): string {
-        return `${value.measurementType.id}`;
+        return `${value.measurementType.pk}`;
     }
 
     update(): void {
@@ -553,12 +728,12 @@ class MetaboliteSection extends MeasurementFilterSection {
 
     keysItem(item: Item): string[] {
         // override from base to account for compartment
-        return [`${item.measurement.comp}:${item.measurement.type}`];
+        return [`${item.measurement.compartment}:${item.measurement.type}`];
     }
 
     keyValue(value: MeasurementClass): string {
         // override from base to account for compartment
-        return `${value.compartment.id}:${value.measurementType.id}`;
+        return `${value.compartment.pk}:${value.measurementType.pk}`;
     }
 
     valueToDisplay(value: MeasurementClass): string {

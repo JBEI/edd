@@ -2,11 +2,9 @@
 
 import Handsontable from "handsontable";
 
-import { Access, Item } from "./Access";
+import { Item, LazyAccess } from "./Access";
 import * as Render from "./Render";
-import * as Utl from "../Utl";
 
-const identity = (item) => item;
 type FetchMode = "copy" | "render" | void;
 
 const Checkbox_Column_Width = 23;
@@ -38,12 +36,13 @@ const baseTableSettings: Handsontable.GridSettings = {
  * table takes AssayRecord objects as data.
  */
 export function settingsForAssayTable(
-    access: Access,
+    lazy: LazyAccess,
+    metaTypes: MetadataTypeRecord[],
     container: HTMLElement,
 ): Handsontable.GridSettings {
-    const metaColumns = access.metadataForAssayTable().map((meta) => ({
-        "data": `meta.${meta.id}`,
-        "header": meta.name,
+    const metaColumns = metaTypes.map((meta: MetadataTypeRecord) => ({
+        "data": `metadata.${meta.pk}`,
+        "header": meta.type_name,
         // TODO: apply renderers if exists on MetadataType
     }));
     // register renderers used below
@@ -62,12 +61,12 @@ export function settingsForAssayTable(
             "header": "Assay Name",
         },
         {
-            "data": ParentLineColumn.using(access),
+            "data": ParentLineColumn.using(lazy),
             "header": "Line",
             "renderer": "edd.replicate_name",
         },
         {
-            "data": ProtocolColumn.using(access),
+            "data": ProtocolColumn.using(lazy),
             "header": "Protocol",
             "renderer": "edd.protocol",
         },
@@ -80,6 +79,9 @@ export function settingsForAssayTable(
     ];
     // merge base config with assay-specific config
     return Object.assign({}, baseTableSettings, {
+        "afterChange": () => {
+            $(container).trigger("eddselect");
+        },
         "beforeColumnMove": disableMoveFirstColumn,
         "beforeStretchingColumnWidth": disableResizeFirstColumn,
         "colHeaders": columns.map((c) => c.header),
@@ -93,12 +95,14 @@ export function settingsForAssayTable(
  * table takes LineRecord objects as data.
  */
 export function settingsForLineTable(
-    access: Access,
+    lazy: LazyAccess,
+    metaTypes: MetadataTypeRecord[],
     container: HTMLElement,
 ): Handsontable.GridSettings {
-    const metaColumns = access.metadataForLineTable().map((meta) => ({
-        "data": `meta.${meta.id}`,
-        "header": meta.name,
+    const visibleMeta = metaTypes.filter((meta) => meta.input_type !== "replicate");
+    const metaColumns = visibleMeta.map((meta: MetadataTypeRecord) => ({
+        "data": `metadata.${meta.pk}`,
+        "header": meta.type_name,
         // TODO: apply renderers if exists on MetadataType
     }));
     // register renderers used below
@@ -113,7 +117,7 @@ export function settingsForLineTable(
             "width": Checkbox_Column_Width,
         },
         {
-            "data": LineNameColumn.using(access),
+            "data": LineNameColumn.using(),
             "header": "Name",
             "renderer": "edd.replicate_name",
         },
@@ -121,26 +125,29 @@ export function settingsForLineTable(
         // pair custom getter/setter with custom renderer
         // see a link from renderer, see a URL when copying, actual value is an ID
         {
-            "data": StrainColumn.using(access),
+            "data": StrainColumn.using(),
             "header": "Strain",
             "renderer": "edd.strain",
         },
         // splice in metadata columns here
         ...metaColumns,
         {
-            "data": LineExperimenterColumn.using(access),
+            "data": LineExperimenterColumn.using(lazy),
             "header": "Experimenter",
             "renderer": "edd.user",
         },
         // see a date string in renderer, a UTC string when copying, actual value is timestamp
         {
-            "data": LineModifiedColumn.using(access),
+            "data": LineModifiedColumn.using(),
             "header": "Last Modified",
             "renderer": "edd.timestamp",
         },
     ];
     // merge base config with line-specific config
     return Object.assign({}, baseTableSettings, {
+        "afterChange": () => {
+            $(container).trigger("eddselect");
+        },
         "afterGetColHeader": disableMenuFirstColumn,
         "beforeColumnMove": disableMoveFirstColumn,
         "beforeStretchingColumnWidth": disableResizeFirstColumn,
@@ -167,7 +174,7 @@ export function settingsForLineTable(
  * defined table takes Access.Item objects as data.
  */
 export function settingsForMeasurementTable(
-    access: Access,
+    lazy: LazyAccess,
     container: HTMLElement,
 ): Handsontable.GridSettings {
     // register renderers used below
@@ -182,12 +189,12 @@ export function settingsForMeasurementTable(
             "width": Checkbox_Column_Width,
         },
         {
-            "data": MeasurementClassColumn.using(access),
+            "data": MeasurementClassColumn.using(lazy),
             "header": "Measurement",
             "renderer": "edd.mclass",
         },
         {
-            "data": YUnitColumn.using(access),
+            "data": YUnitColumn.using(lazy),
             "header": "Units",
         },
         {
@@ -206,74 +213,15 @@ export function settingsForMeasurementTable(
     ];
     // merge base config with measurement-specific config
     return Object.assign({}, baseTableSettings, {
+        "afterChange": () => {
+            $(container).trigger("eddselect");
+        },
         "beforeColumnMove": disableMoveFirstColumn,
         "beforeStretchingColumnWidth": disableResizeFirstColumn,
         "colHeaders": columns.map((c) => c.header),
         "columns": columns,
         "fixedColumnsLeft": 1,
     } as Handsontable.GridSettings);
-}
-
-/**
- * The Handsontable code will repeatedly replace elements in table header
- * cells. In order to prevent the flickering that occurs when the "Select All"
- * checkbox in the header is replaced, instead create the checkbox outside of
- * the table, then position it on top of the "empty" header cell.
- */
-export function setupSelectAllCheckbox(hot: Handsontable, column = 0): void {
-    // define select-all checkbox
-    const selectAll = $(`<input type="checkbox" class="select-all"/>`);
-    // get the config for selection column
-    const selectCol = hot.getSettings().columns[column] as Handsontable.ColumnSettings;
-    // insert the checkbox into DOM before the table, initially hidden
-    selectAll.prependTo(hot.rootElement).addClass("hidden");
-    // attach event handler to toggle selection states
-    selectAll.on("click", (event) => {
-        const status = selectAll.prop("checked");
-        // update state of table data
-        const rows = hot.getSourceData() as Handsontable.RowObject[];
-        rows.forEach((row) => {
-            Utl.setObjectValue(row, selectCol.data as string, status);
-        });
-    });
-    // set event handlers on table to update select-all state
-    const changeHandler = Utl.debounce(() => {
-        const rows = hot.getSourceData() as Handsontable.RowObject[];
-        const on = hot.getSourceDataAtCol(column).filter((v) => v);
-        selectAll
-            .prop("indeterminate", 0 < on.length && on.length < rows.length)
-            .prop("checked", on.length === rows.length);
-        $(hot.rootElement).trigger("eddselect", [on.length]);
-    });
-    hot.updateSettings({
-        "afterChange": changeHandler,
-        "afterRender": changeHandler,
-    });
-    // move the select-all checkbox into position
-    repositionSelectAllCheckbox(hot, column);
-}
-
-/**
- * Calculates the correct offsets to place the select-all checkbox over the
- * correct table column header.
- */
-export function repositionSelectAllCheckbox(hot: Handsontable, column = 0): void {
-    const headerCell = $(hot.getCell(-1, 0));
-    const offset = headerCell.offset();
-    if (offset) {
-        const selectAll = $(".select-all", hot.rootElement).removeClass("hidden");
-        const checkWidth = selectAll.outerWidth();
-        const checkHeight = selectAll.outerHeight();
-        // set styling so checkbox gets positioned on top of the table
-        selectAll.css({
-            // move to offset of cell, taking off space for padding
-            "left": offset.left - (Checkbox_Column_Width - checkWidth),
-            "position": "absolute",
-            // move down quarter checkbox height
-            "top": checkHeight / 4,
-            "z-index": 200,
-        });
-    }
 }
 
 /**
@@ -316,8 +264,6 @@ function disableResizeFirstColumn(width: number, column: number): number {
  * The second, V, type parameter is the type sent to the cell renderer.
  */
 abstract class TableAccessor<U, V> {
-    protected constructor(protected readonly _access: Access) {}
-
     data(): Handsontable.ColumnDataGetterSetterFunction {
         return (row: U, value?: any, mode?: FetchMode): any | void => {
             // explicit no-op when used as a setter!
@@ -336,8 +282,12 @@ abstract class TableAccessor<U, V> {
 }
 
 class MeasurementClassColumn extends TableAccessor<Item, MeasurementClass> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new MeasurementClassColumn(access).data();
+    protected constructor(private readonly lazy: LazyAccess) {
+        super();
+    }
+
+    static using(lazy: LazyAccess): Handsontable.ColumnDataGetterSetterFunction {
+        return new MeasurementClassColumn(lazy).data();
     }
 
     forCopy(row: Item, value?: any): string {
@@ -348,8 +298,8 @@ class MeasurementClassColumn extends TableAccessor<Item, MeasurementClass> {
 
     forRender(row: Item, value?: any): MeasurementClass {
         return {
-            "compartment": this._access.findCompartment(row.measurement.comp),
-            "measurementType": this._access.findMeasurementType(row.measurement.type),
+            "compartment": this.lazy.compartment.get(row.measurement.compartment),
+            "measurementType": this.lazy.type.get(row.measurement.type),
         };
     }
 }
@@ -359,8 +309,12 @@ class MeasurementClassColumn extends TableAccessor<Item, MeasurementClass> {
  * while copying and a UserRecord object for the HTML renderer.
  */
 class LineExperimenterColumn extends TableAccessor<LineRecord, UserRecord> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new LineExperimenterColumn(access).data();
+    protected constructor(private readonly lazy: LazyAccess) {
+        super();
+    }
+
+    static using(lazy: LazyAccess): Handsontable.ColumnDataGetterSetterFunction {
+        return new LineExperimenterColumn(lazy).data();
     }
 
     forCopy(row: LineRecord, value?: any): string {
@@ -368,7 +322,7 @@ class LineExperimenterColumn extends TableAccessor<LineRecord, UserRecord> {
     }
 
     forRender(row: LineRecord, value?: any): UserRecord {
-        return this._access.findUser(row.experimenter);
+        return this.lazy.user.get(row.experimenter);
     }
 }
 
@@ -378,8 +332,8 @@ class LineExperimenterColumn extends TableAccessor<LineRecord, UserRecord> {
  * they exist, otherwise gives the string value of the name.
  */
 class LineNameColumn extends TableAccessor<LineRecord, LineRecord> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new LineNameColumn(access).data();
+    static using(): Handsontable.ColumnDataGetterSetterFunction {
+        return new LineNameColumn().data();
     }
 
     forCopy(row: LineRecord, value?: any): string {
@@ -402,8 +356,8 @@ class LineNameColumn extends TableAccessor<LineRecord, LineRecord> {
  * HTML based on timestamp and a ISO-format string copied to the clipboard.
  */
 class LineModifiedColumn extends TableAccessor<LineRecord, number> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new LineModifiedColumn(access).data();
+    static using(): Handsontable.ColumnDataGetterSetterFunction {
+        return new LineModifiedColumn().data();
     }
 
     forCopy(row: LineRecord, value?: any): string {
@@ -416,13 +370,17 @@ class LineModifiedColumn extends TableAccessor<LineRecord, number> {
     }
 
     forRender(row: LineRecord, value?: any): number {
-        return row.modified?.time;
+        return row.updated?.time;
     }
 }
 
 class ParentLineColumn extends TableAccessor<AssayRecord, LineRecord> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new ParentLineColumn(access).data();
+    protected constructor(private readonly lazy: LazyAccess) {
+        super();
+    }
+
+    static using(lazy: LazyAccess): Handsontable.ColumnDataGetterSetterFunction {
+        return new ParentLineColumn(lazy).data();
     }
 
     forCopy(row: AssayRecord, value?: any): string {
@@ -430,21 +388,25 @@ class ParentLineColumn extends TableAccessor<AssayRecord, LineRecord> {
     }
 
     forRender(row: AssayRecord, value?: any): LineRecord {
-        return this._access.findLine(row.lid);
+        return this.lazy.line.get(row.line);
     }
 }
 
 class ProtocolColumn extends TableAccessor<AssayRecord, ProtocolRecord> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new ProtocolColumn(access).data();
+    protected constructor(private readonly lazy: LazyAccess) {
+        super();
+    }
+
+    static using(lazy: LazyAccess): Handsontable.ColumnDataGetterSetterFunction {
+        return new ProtocolColumn(lazy).data();
     }
 
     forCopy(row: AssayRecord, value?: any): string {
-        return this.forRender(row, value).name;
+        return this.forRender(row, value)?.name;
     }
 
     forRender(row: AssayRecord, value?: any): ProtocolRecord {
-        return this._access.findProtocol(row.pid);
+        return this.lazy.protocol.get(row.protocol);
     }
 }
 
@@ -454,8 +416,8 @@ class ProtocolColumn extends TableAccessor<AssayRecord, ProtocolRecord> {
  * exists, or the strain name.
  */
 class StrainColumn extends TableAccessor<LineRecord, StrainRecord[]> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new StrainColumn(access).data();
+    static using(): Handsontable.ColumnDataGetterSetterFunction {
+        return new StrainColumn().data();
     }
 
     forCopy(row: LineRecord, value?: any): string {
@@ -465,20 +427,24 @@ class StrainColumn extends TableAccessor<LineRecord, StrainRecord[]> {
     }
 
     forRender(row: LineRecord, value?: any): StrainRecord[] {
-        return row.strain.map((item) => this._access.findStrain(item)).filter(identity);
+        return row.strains;
     }
 }
 
 class YUnitColumn extends TableAccessor<Item, string> {
-    static using(access: Access): Handsontable.ColumnDataGetterSetterFunction {
-        return new YUnitColumn(access).data();
+    protected constructor(private readonly lazy: LazyAccess) {
+        super();
+    }
+
+    static using(lazy: LazyAccess): Handsontable.ColumnDataGetterSetterFunction {
+        return new YUnitColumn(lazy).data();
     }
 
     forCopy(row: Item, value?: any): string {
-        return this._access.findUnit(row.measurement.y_units).name;
+        return this.lazy.unit.get(row.measurement.y_units)?.name;
     }
 
     forRender(row: Item, value?: any): string {
-        return this._access.findUnit(row.measurement.y_units).name;
+        return this.lazy.unit.get(row.measurement.y_units)?.name;
     }
 }

@@ -17,6 +17,15 @@ $(window).on("load", () => {
     $(document).on("focus", ".autocomp", (ev) => {
         $(ev.target).addClass("autocomp_search").mcautocomplete("search");
     });
+    const accesslink = $("#accesslink");
+    if (accesslink.length) {
+        $.ajax({
+            "type": "GET",
+            "url": accesslink.attr("href"),
+        }).done((spec: AccessSpec) => {
+            $.event.trigger("eddaccess", [spec]);
+        });
+    }
     // fetch EDDData if available
     const datalink = $("#datalink");
     if (datalink.length) {

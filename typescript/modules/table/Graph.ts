@@ -2,7 +2,7 @@
 
 import * as d3 from "d3";
 
-import { Access, Item } from "./Access";
+import { Item, LazyAccess } from "./Access";
 
 const Colors = d3.schemeTableau10;
 const DisplayLimitLine = 5000;
@@ -161,14 +161,13 @@ class ScalarFormat {
     static convert(item: Item): PlotValue[] {
         const valid = item.measurement.values.filter(ScalarFormat.filter);
         return valid.map((value) => {
-            const [[x], [y]] = value;
+            const [[x], [y]] = [value.x, value.y];
             return { [0]: x, [1]: y, "item": item };
         });
     }
 
-    static filter(value: number[][]): boolean {
-        if (value.length !== 2) return false;
-        const [x, y] = value;
+    static filter(value: EDDValue): boolean {
+        const [x, y] = [value.x, value.y];
         if (
             x.length !== 1 ||
             y.length !== 1 ||
@@ -187,16 +186,15 @@ class ScalarFormat {
 class SigmaFormat {
     static convert(item: Item): PlotValue[] {
         const valid = item.measurement.values.filter(SigmaFormat.filter);
-        return valid.map((value: number[][]) => {
-            const [[x], [y, y_std]] = value;
+        return valid.map((value) => {
+            const [[x], [y, y_std]] = [value.x, value.y];
             const [y_min, y_max] = [y - y_std, y + y_std];
             return { [0]: x, [1]: y, "y_max": y_max, "y_min": y_min, "item": item };
         });
     }
 
-    static filter(value: number[][]): boolean {
-        if (value.length !== 2) return false;
-        const [x, y] = value;
+    static filter(value: EDDValue): boolean {
+        const [x, y] = [value.x, value.y];
         if (
             x.length !== 1 ||
             y.length !== 3 ||
@@ -218,14 +216,13 @@ class RangeFormat {
     static convert(item: Item): PlotValue[] {
         const valid = item.measurement.values.filter(RangeFormat.filter);
         return valid.map((value) => {
-            const [[x], [y, y_max, y_min]] = value;
+            const [[x], [y, y_max, y_min]] = [value.x, value.y];
             return { [0]: x, [1]: y, "y_max": y_max, "y_min": y_min, "item": item };
         });
     }
 
-    static filter(value: number[][]): boolean {
-        if (value.length !== 2) return false;
-        const [x, y] = value;
+    static filter(value: EDDValue): boolean {
+        const [x, y] = [value.x, value.y];
         if (
             x.length !== 1 ||
             y.length !== 3 ||
@@ -247,15 +244,14 @@ class PackedFormat {
     static convert(item: Item): PlotValue[] {
         const valid = item.measurement.values.filter(PackedFormat.filter);
         const values: PlotValue[][] = valid.map((value): PlotValue[] => {
-            const [_x, _y] = value;
+            const [_x, _y] = [value.x, value.y];
             return _x.map((x, i): PlotValue => ({ [0]: x, [1]: _y[i], "item": item }));
         });
         return [].concat(...values);
     }
 
-    static filter(value: number[][]): boolean {
-        if (value.length !== 2) return false;
-        const [x, y] = value;
+    static filter(value: EDDValue): boolean {
+        const [x, y] = [value.x, value.y];
         return (
             x.length === y.length &&
             x.every(Number.isFinite) &&
@@ -337,6 +333,7 @@ export class Graph {
     // track the currently hovered Element,
     // to prevent flicker when moving between hover targets
     private current_hover: EventTarget = null;
+    private current_hover_item: Item = null;
     // track if the last rendered view has limited points displayed
     private is_truncated = false;
 
@@ -344,12 +341,17 @@ export class Graph {
         private readonly root: HTMLElement,
         private readonly svg: SVGElement,
         private readonly tooltip: HTMLElement,
-        private readonly access: Access,
+        private readonly lazy: LazyAccess,
     ) {
         // intentionally blank
     }
 
-    static create(root: HTMLElement, access: Access): Graph {
+    /**
+     * Initialize a plot area in the provided HTMLElement. The LazyAccess
+     * instance passed should have already run the compartments(), types(), and
+     * units() methods to cache values for those items.
+     */
+    static create(root: HTMLElement, lazy: LazyAccess): Promise<Graph> {
         // reserve axis width to left for the axis and labels
         const min_x = 0 - Graph._axis_width;
         // reserve margin to top so plotted values do not render on edge
@@ -365,29 +367,47 @@ export class Graph {
             .append("div")
             .attr("class", "tooltip2 hidden")
             .node();
-        return new Graph(root, svg.node(), tooltip, access);
+        return Promise.all([
+            lazy.compartment.progress(lazy.progress, 1).soft(1).eager(),
+            lazy.type.progress(lazy.progress, 1).size(200).soft(1).eager(),
+            lazy.unit.progress(lazy.progress, 1).soft(1).eager(),
+        ]).then(() => new Graph(root, svg.node(), tooltip, lazy));
     }
 
-    assignColors(items: Item[], strategy: OrganizerStrategy = KeyLine): void {
-        const organizer = new Organizer(strategy, this.access);
+    /**
+     * Groups together Measurement Item objects by Line, then assigns a Color
+     * to the Item line property. Return the Item objects receiving a Color.
+     */
+    assignColors(items: Item[]): Item[] {
+        const organizer = new Organizer(KeyLine, this.lazy);
         const groups = organizer.groupItems(items);
-        let lastColor = null;
+        const available = new Set(Colors);
+        const assigned: Item[] = [];
         // assign color to each group of Items
         groups.forEach((group: Item[]) => {
-            // if an item already has a color, keep it for group
-            let color = group[0].line.color || null;
-            // if missing, assign next color in the list
-            if (color === null) {
-                const index = Colors.indexOf(lastColor) + 1;
-                color = Colors[index % Colors.length];
+            const color = this.findColor(group, available);
+            this.setColors(group, color);
+            if (color) {
+                assigned.push(...group);
             }
-            group.forEach((item) => (item.line.color = color));
-            lastColor = color;
         });
+        return assigned;
     }
 
-    clearColors(items: Item[]): void {
-        items.forEach((item) => (item.line.color = null));
+    private findColor(items: Item[], available: Set<string>): string {
+        // assume existing color of first item, is color for rest of array
+        const existing = items[0].line.color || null;
+        if (available.delete(existing)) {
+            return existing;
+        } else {
+            const chosen = available.values().next().value;
+            available.delete(chosen);
+            return chosen || null;
+        }
+    }
+
+    private setColors(items: Item[], color: string = null): void {
+        items.forEach((item) => (item.line.color = color));
     }
 
     isTruncated(): boolean {
@@ -399,7 +419,7 @@ export class Graph {
      * The replicate key should be one of Keys.byAssay, Keys.byLine, or Keys.byReplicate.
      */
     renderLinePlot(items: Item[], strategy: OrganizerStrategy = KeyAssay): number {
-        const organizer = new Organizer(strategy, this.access);
+        const organizer = new Organizer(strategy, this.lazy);
         // Use a cutoff to prevent interface locking up when too many points are drawn
         const points = limit(itemsToValues(items), DisplayLimitLine);
         // first group by units
@@ -421,25 +441,34 @@ export class Graph {
             if (axis_index > 3) return;
             // record number of points getting displayed
             displayed += byUnit.length;
-            const unit = this.access.findUnit(unit_id);
-            const height = Graph._height - Graph._axis_width - Graph._margin;
-            const y_scale = d3
-                .scaleLinear()
-                .rangeRound([height, 0])
-                .domain(yExtent(byUnit));
-            const icon = Icons.icons[axis_index];
-            this.buildYAxis(labeling, y_scale, plot_width, axis_index, unit.name, icon);
-            // group by replicate key and type of measurement to draw
-            const groups = organizer.groupValuesByType(byUnit);
-            groups.forEach(
-                this.drawCurve(
-                    d3.select(this.svg).append("g").attr("class", "plot"),
-                    new Position(x_scale, y_scale),
+            const unit = this.lazy.unit.get(unit_id);
+            if (unit.pk !== undefined) {
+                const height = Graph._height - Graph._axis_width - Graph._margin;
+                const y_scale = d3
+                    .scaleLinear()
+                    .rangeRound([height, 0])
+                    .domain(yExtent(byUnit));
+                const icon = Icons.icons[axis_index];
+                this.buildYAxis(
+                    labeling,
+                    y_scale,
+                    plot_width,
+                    axis_index,
+                    unit.name,
                     icon,
-                ),
-            );
-            // increment before moving to next unit
-            ++axis_index;
+                );
+                // group by replicate key and type of measurement to draw
+                const groups = organizer.groupValuesByType(byUnit);
+                groups.forEach(
+                    this.drawCurve(
+                        d3.select(this.svg).append("g").attr("class", "plot"),
+                        new Position(x_scale, y_scale),
+                        icon,
+                    ),
+                );
+                // increment before moving to next unit
+                ++axis_index;
+            }
         });
         this.is_truncated = points.has_hit_limit;
         return displayed;
@@ -450,7 +479,7 @@ export class Graph {
         group: BarGrouping,
         strategy: OrganizerStrategy = KeyAssay,
     ): number {
-        const organizer = new Organizer(strategy, this.access);
+        const organizer = new Organizer(strategy, this.lazy);
         // Use a dynamic limit for bar graphs,
         // to ensure bar widths are at least a few pixels
         const max_bars = Math.floor($(this.svg).width() / 4);
@@ -728,17 +757,19 @@ export class Graph {
         unit_map.forEach((byUnit, unit_id) => {
             // skip anything where we can't fit an axis
             if (axis_index > 3) return;
-            const unit = this.access.findUnit(unit_id);
-            const height = Graph._height - Graph._axis_width - Graph._margin;
-            const y_scale = d3
-                .scaleLinear()
-                .rangeRound([height, 0])
-                .domain(yExtent(byUnit));
-            this.buildYAxis(labeling, y_scale, plot_width, axis_index, unit.name);
-            byUnit.forEach(attachScale(y_scale));
-            to_display[axis_index] = sortOnX(byUnit);
-            // increment before moving to next unit
-            ++axis_index;
+            const unit = this.lazy.unit.get(unit_id);
+            if (unit.pk !== undefined) {
+                const height = Graph._height - Graph._axis_width - Graph._margin;
+                const y_scale = d3
+                    .scaleLinear()
+                    .rangeRound([height, 0])
+                    .domain(yExtent(byUnit));
+                this.buildYAxis(labeling, y_scale, plot_width, axis_index, unit.name);
+                byUnit.forEach(attachScale(y_scale));
+                to_display[axis_index] = sortOnX(byUnit);
+                // increment before moving to next unit
+                ++axis_index;
+            }
         });
         return chain(...to_display);
     }
@@ -766,21 +797,24 @@ export class Graph {
         return (event: MouseEvent, value: any) => {
             const tooltip_info = item || (value?.item as Item);
             if (tooltip_info) {
-                if (this.current_hover !== event.currentTarget) {
-                    const m = tooltip_info?.measurement;
-                    const mtype = this.access.findMeasurementType(m?.type);
-                    // build description string for bound data if present
-                    let value_description = "";
-                    if (value) {
-                        const [x, y] = value;
-                        const x_unit = this.access.findUnit(m?.x_units)?.name;
-                        const y_unit = this.access.findUnit(m?.y_units)?.name;
-                        value_description = `${y} ${y_unit} @ ${x} ${x_unit}`;
-                    }
-                    const html = `<strong>${tooltip_info?.line?.name}</strong><br/>
-                        ${mtype?.name}<br/>
-                        ${value_description}`;
-                    $(this.tooltip).html(html);
+                const m = tooltip_info.measurement;
+                const mtype = this.lazy.type.get(m?.type);
+                // build description string for bound data if present
+                if (value) {
+                    const [x, y] = value;
+                    const x_unit = this.lazy.unit.get(m?.x_units);
+                    const y_unit = this.lazy.unit.get(m?.y_units);
+                    const x_value = x_unit?.display ? `${x} ${x_unit.name}` : `${x}`;
+                    const y_value = y_unit?.display ? `${y} ${y_unit.name}` : `${y}`;
+                    const value_description = `${y_value} @ ${x_value}`;
+                    $(this.tooltip)
+                        .html(`<strong>${tooltip_info?.line?.name}</strong><br/>
+                            ${mtype?.name}<br/>
+                            ${value_description}<br/>`);
+                } else if (this.current_hover_item !== tooltip_info) {
+                    $(this.tooltip)
+                        .html(`<strong>${tooltip_info?.line?.name}</strong><br/>
+                            ${mtype?.name}<br/>`);
                 }
                 $(this.tooltip)
                     .removeClass("hidden")
@@ -788,6 +822,7 @@ export class Graph {
                     .offset({ "top": event.pageY, "left": event.pageX });
             }
             this.current_hover = event.currentTarget;
+            this.current_hover_item = tooltip_info;
             // dim all items in plot, except for the one currently hovered
             d3.select(this.svg).selectAll(".graphValue").style("opacity", Graph._dim);
             $(event.target).closest(".graphValue").css("opacity", Graph._bright);
@@ -823,8 +858,8 @@ class Organizer {
     private readonly labels: Map<string, string> = new Map();
     private readonly typeLookup: TypeLookup;
 
-    constructor(private strategy: OrganizerStrategy, access: Access) {
-        this.typeLookup = new TypeLookup(access);
+    constructor(private strategy: OrganizerStrategy, lazy: LazyAccess) {
+        this.typeLookup = new TypeLookup(lazy);
     }
 
     barGroupingKeys(grouping: BarGrouping): BarGroupingKeys {
@@ -878,7 +913,7 @@ class Organizer {
 
     private [KeyAssay](): (item: Item) => string {
         return (item: Item) => {
-            const key = `${item.assay.id}`;
+            const key = `${item.assay.pk}`;
             this.labels.set(key, `${item.line.name}`);
             return key;
         };
@@ -886,7 +921,7 @@ class Organizer {
 
     private [KeyLine](): (item: Item) => string {
         return (item: Item) => {
-            const key = `${item.line.id}`;
+            const key = `${item.line.pk}`;
             this.labels.set(key, `${item.line.name}`);
             return key;
         };
@@ -895,9 +930,9 @@ class Organizer {
     private [KeyReplicate](): (item: Item) => string {
         return (item: Item) => {
             // if item.line has replicate metadata, use it
-            // otherwise, use item.line.id
+            // otherwise, use item.line.pk
             const r = item.line.replicate || null;
-            const key = r === null ? `${item.line.id}` : r;
+            const key = r === null ? `${item.line.pk}` : r;
             this.labels.set(key, `${item.line.name}`);
             return key;
         };
@@ -913,17 +948,20 @@ class Organizer {
 class TypeLookup {
     private labels: Map<string, string> = new Map();
 
-    constructor(private access: Access) {}
+    constructor(private lazy: LazyAccess) {}
 
     key(): PlotValueKey {
         return (v: PlotValue) => {
             const m = v.item.measurement;
-            const key = `${m.comp}:${m.type}`;
-            const t = this.access.findMeasurementType(m.type);
-            const c = this.access.findCompartment(m.comp);
-            // only using compartment for metabolites
-            const label = t.family === "m" ? `${c.code} ${t.name}` : t.name;
-            this.labels.set(key, label);
+            const key = `${m.compartment}:${m.type}`;
+            const t = this.lazy.type.get(m.type);
+            const c = this.lazy.compartment.get(m.compartment);
+            // add a label only if values are already cached
+            if (t.pk !== undefined && c.code !== undefined) {
+                // only using compartment for metabolites
+                const label = t.family === "m" ? `${c.code} ${t.name}` : t.name;
+                this.labels.set(key, label);
+            }
             return key;
         };
     }

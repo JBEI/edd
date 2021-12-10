@@ -1,6 +1,7 @@
 "use strict";
 
 import "jquery";
+import { LazyAccess } from "../modules/table/Access";
 import * as EDDAuto from "./EDDAutocomplete";
 
 type GenericRecord = Record<string, any>;
@@ -398,7 +399,11 @@ export class FormMetadataManager {
 
     private _mfields: { [name: string]: IFormField<any> } = {};
 
-    constructor(private form: JQuery, private prefix?: string) {
+    constructor(
+        private form: JQuery,
+        private readonly lazy: LazyAccess,
+        private prefix?: string,
+    ) {
         this.attachEvents();
     }
 
@@ -406,16 +411,16 @@ export class FormMetadataManager {
     metadata(metadata: { [key: number]: any }): FormMetadataManager {
         const metadataInput = this.getMetadataInput();
         // sort incoming metadata by type name
-        const typeList: MetadataTypeRecord[] = $.map(
-            metadata,
-            (value, key) => EDDData.MetaDataTypes[key],
-        ).sort((a: MetadataTypeRecord, b: MetadataTypeRecord) => {
-            const aName = a.name;
-            const bName = b.name;
-            return aName < bName ? -1 : aName > bName ? 1 : 0;
-        });
+        const typeList: MetadataTypeRecord[] = Object.keys(metadata)
+            .map((key) => this.lazy.metaType.get(key))
+            .filter((type) => type.pk)
+            .sort((a: MetadataTypeRecord, b: MetadataTypeRecord) => {
+                const aName = a.type_name;
+                const bName = b.type_name;
+                return aName < bName ? -1 : aName > bName ? 1 : 0;
+            });
         // insert rows in alphabetical order
-        typeList.forEach((type) => this.insertMetadataRow(type.id, metadata[type.id]));
+        typeList.forEach((type) => this.insertMetaRow(type, metadata[type.pk]));
         // set the hidden field values; both the metadata input and its initial field
         const cleaned = this.cleanMeta(metadata);
         const serialized = JSON.stringify(cleaned);
@@ -516,7 +521,7 @@ export class FormMetadataManager {
         metaType: MetadataTypeRecord,
         initialValue?: any,
     ): void {
-        const metaKey = metaType.id.toString(10);
+        const metaKey = metaType.pk.toString(10);
         // set disabled when explicit null is passed as initial value
         if (initialValue === null) {
             row.addClass("disabled");
@@ -568,33 +573,46 @@ export class FormMetadataManager {
     }
 
     private insertMetadataRow(typeKey: string | number, initialValue?: any): JQuery {
-        const metaType: MetadataTypeRecord = EDDData.MetaDataTypes[typeKey];
-        if (metaType && !FormMetadataManager.hidden_widget.has(metaType?.input_type)) {
-            const id = `meta-${typeKey}`;
-            const modelRow = this.form.find(`.${this.model_row_class}`);
-            const selectionRow = this.form.find(`.${this.select_metadata_row_class}`);
-            // defaults to inserting just before the select metadata row at the end of the form
-            const addingRow = modelRow
-                .clone()
-                .attr({
-                    "class": this.row_of_metadata_class,
-                    "id": `row-${id}`,
-                })
-                .insertBefore(selectionRow);
-            addingRow.find("label").attr("for", `id-${id}`).text(metaType.name);
-            this.buildInputElement(addingRow, metaType, initialValue);
-            if (metaType.prefix) {
-                addingRow
-                    .find(`.${this.prefix_label_class}`)
-                    .text(`(${metaType.prefix})`);
-            }
-            if (metaType.postfix) {
-                addingRow
-                    .find(`.${this.postfix_label_class}`)
-                    .text(`(${metaType.postfix})`);
-            }
-            return addingRow;
+        // try cache first
+        const metaType = this.lazy.metaType.get(typeKey);
+        if (!metaType.pk) {
+            // create a placeholder DIV
+            const placeholder = $("<div>").addClass("hidden");
+            // replace placeholder with real row once info is available
+            this.lazy.metaType.getForce(typeKey).then((mtr) => {
+                const row = this.insertMetaRow(mtr, initialValue);
+                row.insertBefore(placeholder);
+                placeholder.remove();
+            });
+            return placeholder;
+        } else if (!FormMetadataManager.hidden_widget.has(metaType?.input_type)) {
+            return this.insertMetaRow(metaType, initialValue);
         }
         return $();
+    }
+
+    private insertMetaRow(metaType: MetadataTypeRecord, initialValue?: any): JQuery {
+        const id = `meta-${metaType.pk}`;
+        const modelRow = this.form.find(`.${this.model_row_class}`);
+        const selectionRow = this.form.find(`.${this.select_metadata_row_class}`);
+        // defaults to inserting just before the select metadata row at the end of the form
+        const addingRow = modelRow
+            .clone()
+            .attr({
+                "class": this.row_of_metadata_class,
+                "id": `row-${id}`,
+            })
+            .insertBefore(selectionRow);
+        addingRow.find("label").attr("for", `id-${id}`).text(metaType.type_name);
+        this.buildInputElement(addingRow, metaType, initialValue);
+        if (metaType.prefix) {
+            addingRow.find(`.${this.prefix_label_class}`).text(`(${metaType.prefix})`);
+        }
+        if (metaType.postfix) {
+            addingRow
+                .find(`.${this.postfix_label_class}`)
+                .text(`(${metaType.postfix})`);
+        }
+        return addingRow;
     }
 }

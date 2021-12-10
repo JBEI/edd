@@ -3,7 +3,7 @@
 import "jquery";
 import Handsontable from "handsontable";
 
-import { Access, ReplicateFilter } from "../modules/table/Access";
+import { LazyAccess, Query, ReplicateFilter } from "../modules/table/Access";
 import * as Config from "../modules/table/Config";
 import { DescriptionDropzone } from "../modules/DescriptionDropzone";
 import * as Forms from "../modules/Forms";
@@ -28,16 +28,20 @@ class LineForms {
     private readonly lineMetadataManager: Forms.FormMetadataManager;
     private readonly assayMetadataManager: Forms.FormMetadataManager;
 
-    public constructor() {
+    private studyPk: number;
+
+    public constructor(private readonly lazy: LazyAccess) {
         this.form = $("#general");
         this.lineModal = $("#editLineModal");
         this.assayModal = $("#addAssayModal");
         this.lineMetadataManager = new Forms.FormMetadataManager(
             this.lineModal,
+            lazy,
             "line",
         );
         this.assayMetadataManager = new Forms.FormMetadataManager(
             this.assayModal,
+            lazy,
             "assay",
         );
         // Set up jQuery modals
@@ -70,10 +74,10 @@ class LineForms {
         }
     }
 
-    public setupAddButtonEvents(access: Access): void {
+    public setupAddButtonEvents(lazy: LazyAccess): void {
         // Enable add new Line button
         this.form.on("click", ".addNewLineButton", () => {
-            this.showLineEditDialog([], access);
+            this.showLineEditDialog([], lazy);
             return false;
         });
         // menu item for clone
@@ -106,12 +110,12 @@ class LineForms {
         });
     }
 
-    public setupEditButtonEvents(access: Access): void {
+    public setupEditButtonEvents(lazy: LazyAccess): void {
         // Enable edit lines button
         this.form.on("click", "#editButton", () => {
             const lines = viewOptions.findSelectedLines();
             if (lines.length > 0) {
-                this.showLineEditDialog(lines, access);
+                this.showLineEditDialog(lines, lazy);
             }
             return false;
         });
@@ -155,31 +159,28 @@ class LineForms {
         });
     }
 
-    public setupExportButtonEvents(access: Access): void {
-        this.form.on("click", "#exportLineButton", () =>
-            this.onExport(access, $("#exportForm")),
-        );
-        this.form.on("click", "#worklistButton", () =>
-            this.onExport(access, $("#worklistForm")),
-        );
-        this.form.on("click", "#sbmlButton", () =>
-            this.onExport(access, $("#sbmlForm")),
-        );
-        this.form.on("click", "#exportNewStudyButton", () =>
-            this.onExport(access, $("#newStudyForm")),
-        );
+    public setupExportButtonEvents(spec: AccessSpec): void {
+        this.studyPk = spec.study.pk;
+        Object.entries({
+            "#exportLineButton": "#exportForm",
+            "#worklistButton": "#worklistForm",
+            "#sbmlButton": "#sbmlForm",
+            "#exportNewStudyButton": "#newStudyForm",
+        }).forEach(([buttonId, formId]) => {
+            this.form.on("click", buttonId, () => this.onExport($(formId)));
+        });
     }
 
     private buildHiddenInput(actionValue: string): JQuery {
         return $(`<input type="hidden" name="action" value="${actionValue}"/>`);
     }
 
-    private onExport(access: Access, exportForm: JQuery) {
+    private onExport(exportForm: JQuery) {
         const inputs = exportForm.find(".hidden-inputs").empty();
         const selected = defineSelectionInputs();
         if (selected.length === 0) {
             inputs.append(
-                `<input type="hidden" name="studyId" value="${access.studyPK()}"/>`,
+                `<input type="hidden" name="studyId" value="${this.studyPk || ""}"/>`,
             );
         } else {
             inputs.append(selected);
@@ -188,7 +189,7 @@ class LineForms {
         return false;
     }
 
-    private showLineEditDialog(lines: LineRecord[], access: Access): void {
+    private showLineEditDialog(lines: LineRecord[], lazy: LazyAccess): void {
         let titleText: string;
         let record: LineRecord;
 
@@ -201,13 +202,12 @@ class LineForms {
             } else {
                 titleText = $("#edit_line_title").text();
             }
-            record = access.mergeLines(lines);
+            record = LazyAccess.mergeLines(lines);
         }
         this.lineModal.dialog({ "title": titleText });
 
         // create object to handle form interactions
         const formManager = new Forms.BulkFormManager(this.lineModal, "line");
-        const str = (x: any): string => "" + (x || ""); // forces values to string, falsy === ""
         // define fields on form
         type Pair = [string, string]; // this gets used below to disambiguate Autocomplete renders
         const contactField = new Forms.Autocomplete(
@@ -216,8 +216,8 @@ class LineForms {
             "contact",
         );
         contactField.render((r: LineRecord): Pair => {
-            const contact = new Utl.EDDContact(r.contact);
-            return [contact.display(), str(contact.id())];
+            const contact = lazy.user.get(r.contact);
+            return [contact?.email || "--", `${r.contact}`];
         });
         const experimenterField = new Forms.Autocomplete(
             this.lineModal.find("[name=line-experimenter_0"),
@@ -225,18 +225,18 @@ class LineForms {
             "experimenter",
         );
         experimenterField.render((r: LineRecord): Pair => {
-            const experimenter = new Utl.EDDContact(r.experimenter);
-            return [experimenter.display(), str(experimenter.id())];
+            const experimenter = lazy.user.get(r.experimenter);
+            return [experimenter?.email || "--", `${r.experimenter}`];
         });
         const strainField = new Forms.Autocomplete(
             this.lineModal.find("[name=line-strains_0"),
             this.lineModal.find("[name=line-strains_1"),
             "strain",
         );
-        strainField.render((r): Pair => {
-            const list = r.strain || [];
-            const names = list.map((v) => access.findStrain(v).name || "--");
-            const uuids = list.map((v) => access.findStrain(v).registry_id || "");
+        strainField.render((r: LineRecord): Pair => {
+            const list = r.strains || [];
+            const names = list.map((v) => v.name || "--");
+            const uuids = list.map((v) => v.registry_id || "");
             return [names.join(", "), uuids.join(",")];
         });
         const fields: { [name: string]: Forms.IFormField<any> } = {
@@ -262,7 +262,7 @@ class LineForms {
         this.lineMetadataManager.reset();
         if (record !== undefined) {
             formManager.fill(record);
-            this.lineMetadataManager.metadata(record.meta);
+            this.lineMetadataManager.metadata(record.metadata);
         }
 
         // special case, ignore name field when editing multiples
@@ -297,11 +297,26 @@ class LineTableViewOptions {
     private static readonly groupReplicate = "groupReplicateItem";
 
     private readonly menu: JQuery;
+    private readonly pager: JQuery;
+    private readonly pagerLabelTemplate: string;
+    private readonly query: Query = {
+        "page": 1,
+        "size": null,
+        "sort": [],
+        "filter": {
+            "active": "true",
+        },
+    };
 
     private hot: Handsontable;
 
-    public constructor(private readonly access: Access) {
+    public constructor(
+        private readonly spec: AccessSpec,
+        private readonly lazy: LazyAccess,
+    ) {
         this.menu = $(".table-filter-options");
+        this.pager = $(".pager-nav");
+        this.pagerLabelTemplate = this.pager.find(".pager-label").text();
     }
 
     public findSelectedLines(): LineRecord[] {
@@ -309,38 +324,55 @@ class LineTableViewOptions {
         return rows.filter((line) => line?.selected);
     }
 
-    public getTableData(): LineRecord[] {
-        const selected = this.menu.find(`.${LineTableViewOptions.checked}`).attr("id");
+    public lazyTableData(): JQuery.Promise<RestPageInfo<LineRecord>> {
+        const selectedSwitch = this.menu.find(`.${LineTableViewOptions.checked}`);
+        const selected = selectedSwitch.closest("a").attr("id");
         if (selected === LineTableViewOptions.showDisabled) {
-            return this.access.linesWithDisabled();
-        } else if (selected === LineTableViewOptions.groupReplicate) {
-            const rf = new ReplicateFilter(this.access.replicate_type());
-            return rf.process(this.access.lines());
+            delete this.query.filter.active;
+        } else {
+            this.query.filter.active = "True";
         }
-        return this.access.lines();
+        if (selected === LineTableViewOptions.groupReplicate) {
+            this.query.filter.replicates = "True";
+        } else {
+            delete this.query.filter.replicates;
+        }
+        return this.lazy.line.fetch(this.query);
     }
 
     public initMainDisplay(): void {
-        const tableData = this.getTableData();
-        if (tableData.length !== 0) {
-            // Show controls that depend on having some lines present to be useful
-            $("#actionsBar").removeClass("hide");
-            this.setupTable();
-        } else {
-            // Show banner announcing no data to display
-            $("#noLinesDiv").removeClass("hide");
-            forms.setupAddButtonEvents(this.access);
-        }
+        const container = document.getElementById("studyLinesTable");
+        $.when(
+            this.lazy.metaType.eager(),
+            this.lazy.user.eager(),
+            this.lazyTableData(),
+        ).then((metaTypes, users, rpi) => {
+            const settings = Config.settingsForLineTable(
+                this.lazy,
+                metaTypes,
+                container,
+            );
+            $("#loadingLinesDiv").addClass("hide");
+            if (rpi.count !== 0) {
+                // Show controls that depend on having some lines present to be useful
+                $("#actionsBar").removeClass("hide");
+            } else {
+                // Show banner announcing no data to display
+                $("#noLinesDiv").removeClass("hide");
+                forms.setupAddButtonEvents(this.lazy);
+            }
+            this.setupTable(container, settings, rpi);
+        });
     }
 
     public setupEvents(): void {
         this.menu.on("click", "a", (event) => {
-            const item = $(event.target);
+            const item = $(event.currentTarget);
             const clicked_item_icon = item.find("svg");
             this.menuUpdateIconStates(clicked_item_icon);
-            // refresh table data
-            this.hot.loadData(this.getTableData());
-            Config.repositionSelectAllCheckbox(this.hot);
+            // reset page number
+            this.query.page = 1;
+            this.lazyTableData().then((page) => this.update(page));
             return false;
         });
     }
@@ -359,63 +391,115 @@ class LineTableViewOptions {
 
     // setup controls once line table is displayed
     private onLineTableLoad() {
-        forms.setupEditButtonEvents(this.access);
-        forms.setupAddButtonEvents(this.access);
-        forms.setupExportButtonEvents(this.access);
+        forms.setupEditButtonEvents(this.lazy);
+        forms.setupAddButtonEvents(this.lazy);
+        forms.setupExportButtonEvents(this.spec);
     }
 
-    private setupTable() {
-        const container = document.getElementById("studyLinesTable");
-        const settings = Config.settingsForLineTable(this.access, container);
+    private preprocessLines(lines: LineRecord[]): LineRecord[] {
+        const rf = new ReplicateFilter();
+        // initialize selection state
+        lines.forEach((line) => {
+            line.selected = false;
+        });
+        // group together anything with matching replicate key
+        return rf.process(lines);
+    }
+
+    private setupPager(currentPage: LineRecord[], rpi: RestPageInfo<LineRecord>) {
+        this.pager.find(".pager-prev").on("click", (event) => {
+            const item = $(event.currentTarget);
+            event.preventDefault();
+            if (!item.hasClass("disabled")) {
+                item.addClass("disabled");
+                this.query.page--;
+                this.lazyTableData().then((page) => this.update(page));
+            }
+        });
+        this.pager.find(".pager-next").on("click", (event) => {
+            const item = $(event.currentTarget);
+            event.preventDefault();
+            if (!item.hasClass("disabled")) {
+                item.addClass("disabled");
+                this.query.page++;
+                this.lazyTableData().then((page) => this.update(page));
+            }
+        });
+        this.updatePager(currentPage, rpi);
+        this.pager.removeClass("hidden");
+    }
+
+    private setupTable(
+        container: HTMLElement,
+        settings: Handsontable.GridSettings,
+        rpi: RestPageInfo<LineRecord>,
+    ) {
+        const lines = this.preprocessLines(rpi.results);
         this.hot = new Handsontable(
             container,
             Object.assign(settings, {
-                "afterInit": this.onLineTableLoad,
-                "data": this.getTableData(),
-                "height": computeHeight(),
+                "afterInit": () => this.onLineTableLoad(),
+                "data": lines,
             }),
         );
-        // re-fit the table when scrolling or resizing window
-        $window.on("scroll resize", () => {
-            this.hot.updateSettings({ "height": computeHeight() });
-            Config.repositionSelectAllCheckbox(this.hot);
-        });
-        // handler for select all box
-        Config.setupSelectAllCheckbox(this.hot);
         // listen for events on selection changes
-        $(container).on("eddselect", (event, selected) => {
+        $(container).on("eddselect", (event) => {
             const rows: LineRecord[] = this.hot.getSourceData() as LineRecord[];
-            // count is one per selected row, or the number of grouped replicates if present
+            // count is one per selected row,
+            // or the number of grouped replicates if present
             const count = rows
                 .filter((line) => line?.selected)
                 .reduce((acc, line) => acc + (line?.replicate_ids?.length || 1), 0);
             // enable buttons if needed
             $(".needs-lines-selected")
-                .toggleClass("disabled", selected === 0)
-                .prop("disabled", selected === 0);
+                .toggleClass("disabled", count === 0)
+                .prop("disabled", count === 0);
             // update badge counters
             $(".badge.selected-line-count").text(count ? count.toString() : "");
         });
         // handlers for filter bar
         this.setupEvents();
+        // show pager
+        this.setupPager(lines, rpi);
     }
-}
 
-/**
- * Calculates pixel height available in page to keep the Action Bar visible.
- */
-function computeHeight() {
-    const container = $("#studyLinesTable");
-    const actionsBar = $("#actionsBar");
-    // vertical size to leave enough space for actionsBar to display buttons
-    const vertical = $window.height() - container.offset().top - actionsBar.height();
-    // also include a fudge factor:
-    // + 24 pixels for "Report a Bug", to not overlap on buttons
-    // + 10 + 10 for top/bottom margins around actionsBar
-    // = 44 total pixels
-    const fudge = 44;
-    // always reserve at least 500 pixels
-    return Math.max(500, vertical - fudge);
+    private update(rpi: RestPageInfo<LineRecord>): void {
+        const lines = this.preprocessLines(rpi.results);
+        this.hot.loadData(lines);
+        this.updatePager(lines, rpi);
+    }
+
+    private updatePager(currentPage: LineRecord[], rpi: RestPageInfo<LineRecord>) {
+        this.pager.find(".pager-prev").toggleClass("disabled", !rpi.previous);
+        this.pager.find(".pager-next").toggleClass("disabled", !rpi.next);
+        if (!rpi.previous) {
+            // first page; know we're bound 1 at beginning
+            const start = 1;
+            const end = currentPage.length;
+            this.updatePagerLabel(`${start}-${end}`, `${rpi.count}`);
+            this.hot.updateSettings({ "rowHeaders": true });
+        } else if (!rpi.next) {
+            // last page; know we're bound to count at end
+            const end = rpi.count;
+            const start = 1 + end - currentPage.length;
+            this.updatePagerLabel(`${start}-${end}`, `${rpi.count}`);
+            this.hot.updateSettings({ "rowHeaders": (index) => `${start + index}` });
+        } else {
+            // in-between; use length as page size and calculate start and end
+            const pageSize = currentPage.length;
+            const end = this.query.page * pageSize;
+            const start = 1 + end - pageSize;
+            this.updatePagerLabel(`${start}-${end}`, `${rpi.count}`);
+            this.hot.updateSettings({ "rowHeaders": (index) => `${start + index}` });
+        }
+    }
+
+    private updatePagerLabel(range: string, total: string): void {
+        let label = this.pagerLabelTemplate;
+        label = label.replace(/@range/, range);
+        label = label.replace(/@total/, total);
+        this.pager.find(".pager-label").text(label);
+    }
 }
 
 function defineSelectionInputs(lines?: LineRecord[]): JQuery {
@@ -429,25 +513,24 @@ function defineSelectionInputs(lines?: LineRecord[]): JQuery {
         if (line.replicate_ids?.length) {
             inputs.push(...line.replicate_ids.map(template));
         } else {
-            inputs.push(template(line.id));
+            inputs.push(template(line.pk));
         }
     });
     return $(inputs);
 }
 
-// Called when the page loads the EDDData object
-function onDataLoad(event, data: EDDData) {
-    const access = Access.initAccess(data);
-    viewOptions = new LineTableViewOptions(access);
-    $("#loadingLinesDiv").addClass("hide");
+// Called when lazy-loading info is available
+function onLazyInit(event, spec: AccessSpec) {
+    const lazy = new LazyAccess(spec);
+    viewOptions = new LineTableViewOptions(spec, lazy);
+    viewOptions.initMainDisplay();
+    forms = new LineForms(lazy);
     // if dialog had errors, open on page reload
     forms.checkLineModalErrors();
-    viewOptions.initMainDisplay();
 }
 
 // Called on page loading; data may not be available
 function onPageLoad() {
-    forms = new LineForms();
     setupDropzone();
     setupEditableName();
 }
@@ -477,6 +560,6 @@ function setupEditableName() {
     StudyBase.EditableStudyName.createFromElement(title);
 }
 
-// wait for edddata event to begin processing page
-$(document).on("edddata", onDataLoad);
+// handle lazy-loading access
+$(document).on("eddaccess", onLazyInit);
 $(onPageLoad);

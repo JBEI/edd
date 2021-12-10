@@ -6,6 +6,7 @@ import Handsontable from "handsontable";
 import * as Utl from "../Utl";
 
 const base = Handsontable.renderers.BaseRenderer;
+const missingValue = `<span class="text-warning">…</span>`;
 // define a subset of the base renderer arguments
 type RenderFn<T> = (td: HTMLTableCellElement, value: T) => HTMLTableCellElement;
 
@@ -43,7 +44,12 @@ export function register(): void {
     Handsontable.renderers.registerRenderer(
         "edd.mclass",
         buildRenderer((td, value: MeasurementClass) => {
-            if (value.measurementType.family === "m" && value.compartment.id !== "0") {
+            if (value.measurementType.pk === undefined) {
+                td.innerHTML = missingValue;
+            } else if (
+                value.measurementType.family === "m" &&
+                value.compartment.pk !== "0"
+            ) {
                 td.innerHTML = `${value.compartment.code} ${value.measurementType.name}`;
             } else {
                 td.innerHTML = value.measurementType.name;
@@ -55,14 +61,20 @@ export function register(): void {
     Handsontable.renderers.registerRenderer(
         "edd.protocol",
         buildRenderer((td, value: ProtocolRecord) => {
-            td.innerHTML = value.name;
+            if (value.pk === undefined) {
+                td.innerHTML = missingValue;
+            } else {
+                td.innerHTML = value.name;
+            }
             return td;
         }),
     );
     Handsontable.renderers.registerRenderer(
         "edd.replicate_name",
         buildRenderer((td, value: LineRecord) => {
-            if (value.replicate_names) {
+            if (value.pk === undefined) {
+                td.innerHTML = missingValue;
+            } else if (value.replicate_names) {
                 const added_count = value.replicate_names.length - 1;
                 const first = value.replicate_names[0];
                 const additional = `<span class="replicateLineShow">(+${added_count})</span>`;
@@ -102,7 +114,11 @@ export function register(): void {
     Handsontable.renderers.registerRenderer(
         "edd.user",
         buildRenderer((td, value: UserRecord) => {
-            td.innerHTML = value?.initials || "--";
+            if (value.pk === undefined) {
+                td.innerHTML = missingValue;
+            } else {
+                td.innerHTML = value?.initials || "--";
+            }
             return td;
         }),
     );

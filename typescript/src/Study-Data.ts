@@ -3,7 +3,7 @@
 import "jquery";
 import Handsontable from "handsontable";
 
-import { Access, Item } from "../modules/table/Access";
+import { Item, LazyAccess } from "../modules/table/Access";
 import * as Config from "../modules/table/Config";
 import { Filter } from "../modules/table/Filter";
 import * as Forms from "../modules/Forms";
@@ -14,13 +14,9 @@ import * as Utl from "../modules/Utl";
 type TableMode = "table-assay" | "table-measurement";
 type BarGraphMode = "bar-line" | "bar-measurement" | "bar-time";
 type ViewingMode = "plot-line" | TableMode | BarGraphMode;
-type SelectionType = "study" | "line" | "assay" | "measurement";
 
 // default start on line graph
 let viewingMode: ViewingMode = "plot-line";
-let filter: Filter;
-let plot: Graph;
-let access: Access;
 let assayTable: Handsontable;
 let measureTable: Handsontable;
 
@@ -28,24 +24,15 @@ let measureTable: Handsontable;
 let assayMetadataManager: Forms.FormMetadataManager;
 
 /**
- * Forces values to string, falsy === ""
- */
-const str = (x: any): string => `${x || ""}`;
-/**
  * Converts an AssayRecord to an HTML <INPUT> for a form.
  */
 const _assayToInput = (assay: AssayRecord): JQuery =>
-    $(`<input type="hidden" name="assayId" value="${assay.id}" />`);
+    $(`<input type="hidden" name="assayId" value="${assay.pk}" />`);
 /**
  * Converts an Item to an HTML <INPUT> for a form.
  */
 const _itemToInput = (item: Item): JQuery =>
-    $(`<input type="hidden" name="measurementId" value="${item.measurement.id}" />`);
-/**
- * Converts a Line ID to an HTML <INPUT> for a form.
- */
-const _lineIdToInput = (id: number): JQuery =>
-    $(`<input type="hidden" name="lineId" value="${id}" />`);
+    $(`<input type="hidden" name="measurementId" value="${item.measurement.pk}" />`);
 
 function _display(selector: string, mode: ViewingMode) {
     // highlight the active button
@@ -59,42 +46,50 @@ function _display(selector: string, mode: ViewingMode) {
     $.event.trigger("eddfilter");
 }
 
-function computeHeight(): number {
-    const container = $("#tableArea");
-    // reserve about 200 pixels for filter section
-    const vertical = $(window).height() - container.offset().top - 200;
-    // always reserve at least 500 pixels for table
-    return Math.max(500, vertical);
-}
-
-function defineSelectionInputs(selectionType: SelectionType = null): JQuery[] {
-    if (selectionType === "line") {
-        const lineIds = new Set<number>();
-        filter.assays().forEach((assay) => lineIds.add(assay.lid));
-        return Array.from(lineIds).map(_lineIdToInput);
-    } else if (viewingMode === "table-assay") {
+function defineSelectionInputs(): JQuery[] {
+    if (viewingMode === "table-assay") {
+        // when displaying assay table, use selected items in table
         return selectedAssays().map(_assayToInput);
-    } else if (selectionType === "assay") {
-        return filter.assays().map(_assayToInput);
     } else if (viewingMode === "table-measurement") {
+        // when displaying measurement table, use selected items in table
         return selectedMeasurements().map(_itemToInput);
-    } else {
-        return filter.measurements().map(_itemToInput);
+    } else if (measureTable) {
+        // otherwise, if measurement table exists, use its source data
+        const items = measureTable.getSourceData() as Item[];
+        return items.map(_itemToInput);
     }
+    // when all else fails, use an empty list
+    return [];
 }
 
-// Called when initial non-measurement data is loaded
-function onDataLoad(event, data: EDDData): void {
-    access = Access.initAccess(data);
-    filter = Filter.create(access);
-    $("#mainFilterSection").append(filter.createElements());
-    plot = Graph.create(document.getElementById("graphArea"), access);
+function onLazyInit(event, spec: AccessSpec) {
+    const lazy = new LazyAccess(spec);
+    setupModals(lazy);
+    setupExportButtonEvents(lazy);
+    lazy.progressInit($("#graphLoading .progress-bar"));
+    const readyFilter = Filter.create(
+        document.getElementById("mainFilterSection"),
+        lazy,
+    );
+    const readyItems = readyFilter.then((filter) => {
+        return setupMeasurementTable(filter, lazy);
+    });
+    const readyGraph = Graph.create(document.getElementById("graphArea"), lazy);
+    Promise.all([readyFilter, readyGraph, readyItems]).then(([filter, plot, items]) => {
+        lazy.progressFinish();
+        setupAssayTable(filter, lazy, items);
+        refreshDisplay(filter, plot, items);
+        // add refresh handler when filter event triggered
+        $(document).on("eddfilter", () => {
+            const fetch = filter.measurements();
+            fetch.then((fetched) => refreshDisplay(filter, plot, fetched));
+        });
+    });
+}
 
+function onPageLoad() {
     setupEvents();
-    setupModals();
-    setupTables();
     fetchDisplaySetting();
-    fetchMeasurements();
 }
 
 interface DisplaySetting {
@@ -124,30 +119,17 @@ function fetchDisplaySetting(): void {
     });
 }
 
-function fetchMeasurements() {
-    access.valueLinks().forEach((link: string) => {
-        $.ajax({
-            "dataType": "json",
-            "type": "GET",
-            "url": link,
-        }).done((payload) => {
-            filter.update(payload);
-            $.event.trigger("eddfilter");
-        });
-    });
-}
-
 /**
  * Submits an export form. By default, uses selection of items from table
  * views, or items filtered in graph. Pass true as second argument to select
  * the entire study.
  */
-function onExport(exportForm: JQuery, selectionType: SelectionType = null) {
+function onExport(exportForm: JQuery, lazy: LazyAccess) {
     const inputs = exportForm.find(".hidden-inputs").empty();
-    const selection = defineSelectionInputs(selectionType);
+    const selection = defineSelectionInputs();
     if (selection.length === 0) {
         inputs.append(
-            `<input type="hidden" name="studyId" value="${access.studyPK()}"/>`,
+            `<input type="hidden" name="studyId" value="${lazy.studyPK()}"/>`,
         );
     } else {
         inputs.append(selection);
@@ -156,22 +138,21 @@ function onExport(exportForm: JQuery, selectionType: SelectionType = null) {
     return false;
 }
 
-function refreshDisplay() {
+function refreshDisplay(filter: Filter, plot: Graph, items: Item[]) {
     $("#graphLoading").addClass("hidden");
     // show/hide elements for the selected mode
     const isTable = viewingMode.startsWith("table-");
     $("#tableArea").toggleClass("hidden", !isTable);
     $("#graphDisplayContainer").toggleClass("hidden", isTable);
-    // check on any changes in colors
-    const items = filter.measurements();
-    plot.assignColors(items);
-    filter.refresh(items);
+    const subset = filter.limitItems(items);
+    const plotable = plot.assignColors(subset);
+    // check on any changes in colors then update filter state
+    filter.refresh(plotable);
     // update display based on current display mode
     if (viewingMode === "table-assay") {
         $("#assayTable").removeClass("hidden");
         $("#measurementTable").addClass("hidden");
-        assayTable.loadData(filter.assays());
-        Config.repositionSelectAllCheckbox(assayTable);
+        assayTable.loadData(filter.limitAssays(subset));
     } else if (viewingMode === "table-measurement") {
         $("#assayTable").addClass("hidden");
         $("#measurementTable").removeClass("hidden");
@@ -179,14 +160,15 @@ function refreshDisplay() {
         $(".edd-add-button,.edd-edit-button")
             .addClass("disabled")
             .prop("disabled", true);
-        measureTable.loadData(filter.measurements());
-        Config.repositionSelectAllCheckbox(measureTable);
+        if (measureTable) {
+            measureTable.loadData(subset);
+        }
     } else if (!isTable) {
-        remakeMainGraphArea(items);
+        remakeMainGraphArea(plot, plotable);
     }
 }
 
-function remakeMainGraphArea(items: Item[]) {
+function remakeMainGraphArea(plot: Graph, items: Item[]) {
     // when no points to display show message that there's no data to display
     $("#noData").toggleClass("hidden", items.length > 0);
     // replace graph
@@ -222,13 +204,14 @@ function selectedAssays(): AssayRecord[] {
 }
 
 function selectedMeasurements(): Item[] {
-    const rows = measureTable.getSourceData() as Item[];
-    return rows.filter((item) => item?.measurement?.selected);
+    if (measureTable) {
+        const rows = measureTable.getSourceData() as Item[];
+        return rows.filter((item) => item?.measurement?.selected);
+    }
+    return [];
 }
 
 function setupEvents(): void {
-    // add refresh handler when filter event triggered
-    $(document).on("eddfilter", Utl.debounce(refreshDisplay));
     // add click handlers to toggle display modes
     $("#displayModeButtons").on("click", ".edd-view-select", (event) => {
         const target = $(event.currentTarget);
@@ -254,17 +237,16 @@ function setupEvents(): void {
         }
         return false;
     });
-    setupExportButtonEvents();
 }
 
-function setupExportButtonEvents() {
-    $(".edd-export-button").on("click", () => onExport($("#exportForm")));
-    $(".edd-new-study-button").on("click", () => onExport($("#newStudyForm"), "line"));
-    $(".edd-sbml-button").on("click", () => onExport($("#sbmlForm"), "line"));
-    $(".edd-worklist-button").on("click", () => onExport($("#worklistForm"), "assay"));
+function setupExportButtonEvents(lazy: LazyAccess) {
+    $(".edd-export-button").on("click", () => onExport($("#exportForm"), lazy));
+    $(".edd-new-study-button").on("click", () => onExport($("#newStudyForm"), lazy));
+    $(".edd-sbml-button").on("click", () => onExport($("#sbmlForm"), lazy));
+    $(".edd-worklist-button").on("click", () => onExport($("#worklistForm"), lazy));
 }
 
-function setupModals(): void {
+function setupModals(lazy: LazyAccess): void {
     // set up the "add" (edit) assay dialog
     const assayModal = $("#assayMain");
     assayModal.dialog(
@@ -272,7 +254,7 @@ function setupModals(): void {
             "minWidth": 500,
         }),
     );
-    assayMetadataManager = new Forms.FormMetadataManager(assayModal, "assay");
+    assayMetadataManager = new Forms.FormMetadataManager(assayModal, lazy, "assay");
     // Set up the Add Measurement to Assay modal
     $("#addMeasurement").dialog(
         StudyBase.dialogDefaults({
@@ -281,38 +263,17 @@ function setupModals(): void {
     );
 }
 
-function setupTables(): void {
-    const assayContainer = document.getElementById("assayTable");
-    const assaySettings = Config.settingsForAssayTable(access, assayContainer);
-    const measureContainer = document.getElementById("measurementTable");
-    const measureSettings = Config.settingsForMeasurementTable(
-        access,
-        measureContainer,
-    );
+function setupAssayTable(filter: Filter, lazy: LazyAccess, items: Item[]): void {
+    const container = document.getElementById("assayTable");
+    const settings = Config.settingsForAssayTable(lazy, filter.assayMeta(), container);
     assayTable = new Handsontable(
-        assayContainer,
-        Object.assign(assaySettings, {
-            "data": filter.assays(),
+        container,
+        Object.assign(settings, {
+            "data": filter.limitAssays(items),
         } as Handsontable.GridSettings),
     );
-    measureTable = new Handsontable(
-        measureContainer,
-        Object.assign(measureSettings, {
-            "data": filter.measurements(),
-        } as Handsontable.GridSettings),
-    );
-    // handlers for select all boxes
-    Config.setupSelectAllCheckbox(assayTable);
-    Config.setupSelectAllCheckbox(measureTable);
-    // re-fit tables when scrolling or resizing window
-    $(window).on("scroll resize", () => {
-        assayTable.updateSettings({ "height": computeHeight() });
-        Config.repositionSelectAllCheckbox(assayTable);
-        measureTable.updateSettings({ "height": computeHeight() });
-        Config.repositionSelectAllCheckbox(measureTable);
-    });
     // change button state when changes in selected items
-    $(assayContainer).on("eddselect", (event, selected) => {
+    $(container).on("eddselect", (event, selected) => {
         // enable buttons if needed
         const disabled = viewingMode !== "table-assay" || selected === 0;
         $(".edd-add-button,.edd-edit-button")
@@ -321,12 +282,29 @@ function setupTables(): void {
     });
 }
 
+function setupMeasurementTable(
+    filter: Filter,
+    lazy: LazyAccess,
+): JQuery.Promise<Item[]> {
+    const container = document.getElementById("measurementTable");
+    const settings = Config.settingsForMeasurementTable(lazy, container);
+    return filter.measurements().then((items: Item[]) => {
+        measureTable = new Handsontable(
+            container,
+            Object.assign(settings, {
+                "data": items,
+            } as Handsontable.GridSettings),
+        );
+        return items;
+    });
+}
+
 function showAddMeasurementDialog(items: AssayRecord[]): void {
     const dialog = $("#addMeasurement");
     // create form elements for currently selected assays
     const selection = items.reduce(
         (acc, v) =>
-            acc.add($(`<input type="hidden" name="assayId" value="${v.id}" />`)),
+            acc.add($(`<input type="hidden" name="assayId" value="${v.pk}" />`)),
         $(),
     );
     const selectionInputs = dialog.find(".hidden-assay-inputs").empty();
@@ -349,7 +327,7 @@ function showEditAssayDialog(items: AssayRecord[]): void {
         } else {
             titleText = $("#edit_assay_title").text();
         }
-        record = access.mergeAssays(items);
+        record = LazyAccess.mergeAssays(items);
     }
     dialog.dialog({ "title": titleText });
 
@@ -362,8 +340,9 @@ function showEditAssayDialog(items: AssayRecord[]): void {
         "experimenter",
     );
     experimenterField.render((r: AssayRecord): [string, string] => {
-        const experimenter = new Utl.EDDContact(r.experimenter);
-        return [experimenter.display(), str(experimenter?.id() || "")];
+        // const experimenter = new Utl.EDDContact(r.experimenter);
+        // return [experimenter.display(), str(experimenter?.id() || "")];
+        return ["TODO", `${r.experimenter}`];
     });
     const fields: Forms.IFormField<any>[] = [
         new Forms.Field(dialog.find("[name=assay-name]"), "name"),
@@ -374,7 +353,7 @@ function showEditAssayDialog(items: AssayRecord[]): void {
     // create form elements for currently selected assays
     const selection = items.reduce(
         (acc, v) =>
-            acc.add($(`<input type="hidden" name="assayId" value="${v.id}" />`)),
+            acc.add($(`<input type="hidden" name="assayId" value="${v.pk}" />`)),
         $(),
     );
     // initialize the form to clean slate
@@ -382,7 +361,7 @@ function showEditAssayDialog(items: AssayRecord[]): void {
     assayMetadataManager.reset();
     if (record !== undefined) {
         formManager.fill(record);
-        assayMetadataManager.metadata(record.meta);
+        assayMetadataManager.metadata(record.metadata);
     }
 
     // special case, ignore name field when editing multiples
@@ -401,5 +380,6 @@ function showEditAssayDialog(items: AssayRecord[]): void {
     dialog.removeClass("off").dialog("open");
 }
 
-// wait for edddata event to begin processing page
-$(document).on("edddata", onDataLoad);
+// wait for eddaccess event to begin processing page
+$(document).on("eddaccess", onLazyInit);
+$(onPageLoad);
