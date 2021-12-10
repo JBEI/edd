@@ -55,7 +55,27 @@
     </p>
   </div>
   <div class="flex-row sectionActions">
-    <div class="flex-item"></div>
+    <div class="flex-item">
+      <nav class="hidden pager-nav">
+        <ul class="pagination pagination-sm">
+          <li class="disabled pager-prev">
+            <a href="#" aria-label="{% trans 'Previous' %}">
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+          <li>
+            <span>
+              <span class="pager-label text-muted">{% trans 'Lines @range of @total' %}</span>
+            </span>
+          </li>
+          <li class="disabled pager-next">
+            <a href="#" aria-label="{% trans 'Next' %}">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
     {% url "main:load:wizard" slug=study.slug as wizard_url %}
     <a class="{% if not lines %}off{% endif %} pull-right" href="{{ wizard_url}}">
       <button class="btn btn-primary btn-large" type="button">

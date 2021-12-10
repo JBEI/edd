@@ -1389,3 +1389,7 @@ summary.pageDivider {
 .sampleFileDownloadLink :visited .sampleFileDownloadLink {
     color: gray;
 }
+
+.pager-nav > .pagination {
+    margin: 0;
+}
