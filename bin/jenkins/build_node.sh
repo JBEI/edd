@@ -10,3 +10,4 @@ DOCKER_BUILDKIT=1 docker build \
     -t "jbei/edd-node:${TAG}" \
     -t "${SERVER}/jbei/edd-node:${TAG}" \
     ./docker/node
+docker push "${SERVER}/jbei/edd-node:${TAG}"

@@ -1,4 +1,4 @@
-FROM library/python:3.8-slim-buster
+FROM library/python:3.8-slim-bullseye
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
