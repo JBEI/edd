@@ -1967,7 +1967,7 @@ class CreationManager {
         $("#line-preview-div").removeClass("hide");
     }
 
-    setLineMetaTypes(metadataTypes: any[]): void {
+    setLineMetaTypes(metadataTypes: EddRest.MetadataType[]): void {
         $("#step1_loading_metadata_status_div").empty();
         $("#addPropertyButton").prop("disabled", false);
         this.userMetaTypePks = [];
@@ -1975,86 +1975,125 @@ class CreationManager {
         this.autocompleteLineMetaTypes = {};
         this.multivaluedMetaTypePks = [];
         this.strainMetaPk = -1;
+
+        // create descriptors for each line metadata type,
+        // representing the UI labeling to use, as well as the metadata ID's
         const lineProps: LinePropertyDescriptor[] = [];
         metadataTypes.forEach((meta) => {
-            // omit special-case metadata types that don't make sense in this context
-            if (OMITTED_LINE_META_TYPE_UUIDS.indexOf(meta.uuid) >= 0) {
+            const display = this.registerMetadataType(meta);
+            if (!display) {
                 return true; // keep looping!
             }
-            // if this metadata type matches the name of one we have autocomplete inputs for
-            // keep track of its pk for easy reference
-            if (AUTOCOMPLETE_META_UUIDS.indexOf(meta.uuid) >= 0) {
-                this.autocompleteLineMetaTypes[meta.pk] = meta;
-            }
-            // if this metadata type is one that supports multivalued input for a single line,
-            // store its pk for easy reference
-            if (MULTIVALUED_LINE_META_UUIDS.indexOf(meta.uuid) >= 0) {
-                this.multivaluedMetaTypePks.push(meta.pk);
-            }
-            // compute UI labeling for the line properties that makes sense,
-            // e.g. by stripping off the "line" prefix from types that have it,
-            // or adding in the units suffix for clarity
-            let uiLabel: string = meta.type_name;
-            if ("Line " === uiLabel.substring(0, 5)) {
-                uiLabel = meta.type_name.substring(5, meta.type_name.length);
-            }
-            const postfix = meta.postfix;
-            if (postfix.length) {
-                uiLabel = uiLabel + " (" + postfix + ")";
-            }
-            let nameEltLabel: string = uiLabel;
-            let nameEltJsonId: number | string = meta.pk;
-            // build up a descriptor for this metadata type,
-            // including logical labeling for it in various parts of the GUI,
-            // as well as JSON id's for both the metadata itself
-            // or its naming elements
-            let propertyDescriptor: LinePropertyDescriptor;
-            if (USER_META_TYPE_UUIDS.indexOf(meta.uuid) >= 0) {
-                nameEltLabel = uiLabel + " Last Name";
-                nameEltJsonId = meta.pk + "__last_name";
-                propertyDescriptor = new LinePropertyDescriptor(
-                    meta.pk,
-                    uiLabel,
-                    nameEltLabel,
-                    nameEltJsonId,
-                    meta.uuid,
-                );
-                this.userMetaTypePks.push(meta.pk);
-            } else if (
-                EddRest.LINE_STRAINS_META_UUID === meta.uuid ||
-                EddRest.CARBON_SRC_META_UUID === meta.uuid
-            ) {
-                nameEltJsonId = meta.pk + "__name";
-                if (EddRest.LINE_STRAINS_META_UUID === meta.uuid) {
-                    nameEltLabel = STRAIN_NAME_ELT_LABEL;
-                    this.strainNameEltJsonId = nameEltJsonId;
-                    this.strainMetaPk = meta.pk;
-                } else {
-                    nameEltLabel =
-                        meta.type_name.substring(0, meta.type_name.indexOf("(s)")) +
-                        " Name(s)";
-                }
-                propertyDescriptor = new LinePropertyDescriptor(
-                    meta.pk,
-                    uiLabel,
-                    nameEltLabel,
-                    nameEltJsonId,
-                    meta.uuid,
-                );
-            } else {
-                propertyDescriptor = new LinePropertyDescriptor(
-                    meta.pk,
-                    uiLabel,
-                    null,
-                    null,
-                    meta.uuid,
-                );
-            }
-            lineProps.push(propertyDescriptor);
-            this.allLineMetaTypes[meta.pk] = meta; // TODO: still need this?
+            const descriptor = this.buildDescriptor(meta);
+            lineProps.push(descriptor);
         });
-        // add in special-case hard-coded items
-        // that make sense to put in this list,
+
+        this.addPlaceholderTypes(lineProps);
+
+        // after removing the "Line " prefix from labels in buildDescriptor(),
+        // sort the list so it appears in alphabetic order *as displayed*
+        lineProps.sort((a: LinePropertyDescriptor, b: LinePropertyDescriptor) => {
+            return a.inputLabel.localeCompare(b.inputLabel);
+        });
+        // with labeling now sorted alphabetically, create list items
+        const linePropsList = $("#line-properties-list");
+        lineProps.forEach((lineProp: LinePropertyDescriptor) => {
+            this.addMetaListItem(linePropsList, lineProp);
+        });
+    }
+
+    addMetaListItem(linePropsList: JQuery, lineProp: LinePropertyDescriptor) {
+        $("<li>")
+            .attr("id", "lineProp" + lineProp.jsonId)
+            .addClass("ui-widget-content")
+            .text(lineProp.inputLabel)
+            .appendTo(linePropsList)
+            .data(lineProp);
+    }
+
+    registerMetadataType(meta: EddRest.MetadataType): boolean {
+        // omit special-case metadata types that don't make sense in this context
+        if (OMITTED_LINE_META_TYPE_UUIDS.indexOf(meta.uuid) >= 0) {
+            return false; // do not display in popup dialog
+        }
+        // if this metadata type matches the name of one we have autocomplete inputs for
+        // keep track of its pk for easy reference
+        if (AUTOCOMPLETE_META_UUIDS.indexOf(meta.uuid) >= 0) {
+            this.autocompleteLineMetaTypes[meta.pk] = meta;
+        }
+        // if this metadata type is one that supports multivalued input for a single line,
+        // store its pk for easy reference
+        if (MULTIVALUED_LINE_META_UUIDS.indexOf(meta.uuid) >= 0) {
+            this.multivaluedMetaTypePks.push(meta.pk);
+        }
+
+        this.allLineMetaTypes[meta.pk] = meta;
+        return true; // display in popup dialog
+    }
+
+    computeUiLabel(meta: any): string {
+        // compute UI labeling for the line properties that makes sense,
+        // e.g. by stripping off the "line" prefix from types that have it,
+        // or adding in the units suffix for clarity
+        if ("Line " === meta.type_name.substring(0, 5)) {
+            return meta.type_name.substring(5, meta.type_name.length);
+        }
+        const postfix = meta.postfix;
+        if (postfix.length) {
+            return meta.type_name + " (" + postfix + ")";
+        }
+        return meta.type_name;
+    }
+
+    buildDescriptor(meta: any): LinePropertyDescriptor {
+        // build up a descriptor for this metadata type,
+        // including logical labeling for it in various parts of the GUI,
+        // as well as JSON id's for both the metadata itself
+        // or its naming elements
+
+        const uiLabel = this.computeUiLabel(meta);
+        let nameEltLabel: string = uiLabel;
+        let nameEltJsonId: number | string = meta.pk;
+
+        if (USER_META_TYPE_UUIDS.indexOf(meta.uuid) >= 0) {
+            this.userMetaTypePks.push(meta.pk);
+            nameEltLabel = uiLabel + " Last Name";
+            nameEltJsonId = meta.pk + "__last_name";
+            return new LinePropertyDescriptor(
+                meta.pk,
+                uiLabel,
+                nameEltLabel,
+                nameEltJsonId,
+                meta.uuid,
+            );
+        } else if (
+            EddRest.LINE_STRAINS_META_UUID === meta.uuid ||
+            EddRest.CARBON_SRC_META_UUID === meta.uuid
+        ) {
+            nameEltJsonId = meta.pk + "__name";
+            if (EddRest.LINE_STRAINS_META_UUID === meta.uuid) {
+                nameEltLabel = STRAIN_NAME_ELT_LABEL;
+                this.strainNameEltJsonId = nameEltJsonId;
+                this.strainMetaPk = meta.pk;
+            } else {
+                nameEltLabel =
+                    meta.type_name.substring(0, meta.type_name.indexOf("(s)")) +
+                    " Name(s)";
+            }
+            return new LinePropertyDescriptor(
+                meta.pk,
+                uiLabel,
+                nameEltLabel,
+                nameEltJsonId,
+                meta.uuid,
+            );
+        } else {
+            return new LinePropertyDescriptor(meta.pk, uiLabel, null, null, meta.uuid);
+        }
+    }
+
+    addPlaceholderTypes(lineProps: LinePropertyDescriptor[]) {
+        // add in special-case hard-coded items that make sense to display to users,
         // but aren't actually represented by line metadata types in the database.
         // Since line metadata types will all have a unique integer pk identifier,
         // we can use non-integer alphanumeric strings for our special-case additions.
@@ -2074,21 +2113,6 @@ class CreationManager {
                 this.strainNameEltJsonId,
             ),
         );
-        // after removing the "Line " prefix from labels for this context,
-        // sort the list so it appears in alphabetic order *as displayed*
-        lineProps.sort((a: LinePropertyDescriptor, b: LinePropertyDescriptor) => {
-            return a.inputLabel.localeCompare(b.inputLabel);
-        });
-        // with labeling now sorted alphabetically, create list items
-        lineProps.forEach((lineProp: LinePropertyDescriptor) => {
-            const linePropsList = $("#line-properties-list");
-            $("<li>")
-                .attr("id", "lineProp" + lineProp.jsonId)
-                .addClass("ui-widget-content")
-                .text(lineProp.inputLabel)
-                .appendTo(linePropsList)
-                .data(lineProp);
-        });
     }
 
     showAddProperty(): void {
