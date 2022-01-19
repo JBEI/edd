@@ -51,6 +51,7 @@ class Metadata:
     type_name: str
     uuid: str
     # optional
+    description: str = None
     default_value: str = None
     input_type: str = None
     postfix: str = None
@@ -228,6 +229,10 @@ class MetadataType(models.Model, EDDSerialize):
         null=True,
         verbose_name=_("Input Type"),
     )
+    description = VarCharField(
+        blank=True, help_text=_("Description for this Metadata Type"), null=True,
+    )
+
     # a default value to use if the field is left blank
     default_value = VarCharField(
         blank=True,
@@ -315,6 +320,7 @@ class MetadataType(models.Model, EDDSerialize):
         return {
             "id": self.pk,
             "name": self.type_name,
+            "description": self.description,
             "i18n": self.type_i18n,
             "input_type": self.input_type,
             "prefix": self.prefix,

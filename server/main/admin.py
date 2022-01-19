@@ -145,6 +145,7 @@ class MetadataTypeAdmin(admin.ModelAdmin):
     fields = (
         "type_name",
         "input_type",
+        "description",
         "default_value",
         "prefix",
         "postfix",

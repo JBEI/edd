@@ -165,6 +165,7 @@ class MetadataTypeSerializer(serializers.ModelSerializer):
         model = models.MetadataType
         fields = (
             "default_value",
+            "description",
             "for_context",
             "group",
             "input_type",
