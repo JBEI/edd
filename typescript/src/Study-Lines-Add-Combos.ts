@@ -613,6 +613,15 @@ class LinePropertyInput extends MultiValueInput {
             .addClass("bulk_lines_table_cell")
             .addClass("centered_radio_btn_parent")
             .appendTo(row);
+
+        // metadata type description
+        const description = creationManager.getMetadataDescription(this.lineProperty);
+        $("<div>")
+            .addClass("bulk_lines_table_cell")
+            .addClass("help-block") // bootstrap 3
+            .text(description)
+            .appendTo(row);
+
         if (firstRow) {
             const noComboButton = this.buildNoComboButton().appendTo(applyAllCell);
             if (firstRow && this.supportsCombinations) {
@@ -1976,17 +1985,12 @@ class CreationManager {
         this.multivaluedMetaTypePks = [];
         this.strainMetaPk = -1;
 
-        // create descriptors for each line metadata type,
+        // create descriptors for each displayable line metadata type,
         // representing the UI labeling to use, as well as the metadata ID's
-        const lineProps: LinePropertyDescriptor[] = [];
-        metadataTypes.forEach((meta) => {
-            const display = this.registerMetadataType(meta);
-            if (!display) {
-                return true; // keep looping!
-            }
-            const descriptor = this.buildDescriptor(meta);
-            lineProps.push(descriptor);
-        });
+        const lineProps: LinePropertyDescriptor[] = metadataTypes
+            // register all types, but only build descriptors for those we should display
+            .filter((meta) => this.registerMetadataType(meta))
+            .map((meta) => this.buildDescriptor(meta));
 
         this.addPlaceholderTypes(lineProps);
 
@@ -2002,13 +2006,29 @@ class CreationManager {
         });
     }
 
+    getMetadataDescription(lineProp: LinePropertyDescriptor): string {
+        const metaType = this.allLineMetaTypes[lineProp.jsonId];
+        if (metaType) {
+            // this is a real type, e.g. not a placeholder, e.g. # replicates
+            return metaType.description;
+        }
+        return "";
+    }
+
     addMetaListItem(linePropsList: JQuery, lineProp: LinePropertyDescriptor) {
-        $("<li>")
+        // adds a metadata item to the user-selectable list in the popup dialog
+        const li = $("<li>")
             .attr("id", "lineProp" + lineProp.jsonId)
             .addClass("ui-widget-content")
             .text(lineProp.inputLabel)
-            .appendTo(linePropsList)
             .data(lineProp);
+
+        // add optional description
+        const description = this.getMetadataDescription(lineProp);
+        if (description) {
+            $("<p>").text(description).addClass("help-block").appendTo(li);
+        }
+        li.appendTo(linePropsList);
     }
 
     registerMetadataType(meta: EddRest.MetadataType): boolean {

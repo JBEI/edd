@@ -112,7 +112,7 @@ function showWaitMessage(divSelector: string) {
         .appendTo(div);
 }
 
-function lineMetaSuccessHandler(metadataTypes: any[]) {
+function lineMetaSuccessHandler(metadataTypes: EddRest.MetadataType[]) {
     // omit Metadata types present in the database that should be omitted from the lists displayed
     // in the help page... they duplicate baked-in line/assay characteristics displayed in a
     // separate table or required in slightly different form by the Experiment Description file
@@ -124,7 +124,7 @@ function lineMetaSuccessHandler(metadataTypes: any[]) {
     );
 }
 
-function assayMetaSuccessHandler(metadataTypes: any[]) {
+function assayMetaSuccessHandler(metadataTypes: EddRest.MetadataType[]) {
     // omit Metadata types present in the database that should be omitted from the lists displayed
     // in the help page... they duplicate baked-in line/assay characteristics displayed in a
     // separate table or required in slightly different form by the Experiment Description file
@@ -171,7 +171,7 @@ function showProtocols() {
 
 function showMetadataTypes(
     divSelector: string,
-    metadataTypes: any[],
+    metadataTypes: EddRest.MetadataType[],
     omitFromDisplay: string[],
 ): void {
     /* TODO: consider merging with showProtocols() above
@@ -182,9 +182,10 @@ function showMetadataTypes(
         const table = $("<table>").addClass("figureTable metadataList").appendTo(div);
         const head = $("<thead>").appendTo(table);
         $("<th>").text("Name").appendTo(head);
+        $("<th>").text("Description").appendTo(head);
         $("<th>").text("Units").appendTo(head);
         const body = $("<tbody>").appendTo(table);
-        metadataTypes.forEach((metadataType: any): boolean => {
+        metadataTypes.forEach((metadataType: EddRest.MetadataType): boolean => {
             // omit items included in the 'primary characteristics' table
             const omit: boolean = omitFromDisplay.indexOf(metadataType.uuid) >= 0;
             if (omit) {
@@ -192,6 +193,7 @@ function showMetadataTypes(
             }
             const row: JQuery = $("<tr>").appendTo(body);
             $("<td>").text(metadataType.type_name).appendTo(row);
+            $("<td>").text(metadataType.description).appendTo(row);
             $("<td>").text(metadataType.postfix).appendTo(row);
         });
     } else {

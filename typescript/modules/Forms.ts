@@ -393,6 +393,7 @@ export class FormMetadataManager {
     select_metadata_button_class = "meta-add";
     prefix_label_class = "meta-prefix";
     postfix_label_class = "meta-postfix";
+    description_label_class = "meta-description";
     remove_metadata_button_class = "meta-remove";
     restore_metadata_button_class = "meta-restore";
     clear_metadata_button_class = "meta-clear";
@@ -612,6 +613,11 @@ export class FormMetadataManager {
             addingRow
                 .find(`.${this.postfix_label_class}`)
                 .text(`(${metaType.postfix})`);
+        }
+        if (metaType.description) {
+            addingRow
+                .find(`.${this.description_label_class}`)
+                .text(metaType.description);
         }
         return addingRow;
     }
