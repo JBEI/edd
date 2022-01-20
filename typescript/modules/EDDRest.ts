@@ -62,6 +62,20 @@ export interface MeasurementUnits {
     unit_name: string;
 }
 
+export interface MetadataType {
+    pk: number;
+    type_name: string;
+    description: string;
+    i18n: string;
+    input_type: string;
+    input_size: number;
+    prefix: string;
+    postfix: string;
+    default: string;
+    context: string;
+    uuid: string;
+}
+
 export interface Protocol {
     pk: number;
     uuid: any;
