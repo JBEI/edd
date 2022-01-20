@@ -15,7 +15,6 @@
 
 {% block content %}
 <a id="accesslink" href="{% url 'main:access' slug=study.slug %}" class="off"></a>
-<a id="datalink" href="{% url 'main:edddata' slug=study.slug %}" class="off"></a>
 <div class="studyNav">
   <ui class="nav nav-pills">
     <li class="{% if showingoverview %}active{% endif %}">

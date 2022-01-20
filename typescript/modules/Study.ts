@@ -26,20 +26,6 @@ $(window).on("load", () => {
             $.event.trigger("eddaccess", [spec]);
         });
     }
-    // fetch EDDData if available
-    const datalink = $("#datalink");
-    if (datalink.length) {
-        $.ajax({
-            "url": datalink.attr("href"),
-            "type": "GET",
-            "error": (xhr, status, e) => {
-                $("#content").prepend(`<div class="noData">Error. Please reload</div>`);
-            },
-            "success": (data) => {
-                $.event.trigger("edddata", [data]);
-            },
-        });
-    }
 });
 
 // Base class for the non-autocomplete inline editing fields for the Study

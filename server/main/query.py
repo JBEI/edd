@@ -1,6 +1,5 @@
 import logging
 
-from django.contrib import auth
 from django.contrib.sites.models import Site
 from django.urls import reverse
 from threadlocals.threadlocals import get_current_request
@@ -54,46 +53,13 @@ def get_absolute_url(relative_url):
 def get_edddata_study(study):
     """
     Dump of selected database contents used to populate EDDData object on the
-    client. Although this includes some data types like Strain and CarbonSource
-    that are not "children" of a Study, they have been filtered to include only
-    those that are used by the given study.
+    client. Deprecated, use REST API instead.
     """
-    measure_types = models.MeasurementType.used_in_study(study)
-    protocols = study.get_protocols_used()
     assays = study.get_assays()
-    strains = study.get_strains_used()
     lines = models.Line.objects.filter(study=study)
-    User = auth.get_user_model()
-    study_contact = User.profiles.filter(contact_study_set=study)
-    line_contacts = User.profiles.filter(line_contact_set__study=study)
-    line_experimenters = User.profiles.filter(line_experimenter_set__study=study)
-    assay_experimenters = User.profiles.filter(assay_experimenter_set__study=study)
-    all_users = study_contact.union(
-        line_contacts, line_experimenters, assay_experimenters
-    )
 
     return {
         "currentStudyID": study.id,
-        "valueLinks": [
-            reverse("main:measurements", kwargs={"slug": study.slug, "protocol": p.id})
-            for p in protocols
-        ],
         "Assays": {a.id: a.to_json() for a in assays},
         "Lines": {line.id: line.to_json() for line in lines},
-        "MeasurementTypes": {t.id: t.to_json() for t in measure_types},
-        "Protocols": {p.id: p.to_json() for p in protocols},
-        "Strains": {s.id: s.to_json() for s in strains},
-        "Users": {u.id: u.to_json() for u in all_users},
-    }
-
-
-def get_edddata_misc():
-    mdtypes = models.MetadataType.objects.all().select_related("group")
-    unit_types = models.MeasurementUnit.objects.all()
-    return {
-        "MeasurementTypeCompartments": models.Measurement.Compartment.to_json(),
-        # TODO: is it necessary to always return full list?
-        "MetaDataTypes": {m.id: m.to_json() for m in mdtypes},
-        # TODO: is it necessary to always return full list?
-        "UnitTypes": {ut.id: ut.to_json() for ut in unit_types},
     }

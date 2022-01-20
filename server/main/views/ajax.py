@@ -1,13 +1,12 @@
 """Views used as AJAX calls by the front-end Typescript code in EDD."""
 
-import collections
 import json
 import logging
 
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -51,56 +50,14 @@ def load_study(
     raise Http404()
 
 
-# /study/<study_id>/measurements/<protocol_id>/<assay_id?>/
-def study_measurements(request, pk=None, slug=None, protocol=None, assay=None):
-    """Request measurement data in a study, for a single assay."""
-    obj = load_study(request, pk=pk, slug=slug)
-    measure_types = edd_models.MeasurementType.active_in(
-        study_id=obj.id, protocol_id=protocol, assay_id=assay,
-    )
-    # stash QuerySet to use in both measurements and total_measures below
-    qmeasurements = edd_models.Measurement.active_in(
-        study_id=obj.id, protocol_id=protocol, assay_id=assay,
-    )
-    # Limit the measurements returned to keep browser performant
-    measurements = qmeasurements.order_by("id")[:5000]
-    total_measures = qmeasurements.values("assay_id").annotate(count=Count("assay_id"))
-    measure_list = list(measurements)
-    if len(measure_list):
-        # only try to pull values when we have measurement objects
-        values = edd_models.MeasurementValue.active_in(
-            study_id=obj.id,
-            protocol_id=protocol,
-            assay_id=assay,
-            id_range=(measure_list[0].id, measure_list[-1].id),
-        )
-    else:
-        values = []
-    value_dict = collections.defaultdict(list)
-    for v in values:
-        value_dict[v.measurement_id].append((v.x, v.y))
-    payload = {
-        "total_measures": {
-            x["assay_id"]: x.get("count", 0) for x in total_measures if "assay_id" in x
-        },
-        "types": {t.pk: t.to_json() for t in measure_types},
-        "measures": [m.to_json() for m in measure_list],
-        "data": value_dict,
-    }
-    return JsonResponse(payload, encoder=utilities.JSONEncoder)
-
-
 # /study/<study_id>/edddata/
 def study_edddata(request, pk=None, slug=None):
     """
     Various information (both global and study-specific) that populates the
-    EDDData JS object on the client.
+    EDDData JS object on the client. Deprecated, use REST APIs.
     """
     model = load_study(request, pk=pk, slug=slug)
-    data_misc = query.get_edddata_misc()
-    data_study = query.get_edddata_study(model)
-    data_study.update(data_misc)
-    return JsonResponse(data_study, encoder=utilities.JSONEncoder)
+    return JsonResponse(query.get_edddata_study(model), encoder=utilities.JSONEncoder)
 
 
 # /study/<study_id>/assaydata/

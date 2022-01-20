@@ -1036,21 +1036,26 @@ class StudyDetailViewTests(StudyViewTestCase):
 class StudyAjaxViewTests(StudyViewTestCase):
     """Tests for the behavior of the Study view(s)."""
 
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.url = reverse("main:edddata", kwargs={"slug": cls.target_study.slug})
+    def test_study_access_identifiers(self):
+        """A valid study should have all study identifiers in access response."""
+        url = reverse("main:access", kwargs={"slug": self.target_study.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, codes.ok)
+        payload = response.json()
+        assert payload["study"]["pk"] == self.target_study.pk
+        assert payload["study"]["slug"] == self.target_study.slug
+        assert payload["study"]["uuid"] == str(self.target_study.uuid)
 
     def test_load_study_with_invalid_slug(self):
         """An invalid slug should return a Not Found code."""
-        # using edddata view as simple way to go through main.view.load_study function
-        response = self.client.get(reverse("main:edddata", kwargs={"slug": "invalid"}))
+        # using access view as simple way to go through main.view.load_study function
+        response = self.client.get(reverse("main:access", kwargs={"slug": "invalid"}))
         self.assertEqual(response.status_code, codes.not_found)
 
     def test_load_study_with_invalid_pk(self):
         """An invalid pk should return a Not Found code."""
-        # using edddata view as simple way to go through main.view.load_study function
-        response = self.client.get(reverse("main:edd-pk:edddata", kwargs={"pk": 0}))
+        # using access view as simple way to go through main.view.load_study function
+        response = self.client.get(reverse("main:edd-pk:access", kwargs={"pk": 0}))
         self.assertEqual(response.status_code, codes.not_found)
 
     def test_load_study_without_identifier(self):

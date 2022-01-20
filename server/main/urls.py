@@ -22,19 +22,6 @@ study_url_patterns = [
     # deprecating these *data/ URLs in favor of access/ and REST API links
     path("assaydata/", login_required(views.study_assay_table_data), name="assaydata"),
     path("edddata/", login_required(views.study_edddata), name="edddata"),
-    path(
-        "measurements/<int:protocol>/",
-        include(
-            [
-                path("", login_required(views.study_measurements), name="measurements"),
-                path(
-                    "<int:assay>/",
-                    login_required(views.study_measurements),
-                    name="assay_measurements",
-                ),
-            ]
-        ),
-    ),
     # end deprecated section, access/ definition here
     path("access/", login_required(views.study_access), name="access"),
     path(

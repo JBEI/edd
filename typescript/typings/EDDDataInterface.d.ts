@@ -21,7 +21,6 @@ interface RecordList<U> {
     [id: number]: U;
 }
 
-// This is what we expect in EDDData.Lines
 interface LineRecord extends EDDRecord {
     contact: number;
     control: boolean;
@@ -39,7 +38,6 @@ interface LineRecord extends EDDRecord {
     replicate_names?: string[];
 }
 
-// This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
     count: number;
     experimenter: number; // Experimenter ID
@@ -60,7 +58,6 @@ interface EDDValue {
     y: number[];
 }
 
-// This is what we expect in EDDData.Measurements
 interface MeasurementRecord {
     pk: number; // Measurement ID
     assay: number; // Assay ID
@@ -154,23 +151,11 @@ interface UserRecord {
     is_active: boolean;
 }
 
-// Declare interface and EDDData variable for highlight support
 interface EDDData {
     // Can be null/undefined when no Study is chosen
     currentStudyID?: number;
-    // Can be null/undefined when no Study is chosen
-    valueLinks?: string[];
     Assays?: RecordList<AssayRecord>;
     Lines?: RecordList<LineRecord>;
-    // added in follow-on queries
-    Measurements?: RecordList<MeasurementRecord>;
-    Compartments?: RecordList<CompartmentRecord>;
-    MeasurementTypes?: RecordList<MeasurementTypeRecord>;
-    MetaDataTypes?: RecordList<MetadataTypeRecord>;
-    Protocols?: RecordList<ProtocolRecord>;
-    Strains?: RecordList<StrainRecord>;
-    UnitTypes?: RecordList<UnitType>;
-    Users?: RecordList<UserRecord>;
 }
 
 interface StudyID {

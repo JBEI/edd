@@ -5,7 +5,6 @@ from .ajax import (
     study_access,
     study_assay_table_data,
     study_edddata,
-    study_measurements,
 )
 from .study import (
     StudyAttachmentView,
@@ -22,7 +21,6 @@ __all__ = [
     study_access,
     study_assay_table_data,
     study_edddata,
-    study_measurements,
     StudyAttachmentView,
     StudyCreateView,
     StudyDeleteView,
