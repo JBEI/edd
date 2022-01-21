@@ -24,7 +24,7 @@ class DescribeTagTests(TestCase):
             result = self.build_example_file_test_template()
             self.assertTrue(
                 re.match(
-                    r"/static/main/example/sample_experiment_description.*\.xlsx",
+                    r"/static/edd/describe/example_experiment_description.*\.xlsx",
                     result,
                 )
             )
@@ -34,5 +34,5 @@ class DescribeTagTests(TestCase):
         with self.settings(SITE_ID=9000):
             result = self.build_preview_image_test_template()
             self.assertTrue(
-                re.match(r"/static/main/images/describe-example.*\.png", result)
+                re.match(r"/static/edd/describe/example-image.*\.png", result)
             )

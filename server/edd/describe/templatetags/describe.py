@@ -15,7 +15,7 @@ def describe_preview_img(context):
         preview_url = DescribeExampleSet.objects.get(site=site).example_image_file.url
     except Exception:
         # if there is no configuration, show default image
-        preview_url = static("main/images/describe-example.png")
+        preview_url = static("edd/describe/example-image.png")
     return preview_url
 
 
@@ -27,5 +27,5 @@ def describe_example_file(context):
         example_url = DescribeExampleSet.objects.get(site=site).example_file.url
     except Exception:
         # if there is no configuration, download default example file
-        example_url = static("main/example/sample_experiment_description.xlsx")
+        example_url = static("edd/describe/example_experiment_description.xlsx")
     return example_url
