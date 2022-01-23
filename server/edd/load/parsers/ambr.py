@@ -97,6 +97,8 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
                 )
 
     def is_valid(self, value):
-        if value is not None and not np.isnan(float(value)):
-            return True
-        return False
+        if value is None:
+            return False
+        if np.isnan(float(value)):
+            return False
+        return True
