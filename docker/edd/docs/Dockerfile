@@ -1,4 +1,4 @@
-FROM library/python:3.8-slim-buster as build
+FROM library/python:3.10-slim-bullseye as build
 
 RUN pip install \
         mkdocs \
