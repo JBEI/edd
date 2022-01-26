@@ -123,7 +123,6 @@ images also include links to the README for the base image.
 -   **[solr][9]**: custom Dockerfile, based on the [official Solr image][10] version 7.3
 -   **[rabbitmq][11]**: custom Dockerfile, based on official RabbitMQ image, using version
     3.7-management-alpine
--   **[flower][12]**: custom Dockerfile, based on official Python alpine image (optional)
 -   **[nginx][14]**: based on [official Nginx image][15], using mainline version
 -   **nginx-gen**: based on [jwilder/docker-gen][16], using a custom template file
 -   **[jrcs/letsencrypt-nginx-proxy-companion][17]**: third-party image, using latest release
@@ -143,7 +142,6 @@ is a one-to-one relationship from images to services. The two exceptions both ma
 -   **redis**: provides the cache back-end for EDD
 -   **solr**: provides a search index for EDD
 -   **rabbitmq**: messaging bus that supports Celery
--   **flower**: management / monitoring application for Celery (optional)
 -   **smtp**: mail server that supports emails from EDD
 -   **nginx**: webserver that proxies clients' HTTP requests to other Docker services
 -   **nginx-gen**: listens for container events, generates nginx config to proxy requests
@@ -162,7 +160,6 @@ is a one-to-one relationship from images to services. The two exceptions both ma
 [9]: solr/README.md
 [10]: https://hub.docker.com/_/solr/
 [11]: https://hub.docker.com/_/rabbitmq/
-[12]: flower/README.md
 [13]: smtp/README.md
 [14]: nginx/README.md
 [15]: https://hub.docker.com/_/nginx/

@@ -28,7 +28,6 @@ or run separately:
 
 These additional services may be included as well:
 
--   **flower**: management / monitoring application for Celery
 -   **nginx**: webserver that proxies clients' HTTP requests to other Docker services
 -   **nginx-gen**: monitors container start/stop events to generate configs for `nginx`
 -   **letsencrypt**: generates TLS certificates for `nginx` through the Let's Encrypt service
@@ -62,7 +61,6 @@ If using a Linux host or Docker for Mac, use the hostname `edd.lvh.me`.
 -   **EDD's REST API:** `http://edd.lvh.me/rest/` (if enabled)
 -   **EDD's GraphQL API:** `http://edd.lvh.me/graphql/` (if enabled)
 -   **Solr:** `http://solr.lvh.me/` (if configured in `docker-compose.override.yml`)
--   **Flower:** `http://flower.lvh.me/` (if configured in `docker-compose.override.yml`)
 -   **RabbitMQ Management Plugin:** `http://rabbitmq.lvh.me/` (if configured in
     `docker-compose.override.yml`)
 
