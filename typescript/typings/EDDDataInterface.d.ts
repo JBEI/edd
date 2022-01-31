@@ -120,6 +120,7 @@ interface UnitType {
 }
 
 interface MetadataTypeRecord {
+    description: string;
     default_value: string;
     for_context: "A" | "L" | "S";
     group: string;
