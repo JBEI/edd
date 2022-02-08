@@ -149,7 +149,8 @@ function yExtent(values: PlotValue[]): Extent {
     if (span === 0) {
         return [min, min + 1];
     }
-    return [min, max];
+    // default to zero-bound
+    return [Math.min(min, 0), max];
 }
 
 type ValueFormat = (item: Item) => PlotValue[];
