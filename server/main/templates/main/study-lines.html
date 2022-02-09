@@ -54,6 +54,7 @@
       </a>
     </p>
   </div>
+  {% endif %}
   <div class="flex-row sectionActions">
     <div class="flex-item">
       <nav class="hidden pager-nav">
@@ -76,6 +77,7 @@
         </ul>
       </nav>
     </div>
+    {% if writable %}
     {% url "main:load:wizard" slug=study.slug as wizard_url %}
     <a class="{% if not lines %}off{% endif %} pull-right" href="{{ wizard_url}}">
       <button class="btn btn-primary btn-large" type="button">
@@ -83,7 +85,9 @@
         {% trans 'Import Data' %}
       </button>
     </a>
+    {% endif %}
   </div>
+  {% if writable %}
   {% include 'main/include/dropzone_messages.html' %}
   <div class="linesDropZone off">
     <div
