@@ -51,13 +51,6 @@ class CombinatorialCreationTests(TestCase):
         meta1 = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
         meta2 = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
         strains_mtype = models.MetadataType.system("Strain(s)")
-        carbon_sources_mtype = models.MetadataType.system("Carbon Source(s)")
-        cs_glucose, _ = models.CarbonSource.objects.get_or_create(
-            name=r"1% Glucose", volume=10.00000
-        )
-        cs_galactose, _ = models.CarbonSource.objects.get_or_create(
-            name=r"1% Galactose", volume=50
-        )
 
         # Create non-standard objects to use as the basis for this test
         strain1 = models.Strain.objects.create(name="JW1058")
@@ -70,15 +63,10 @@ class CombinatorialCreationTests(TestCase):
                     "elements": [
                         f"{strains_mtype.pk}__name",
                         f"{meta2.pk}",
-                        f"{carbon_sources_mtype.pk}__name",
                         "replicate_num",
                     ],
                     "abbreviations": {
                         f"{strains_mtype.pk}__name": {"JW1058": 58, "JW5327": 27},
-                        f"{carbon_sources_mtype.pk}__name": {
-                            r"1% Glucose": "GLU",
-                            r"1% Galactose": "GAL",
-                        },
                     },
                 },
                 "replicate_count": 3,
@@ -86,7 +74,6 @@ class CombinatorialCreationTests(TestCase):
                 "combinatorial_line_metadata": {
                     strains_mtype.pk: [[strain1.pk], [strain2.pk]],
                     meta2.pk: ["EZ", "LB"],  # media
-                    carbon_sources_mtype.pk: [[cs_galactose.pk], [cs_glucose.pk]],
                 },
             }
         )
@@ -96,30 +83,18 @@ class CombinatorialCreationTests(TestCase):
         lb = {meta2.pk: "LB", meta1.pk: 30}
 
         expected_line_info = {
-            "58-EZ-GLU-R1": {"meta": ez, "carbon": [cs_glucose.pk]},
-            "58-EZ-GLU-R2": {"meta": ez, "carbon": [cs_glucose.pk]},
-            "58-EZ-GLU-R3": {"meta": ez, "carbon": [cs_glucose.pk]},
-            "58-EZ-GAL-R1": {"meta": ez, "carbon": [cs_galactose.pk]},
-            "58-EZ-GAL-R2": {"meta": ez, "carbon": [cs_galactose.pk]},
-            "58-EZ-GAL-R3": {"meta": ez, "carbon": [cs_galactose.pk]},
-            "58-LB-GLU-R1": {"meta": lb, "carbon": [cs_glucose.pk]},
-            "58-LB-GLU-R2": {"meta": lb, "carbon": [cs_glucose.pk]},
-            "58-LB-GLU-R3": {"meta": lb, "carbon": [cs_glucose.pk]},
-            "58-LB-GAL-R1": {"meta": lb, "carbon": [cs_galactose.pk]},
-            "58-LB-GAL-R2": {"meta": lb, "carbon": [cs_galactose.pk]},
-            "58-LB-GAL-R3": {"meta": lb, "carbon": [cs_galactose.pk]},
-            "27-EZ-GLU-R1": {"meta": ez, "carbon": [cs_glucose.pk]},
-            "27-EZ-GLU-R2": {"meta": ez, "carbon": [cs_glucose.pk]},
-            "27-EZ-GLU-R3": {"meta": ez, "carbon": [cs_glucose.pk]},
-            "27-EZ-GAL-R1": {"meta": ez, "carbon": [cs_galactose.pk]},
-            "27-EZ-GAL-R2": {"meta": ez, "carbon": [cs_galactose.pk]},
-            "27-EZ-GAL-R3": {"meta": ez, "carbon": [cs_galactose.pk]},
-            "27-LB-GLU-R1": {"meta": lb, "carbon": [cs_glucose.pk]},
-            "27-LB-GLU-R2": {"meta": lb, "carbon": [cs_glucose.pk]},
-            "27-LB-GLU-R3": {"meta": lb, "carbon": [cs_glucose.pk]},
-            "27-LB-GAL-R1": {"meta": lb, "carbon": [cs_galactose.pk]},
-            "27-LB-GAL-R2": {"meta": lb, "carbon": [cs_galactose.pk]},
-            "27-LB-GAL-R3": {"meta": lb, "carbon": [cs_galactose.pk]},
+            "27-EZ-R1": {"meta": ez},
+            "27-EZ-R2": {"meta": ez},
+            "27-EZ-R3": {"meta": ez},
+            "27-LB-R1": {"meta": lb},
+            "27-LB-R2": {"meta": lb},
+            "27-LB-R3": {"meta": lb},
+            "58-EZ-R1": {"meta": ez},
+            "58-EZ-R2": {"meta": ez},
+            "58-EZ-R3": {"meta": ez},
+            "58-LB-R1": {"meta": lb},
+            "58-LB-R2": {"meta": lb},
+            "58-LB-R3": {"meta": lb},
         }
 
         # creating *AFTER* setup of testing database records
@@ -142,8 +117,6 @@ class CombinatorialCreationTests(TestCase):
         for line in result.lines_created:
             self.assertIn(line.name, expected_line_info)
             info = expected_line_info[line.name]
-            cs_list = list(line.carbon_source.values_list("id", flat=True))
-            self.assertEqual(cs_list, info["carbon"])
             # because of replicate, the expected metadata is a subset of actual
             assert {*info["meta"].items()}.issubset({*line.metadata.items()})
 

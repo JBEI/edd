@@ -400,24 +400,6 @@ export class Group extends BaseAuto {
     }
 }
 
-// .autocomp_carbon
-export class CarbonSource extends BaseAuto {
-    static columns = [
-        new MultiColumnAuto.AutoColumn("Name", "150px", "name"),
-        new MultiColumnAuto.AutoColumn("Volume", "60px", "volume"),
-        new MultiColumnAuto.AutoColumn("Labeling", "100px", "labeling"),
-        new MultiColumnAuto.AutoColumn("Description", "250px", "description", "600px"),
-        new MultiColumnAuto.AutoColumn("Initials", "60px", "initials"),
-    ];
-
-    constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
-        super(opt, search_options);
-        this.modelName = "CarbonSource";
-        this.columns = CarbonSource.columns;
-        this.cacheId = "CSources";
-    }
-}
-
 // .autocomp_type
 export class MetadataType extends BaseAuto {
     static columns = [
@@ -721,7 +703,6 @@ export class Registry extends BaseAuto {
 export const class_lookup: { [name: string]: typeof BaseAuto } = {
     "User": User,
     "Group": Group,
-    "CarbonSource": CarbonSource,
     "MetadataType": MetadataType,
     "AssayMetadataType": AssayMetadataType,
     "AssayFormMetadataType": AssayFormMetadataType,

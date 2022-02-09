@@ -88,7 +88,6 @@ class ColumnChoice:
         try:
             # aggregated fields on measurement, move to proper object
             measure.assay.line.strain_names = measure.strain_names
-            measure.assay.line.cs_names = measure.cs_names
             return {
                 models.Assay: measure.assay,
                 models.Line: measure.assay.line,
@@ -214,7 +213,7 @@ class ExportSelection:
             ids_filter("line", ids),
         )
         # select_related('experimenter__userprofile', 'updated')
-        # prefetch_related(strains, carbon_source)
+        # prefetch_related(strains)
 
         # find all assays containing the listed (assay|measure) IDs
         # or contained by (study|line)
@@ -255,14 +254,8 @@ class ExportSelection:
         """A queryset of lines included in the selection."""
         return (
             self._line_queryset.select_related("experimenter__userprofile", "updated")
-            .annotate(
-                strain_names=ArrayAgg("strains__name"),
-                cs_names=ArrayAgg("carbon_source__name"),
-            )
-            .prefetch_related(
-                Prefetch("strains", to_attr="strain_list"),
-                Prefetch("carbon_source", to_attr="cs_list"),
-            )
+            .annotate(strain_names=ArrayAgg("strains__name"))
+            .prefetch_related(Prefetch("strains", to_attr="strain_list"))
         )
 
     @property
@@ -411,7 +404,6 @@ class TableExport:
             # eliminate some subqueries and/or repeated queries
             # by collecting values in arrays
             strain_names=ArrayAgg("assay__line__strains__name", distinct=True),
-            cs_names=ArrayAgg("assay__line__carbon_source__name", distinct=True),
             vids=ArrayAgg("measurementvalue"),
             # aggregating arrays instead of values, use JSONB
             vxs=JSONBAgg("measurementvalue__x"),

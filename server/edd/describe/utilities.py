@@ -356,7 +356,6 @@ ALLOWED_RELATED_OBJECT_FIELDS = {
     "contact": ("last_name"),
     "experimenter": ("last_name"),
     "strains": ("name"),
-    "carbon_source": ("name"),
 }
 
 
@@ -407,8 +406,8 @@ class ExperimentDescriptionContext:
     ) -> Tuple[Dict[int, MetadataType], Dict[int, MetadataType]]:
         """
         Inspects the provided line metadata types to find those correspond to
-        ManyRelatedFields (e.g. Strain, CarbonSource) that may also be used in
-        line naming or needed to set foreign key relations
+        ManyRelatedFields (e.g. Strain) that may also be used in line naming
+        or needed to set foreign key relations
         """
         many_related_mtypes: Dict[int, MetadataType] = {}
         related_object_mtypes: Dict[int, MetadataType] = {}
@@ -457,7 +456,7 @@ class ExperimentDescriptionContext:
 
         # regardless of its input format, extract a flattened set of primary keys from value_pks.
         # this is essentially unrolling the JSON output from the combinatorial GUI, or analogous
-        # in-memory storage of combinatorial (+\- group) strain/carbon source pks used by ED files
+        # in-memory storage of combinatorial (+\- group) strain pks used by ED files
         if isinstance(value_pks, str):
             pks_set = {int(value_pks)}
         elif isinstance(value_pks, Sequence):
@@ -1184,7 +1183,7 @@ class CombinatorialCreationPerformance:
         duration_s = self.ice_search_delta.total_seconds()
         found_folder_count = len(folders_by_ice_id)
         folder_entries = sum(
-            [folder.entry_count for folder in folders_by_ice_id.values()]
+            folder.entry_count for folder in folders_by_ice_id.values()
         )
         logger.info(
             f"Done with ICE search. Found {found_folder_count}/{total_folder_count} "

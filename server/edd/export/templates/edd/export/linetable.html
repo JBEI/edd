@@ -22,12 +22,6 @@
         <th class="sortheader" style="text-align:left" id="hMedia">
           <div>{% trans "Media" %}</div>
         </th>
-        <th class="sortheader" style="text-align:left" id="hCSource">
-          <div>{% trans "Carbon Source" %}</div>
-        </th>
-        <th class="sortheader" style="text-align:left" id="hLabeling">
-          <div>{% trans "Labeling" %}</div>
-        </th>
         <th class="sortheader" style="text-align:center" id="hExperimenter">
           <div>{% trans "Experimenter" %}</div>
         </th>
@@ -47,20 +41,6 @@
           </ul>
         </td>
         <td>{{ line.media }}</td>
-        <td>
-          <ul>
-          {% for carbon in line.cs_list %}
-            <li>{{ carbon.name }}</li>
-          {% endfor %}
-          </ul>
-        </td>
-        <td>
-          <ul>
-          {% for carbon in line.cs_list %}
-            <li>{{ carbon.labeling }}</li>
-          {% endfor %}
-          </ul>
-        </td>
         <td style="text-align:center;">{{ line.experimenter.profile.initials }}</td>
         <td>{{ line.last_modified }}</td>
       </tr>

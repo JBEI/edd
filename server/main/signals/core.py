@@ -58,7 +58,6 @@ def set_file_info_mime_type(instance):
 
 core_eddobject = [
     models.Assay,
-    models.CarbonSource,
     models.Line,
     models.Protocol,
     models.Strain,

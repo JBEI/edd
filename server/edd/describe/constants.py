@@ -419,9 +419,3 @@ COMMON_LINE_METADATA_SECTION = "common_line_metadata"
 COMBINATORIAL_LINE_METADATA_SECTION = "combinatorial_line_metadata"
 PROTOCOL_TO_ASSAY_METADATA_SECTION = "protocol_to_assay_metadata"
 PROTOCOL_TO_COMBINATORIAL_METADATA_SECTION = "protocol_to_combinatorial_metadata"
-
-# TODO: flesh out other items that are doubly-defined based on database field / metadata
-# conflicts --
-# CARBON_SOURCE = 'carbon_source'
-# EXPERIMENTER = 'experimenter'
-# CONTACT = 'contact'

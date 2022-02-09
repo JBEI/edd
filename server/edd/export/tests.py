@@ -83,7 +83,6 @@ class ExportTaskTests(TestCase):
             "Line Description",
             "Control",
             "Strain(s)",
-            "Carbon Source(s)",
             "Line Experimenter",
             "Line Contact",
             "Protocol ID",

@@ -4,7 +4,6 @@ from .common import EDDSerialize
 from .core import (
     Assay,
     Attachment,
-    CarbonSource,
     Comment,
     EDDObject,
     Line,
@@ -36,7 +35,6 @@ from .worklist import WorklistColumn, WorklistTemplate
 __all__ = [
     Assay,
     Attachment,
-    CarbonSource,
     Comment,
     Datasource,
     EDDMetadata,
@@ -69,6 +67,7 @@ __all__ = [
 ]
 
 
+# TODO: Remove on release of EDD 2.8.0 or greater
 def __getattr__(name):
     from warnings import warn
 

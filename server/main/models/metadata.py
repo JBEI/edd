@@ -14,6 +14,7 @@ from .common import EDDSerialize
 logger = logging.getLogger(__name__)
 
 
+# TODO: Remove on release of EDD 2.8.0 or greater
 def __getattr__(name):
     from warnings import warn
 
@@ -95,14 +96,6 @@ class MetadataType(models.Model, EDDSerialize):
             type_i18n="main.models.Assay.name",
             type_name="Assay Name",
             uuid="33125862-66b2-4d22-8966-282eb7142a45",
-        ),
-        Metadata(
-            for_context=LINE,
-            input_type="carbon_source",
-            type_field="carbon_source",
-            type_i18n="main.models.Line.carbon_source",
-            type_name="Carbon Source(s)",
-            uuid="4ddaf92a-1623-4c30-aa61-4f7407acfacc",
         ),
         Metadata(
             for_context=LINE,

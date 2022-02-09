@@ -16,7 +16,6 @@ import "../modules/Styles";
 const AUTOCOMPLETE_META_UUIDS: string[] = [
     EddRest.LINE_EXPERIMENTER_META_UUID,
     EddRest.LINE_CONTACT_META_UUID,
-    EddRest.CARBON_SRC_META_UUID,
     EddRest.LINE_STRAINS_META_UUID,
 ];
 
@@ -27,10 +26,7 @@ const USER_META_TYPE_UUIDS: string[] = [
 ];
 
 // line metadata types that support multiple values for a single line
-const MULTIVALUED_LINE_META_UUIDS = [
-    EddRest.LINE_STRAINS_META_UUID,
-    EddRest.CARBON_SRC_META_UUID,
-];
+const MULTIVALUED_LINE_META_UUIDS = [EddRest.LINE_STRAINS_META_UUID];
 
 interface ErrorSummary {
     category: string;
@@ -946,14 +942,6 @@ class LinePropertyAutoInput extends LinePropertyInput {
         ) {
             visible.attr("eddautocompletetype", "User");
             this.autoInput = new EDDAuto.User({
-                "container": inputCell,
-                "visibleInput": visible,
-                "hiddenInput": hidden,
-            });
-            this.autoInput.init();
-        } else if (EddRest.CARBON_SRC_META_UUID === this.lineProperty.metaUUID) {
-            visible.attr("eddautocompletetype", "CarbonSource");
-            this.autoInput = new EDDAuto.CarbonSource({
                 "container": inputCell,
                 "visibleInput": visible,
                 "hiddenInput": hidden,
@@ -2086,20 +2074,11 @@ class CreationManager {
                 nameEltJsonId,
                 meta.uuid,
             );
-        } else if (
-            EddRest.LINE_STRAINS_META_UUID === meta.uuid ||
-            EddRest.CARBON_SRC_META_UUID === meta.uuid
-        ) {
+        } else if (EddRest.LINE_STRAINS_META_UUID === meta.uuid) {
             nameEltJsonId = meta.pk + "__name";
-            if (EddRest.LINE_STRAINS_META_UUID === meta.uuid) {
-                nameEltLabel = STRAIN_NAME_ELT_LABEL;
-                this.strainNameEltJsonId = nameEltJsonId;
-                this.strainMetaPk = meta.pk;
-            } else {
-                nameEltLabel =
-                    meta.type_name.substring(0, meta.type_name.indexOf("(s)")) +
-                    " Name(s)";
-            }
+            nameEltLabel = STRAIN_NAME_ELT_LABEL;
+            this.strainNameEltJsonId = nameEltJsonId;
+            this.strainMetaPk = meta.pk;
             return new LinePropertyDescriptor(
                 meta.pk,
                 uiLabel,
@@ -2540,12 +2519,11 @@ class CreationManager {
                 result[N_REPLICATES_JSON_ID] = input.getValueJson();
                 return true; // keep looping
             }
-            // do special-case processing of multivalued inputs
-            // (e.g. strain, carbon source).
+            // do special-case processing of multivalued inputs (e.g. strain).
             // for now, we'll assume that multiple entries for either
             // results in combinatorial line creation.
             // later on, we may add support for non-combinatorial multiples
-            // (e.g. co-culture \ multiple carbon sources)
+            // (e.g. co-culture)
             const multiValuedInput =
                 MULTIVALUED_LINE_META_UUIDS.indexOf(input.lineProperty.metaUUID) >= 0;
             if (multiValuedInput && validInputCount > 1) {

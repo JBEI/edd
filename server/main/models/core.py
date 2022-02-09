@@ -774,36 +774,6 @@ class Strain(EDDObject):
         return user.has_perm("edd.delete_strain")
 
 
-class CarbonSource(EDDObject):
-    """Information about carbon sources, isotope labeling."""
-
-    class Meta:
-        db_table = "carbon_source"
-
-    object_ref = models.OneToOneField(
-        EDDObject, on_delete=models.CASCADE, parent_link=True, related_name="+"
-    )
-    # Labeling is description of isotope labeling used in carbon source
-    labeling = models.TextField(
-        help_text=_("Description of labeling isotopes in this Carbon Source."),
-        verbose_name=_("Labeling"),
-    )
-    volume = models.DecimalField(
-        decimal_places=5,
-        help_text=_("Volume of solution added as a Carbon Source."),
-        max_digits=16,
-        verbose_name=_("Volume"),
-    )
-
-    def to_json(self, depth=0):
-        json_dict = super().to_json(depth)
-        json_dict.update(labeling=self.labeling, volume=self.volume)
-        return json_dict
-
-    def __str__(self):
-        return f"{self.name} ({self.labeling})"
-
-
 class LineManager(EDDObjectManager):
     def get_queryset(self):
         return super().get_queryset().annotate(strain_ids=ArrayAgg("strains__id"))
@@ -857,13 +827,6 @@ class Line(EDDObject):
         related_name="line_experimenter_set",
         verbose_name=_("Experimenter"),
     )
-    carbon_source = models.ManyToManyField(
-        CarbonSource,
-        blank=True,
-        db_table="line_carbon_source",
-        help_text=_("Carbon source(s) used in this Line."),
-        verbose_name=_("Carbon Source(s)"),
-    )
     protocols = models.ManyToManyField(
         Protocol,
         help_text=_("Protocol(s) used to Assay this Line."),
@@ -896,11 +859,6 @@ class Line(EDDObject):
         table_generator.define_field_column(
             cls._meta.get_field("strains"),
             lookup=lambda line: "|".join(filter(None, line.strain_names)),
-        )
-        # TODO export should handle multi-valued fields better than this
-        table_generator.define_field_column(
-            cls._meta.get_field("carbon_source"),
-            lookup=lambda line: "|".join(filter(None, line.cs_names)),
         )
         table_generator.define_field_column(
             cls._meta.get_field("experimenter"),

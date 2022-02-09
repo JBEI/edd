@@ -376,13 +376,6 @@ class StrainAdmin(EDDObjectAdmin):
     study_list.short_description = "Referenced in Studies"
 
 
-class CarbonSourceAdmin(EDDObjectAdmin):
-    """ Definition for admin-edit of Carbon Sources """
-
-    fields = ["name", "description", "active", "labeling", "volume"]
-    list_display = ["name", "description", "active", "labeling", "volume", "created"]
-
-
 class MeasurementTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Measurement Types """
 
@@ -825,7 +818,6 @@ class MeasurementUnitAdmin(admin.ModelAdmin):
 
 admin.site.register(models.Assay, AssayAdmin)
 admin.site.register(models.Attachment, AttachmentAdmin)
-admin.site.register(models.CarbonSource, CarbonSourceAdmin)
 admin.site.register(models.GeneIdentifier, GeneAdmin)
 admin.site.register(models.MeasurementType, MeasurementTypeAdmin)
 admin.site.register(models.MeasurementUnit, MeasurementUnitAdmin)

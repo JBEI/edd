@@ -25,7 +25,6 @@ from . import models
 from .models import (
     Assay,
     Attachment,
-    CarbonSource,
     Comment,
     Line,
     Measurement,
@@ -295,31 +294,6 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
 
 class MultiRegistryAutocompleteWidget(
     MultiAutocompleteWidget, RegistryAutocompleteWidget
-):
-    pass
-
-
-class CarbonSourceAutocompleteWidget(AutocompleteWidget):
-    """ Autocomplete widget for carbon sources """
-
-    def __init__(self, attrs=None, opt=None):
-        opt = {} if opt is None else opt
-        opt.update(
-            {
-                "text_attr": {
-                    "class": "autocomp form-control",
-                    "eddautocompletetype": "CarbonSource",
-                }
-            }
-        )
-        super().__init__(attrs=attrs, model=CarbonSource, opt=opt)
-
-    def display_value(self, value):
-        return value.name
-
-
-class MultiCarbonSourceAutocompleteWidget(
-    MultiAutocompleteWidget, CarbonSourceAutocompleteWidget
 ):
     pass
 
@@ -710,7 +684,6 @@ class LineForm(BulkEditMixin, MetadataEditMixin, forms.ModelForm):
             "control": _(""),
             "contact": _(""),
             "experimenter": _(""),
-            "carbon_source": _(""),
             "strains": _(""),
         }
 
