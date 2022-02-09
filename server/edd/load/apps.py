@@ -12,12 +12,13 @@ class LoadConfig(AppConfig):
         # to make certain signal handlers are defined at the correct time
 
         # make sure to load/register all the signal handlers
-        from . import signals  # noqa: F401
+        from edd.rest.routers import router, study_router
+
         from . import reporting  # noqa: F401
+        from . import signals  # noqa: F401
 
         # plug into the REST API
         from .rest import views
-        from edd.rest.routers import router, study_router
 
         study_router.register(r"load", views.LoadRequestViewSet, basename="study_load")
         router.register(

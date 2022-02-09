@@ -119,7 +119,7 @@ def migrations(context):
     try:
         version_hash = util.get_version_hash(context)
         prefix = "edd.startup.migrations"
-        version_key = f"{prefix}.{version_hash}".encode("utf-8")
+        version_key = f"{prefix}.{version_hash}".encode()
         with cache.lock(prefix.encode("utf-8"), timeout=60):
             # check if another image recently ran check for this version
             if not cache.get(version_key):

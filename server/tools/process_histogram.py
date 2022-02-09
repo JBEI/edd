@@ -59,10 +59,10 @@ def process_file(filename):
             count = sum(values)
             if count:
                 # cell value multiplied by bin value across all bins, averaged
-                mean = sum([bins[v.index] * v.value for v in evalues]) / count
+                mean = sum(bins[v.index] * v.value for v in evalues) / count
                 # cell value multiplied by square of difference from bin to mean, averaged
                 variance = (
-                    sum([((bins[v.index] - mean) ** 2) * v.value for v in evalues])
+                    sum(((bins[v.index] - mean) ** 2) * v.value for v in evalues)
                     / count
                 )
             else:
