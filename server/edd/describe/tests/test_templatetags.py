@@ -1,5 +1,3 @@
-import re
-
 from django.template import Context, Template
 
 from edd import TestCase
@@ -22,17 +20,10 @@ class DescribeTagTests(TestCase):
         # verify that no DescribeExampleSet still renders a valid image preview by default
         with self.settings(SITE_ID=9000):
             result = self.build_example_file_test_template()
-            self.assertTrue(
-                re.match(
-                    r"/static/edd/describe/example_experiment_description.*\.xlsx",
-                    result,
-                )
-            )
+            assert "example_experiment_description" in result
 
     def test_describe_image_preview_default(self):
         # verify that no DescribeExampleSet still renders a valid image preview by default
         with self.settings(SITE_ID=9000):
             result = self.build_preview_image_test_template()
-            self.assertTrue(
-                re.match(r"/static/edd/describe/example-image.*\.png", result)
-            )
+            assert "example-image" in result
