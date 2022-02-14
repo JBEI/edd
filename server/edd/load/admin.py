@@ -4,7 +4,10 @@ import logging
 
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.utils.translation import gettext_lazy as _
+
+from main import models as edd_models
 
 from . import models
 
@@ -67,7 +70,27 @@ class CategoryAdmin(admin.ModelAdmin):
         return []
 
 
+class DefaultUnitAdminForm(forms.ModelForm):
+
+    measurement_type = forms.ModelChoiceField(
+        queryset=edd_models.MeasurementType.objects.filter(),
+        widget=AutocompleteSelect(
+            models.DefaultUnit._meta.get_field("measurement_type"), admin.site,
+        ),
+    )
+
+    class Meta:
+        model = models.DefaultUnit
+        fields = ("measurement_type", "unit", "protocol", "parser")
+        labels = {
+            "measurement_type": _("Measurement Type"),
+        }
+
+
 class DefaultUnitAdmin(admin.ModelAdmin):
+    form = DefaultUnitAdminForm
+    list_fields = ("unit", "protocol", "parser")
+
     def get_fields(self, request, obj=None):
         return [("measurement_type", "unit", "protocol", "parser")]
 
