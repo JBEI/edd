@@ -17,6 +17,7 @@ class ExportRenderer(csv_renderers.CSVRenderer):
         "study.pk",
         "study.name",
         "measurement.assay.line.pk",
+        "replicate_key",
         "measurement.assay.line.name",
         "measurement.assay.line.description",
         "measurement.assay.protocol.name",
@@ -33,6 +34,7 @@ class ExportRenderer(csv_renderers.CSVRenderer):
         "study.pk": "Study ID",
         "study.name": "Study Name",
         "measurement.assay.line.pk": "Line ID",
+        "replicate_key": "Replicate Key",
         "measurement.assay.line.name": "Line Name",
         "measurement.assay.line.description": "Line Description",
         "measurement.assay.protocol.name": "Protocol",
@@ -62,6 +64,7 @@ class StreamingExportRenderer:
         "study_id",
         "study__name",
         "measurement__assay__line_id",
+        "replicate_key",
         "measurement__assay__line__name",
         "measurement__assay__line__description",
         "measurement__assay__protocol__name",
@@ -87,8 +90,8 @@ class StreamingExportRenderer:
         with transaction.atomic():
             for row in queryset.iterator(chunk_size=100):
                 row = list(row)
-                # items in index 12 and 13 are arrays for Y and X
-                # replace with first values
-                row[12] = row[12][0] if row[12] else ""
-                row[13] = row[13][0] if row[13] else ""
+                # last two items are arrays for Y and X
+                # replace with first values from arrays
+                row[-2] = row[-2][0] if row[-2] else ""
+                row[-1] = row[-1][0] if row[-1] else ""
                 yield writer.writerow(row)

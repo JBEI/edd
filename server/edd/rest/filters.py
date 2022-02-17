@@ -348,6 +348,7 @@ class ExportFilter(filters.FilterSet):
     def filter_queryset(self, queryset):
         queryset = self._filter_ids_and_in_study(queryset)
         queryset = self._add_formal_type_ids(queryset)
+        queryset = self._add_replicate_id(queryset)
         return queryset
 
     def _add_formal_type_ids(self, qs):
@@ -369,6 +370,18 @@ class ExportFilter(filters.FilterSet):
             )
         )
         return qs
+
+    def _add_replicate_id(self, qs):
+        replicate_type = models.MetadataType.system("Replicate")
+        replicate = Func(
+            F("measurement__assay__line__metadata"),
+            Value(f"{replicate_type.id}"),
+            function="jsonb_extract_path_text",
+            output_field=CharField(),
+        )
+        line_uuid = Cast("measurement__assay__line__uuid", output_field=CharField())
+        replicate_key = Coalesce(replicate, line_uuid)
+        return qs.annotate(replicate_key=replicate_key)
 
     def _compose_id_filters(self):
         # define filters for special handling

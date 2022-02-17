@@ -382,6 +382,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
                 "Study ID",
                 "Study Name",
                 "Line ID",
+                "Replicate Key",
                 "Line Name",
                 "Line Description",
                 "Protocol",

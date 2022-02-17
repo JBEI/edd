@@ -268,9 +268,15 @@ class ExportMeasurementSerializer(serializers.Serializer):
 class ExportSerializer(serializers.Serializer):
     study = ExportEDDObjectSerializer(read_only=True)
     measurement = ExportMeasurementSerializer(read_only=True)
+    replicate_key = serializers.SerializerMethodField()
     type_formal = serializers.SerializerMethodField()
     x = serializers.SerializerMethodField()
     y = serializers.SerializerMethodField()
+
+    def get_replicate_key(self, obj):
+        # when replicate_key annotated from edd.rest.views.ExportFilter
+        # when not annotated, return empty string
+        return getattr(obj, "replicate_key", "")
 
     def get_type_formal(self, obj):
         # when anno_formal_type annotated from edd.rest.views.ExportFilter
