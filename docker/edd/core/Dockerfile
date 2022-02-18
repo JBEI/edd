@@ -28,6 +28,7 @@ RUN set -ex \
     build-essential \
     libldap2-dev \
     libsasl2-dev \
+ && apt autoremove -y \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && rm -rf /root/.cache
@@ -56,6 +57,7 @@ RUN set -ex \
     build-essential \
     libldap2-dev \
     libsasl2-dev \
+ && apt autoremove -y \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && rm -rf /root/.cache
