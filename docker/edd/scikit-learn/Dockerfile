@@ -15,9 +15,11 @@ RUN set -ex \
         mime-support \
         netcat-openbsd \
         tini \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
     && pip install \
         pipenv \
         python-libsbml \
-        scikit-learn[alldeps]
+        scikit-learn[alldeps] \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /root/.cache \
+    && find /usr/local/lib/ -name __pycache__ | xargs rm -rf
