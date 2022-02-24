@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             model_name="metadatatype",
             name="description",
             field=edd.fields.VarCharField(
-                blank=True, help_text="Description of this Metadata Type", null=True
+                blank=True, help_text="Description for this Metadata Type", null=True
             ),
         ),
     ]
