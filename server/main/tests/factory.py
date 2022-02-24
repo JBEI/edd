@@ -86,10 +86,9 @@ class ProtocolFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ("name",)
 
     name = factory.Faker("bs")
-    categorization = factory.Iterator(
+    sbml_category = factory.Iterator(
         [code for code, _ in models.Protocol.CATEGORY_CHOICE]
     )
-    owned_by = factory.SubFactory("main.tests.factory.UserFactory")
 
 
 class AssayFactory(factory.django.DjangoModelFactory):

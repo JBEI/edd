@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import Q
+from django.db.models import Case, Q, When
 from django.template.defaultfilters import slugify
 from django.utils.translation import gettext_lazy as _
 
@@ -639,20 +639,23 @@ class Study(SlugMixin, EDDObject):
         return json_dict
 
 
-class Protocol(EDDObject):
-    """A defined method of examining a Line."""
+class Protocol(models.Model):
+    """A defined method linked to external service (protocols.io)."""
 
     class Meta:
-        db_table = "protocol"
+        db_table = "main_protocol"
+        indexes = [
+            models.Index(fields=["active", "name"]),
+            models.Index(fields=["sbml_category"]),
+        ]
 
-    CATEGORY_NONE = "NA"
+    objects = EDDObjectManager()
     CATEGORY_OD = "OD"
     CATEGORY_HPLC = "HPLC"
     CATEGORY_LCMS = "LCMS"
     CATEGORY_RAMOS = "RAMOS"
     CATEGORY_TPOMICS = "TPOMICS"
     CATEGORY_CHOICE = (
-        (CATEGORY_NONE, _("None")),
         (CATEGORY_OD, _("Optical Density")),
         (CATEGORY_HPLC, _("HPLC")),
         (CATEGORY_LCMS, _("LCMS")),
@@ -660,67 +663,78 @@ class Protocol(EDDObject):
         (CATEGORY_TPOMICS, _("Transcriptomics / Proteomics")),
     )
 
-    object_ref = models.OneToOneField(
-        EDDObject, on_delete=models.CASCADE, parent_link=True, related_name="+"
+    name = VarCharField(help_text=_("Name of this Protocol."), verbose_name=_("Name"))
+    uuid = models.UUIDField(
+        editable=False,
+        help_text=_("Unique identifier for this Protocol."),
+        unique=True,
+        verbose_name=_("UUID"),
     )
-    owned_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        help_text=_("Owner / maintainer of this Protocol"),
-        on_delete=models.PROTECT,
-        related_name="protocol_set",
-        verbose_name=_("Owner"),
-    )
-    variant_of = models.ForeignKey(
-        "self",
+    external_url = models.URLField(
         blank=True,
-        help_text=_(
-            "Link to another original Protocol used as basis for this Protocol."
-        ),
+        help_text=_("The URL in external service (e.g. protocols.io)"),
         null=True,
+        unique=True,
+    )
+    active = models.BooleanField(
+        default=True,
+        help_text=_("Flag showing if this Protocol is active and displayed."),
+        verbose_name=_("Active"),
+    )
+    destructive = models.BooleanField(
+        default=False,
+        help_text=_("Flag showing if this protocol consumes a sample."),
+        verbose_name=_("Destructive"),
+    )
+    created = models.ForeignKey(
+        Update,
+        editable=False,
+        help_text=_("Update used to create this Protocol."),
         on_delete=models.PROTECT,
-        related_name="derived_set",
-        verbose_name=_("Variant of Protocol"),
+        related_name="protocol_created",
+        verbose_name=_("Created"),
     )
-    default_units = models.ForeignKey(
-        "MeasurementUnit",
+    updated = models.ForeignKey(
+        Update,
+        editable=False,
+        help_text=_("Update used to last modify this Protocol."),
+        on_delete=models.PROTECT,
+        related_name="protocol_updated",
+        verbose_name=_("Last Modified"),
+    )
+    sbml_category = VarCharField(
         blank=True,
-        help_text=_("Default units for values measured with this Protocol."),
-        null=True,
-        on_delete=models.SET_NULL,
-        related_name="protocol_set",
-        verbose_name=_("Default Units"),
-    )
-    categorization = VarCharField(
         choices=CATEGORY_CHOICE,
-        default=CATEGORY_NONE,
+        default=None,
         help_text=_("SBML category for this Protocol."),
+        null=True,
         verbose_name=_("SBML Category"),
     )
 
-    def creator(self):
-        return self.created.mod_by
+    @classmethod
+    def export_columns(cls, table_generator, instances=None):
+        # define column for object ID
+        table_generator.define_field_column(
+            cls._meta.get_field("id"), heading=f"{cls.__name__} ID"
+        )
+        # define column for object name
+        table_generator.define_field_column(
+            cls._meta.get_field("name"), heading=f"{cls.__name__} Name"
+        )
 
-    def owner(self):
-        return self.owned_by
+    # @classmethod
+    # def fromUrl(cls, url, user):
+    #     pass
 
-    def last_modified(self):
-        return self.updated.mod_time
-
-    def to_solr_value(self):
-        return f"{self.pk}@{self.name}"
-
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        if self.name in ["", None]:
-            raise ValueError("Protocol name required.")
-        p = Protocol.objects.filter(name=self.name)
-        if (self.id is not None and p.count() > 1) or (
-            self.id is None and p.count() > 0
-        ):
-            raise ValueError(f"There is already a protocol named '{self.name}'.")
-        return super().save(*args, **kwargs)
+    @classmethod
+    def lookup(cls, name, user=None):
+        """Deterministically find a Protocol by name."""
+        # match on name
+        qs = cls.objects.filter(active=True, name=name)
+        # allow returning a specific user's protocol first
+        sort = Case(When(created__mod_by=user, then="id")).asc(nulls_last=True)
+        # return the first created Protocol matching the name
+        return qs.order_by(sort, "created__mod_time").first()
 
 
 class Strain(EDDObject):
@@ -894,14 +908,14 @@ class Line(EDDObject):
             json_dict.update(study=self.study_id)
         return json_dict
 
-    def new_assay_number(self, protocol):
+    def new_assay_number(self, protocol, user=None):
         """
         Given a Protocol name, fetch all matching child Assays, and return one
         greater than the count of existing assays.
         """
         if isinstance(protocol, str):
             # assume Protocol.name
-            protocol = Protocol.objects.get(name=protocol)
+            protocol = Protocol.lookup(protocol, user)
         assays = self.assay_set.filter(protocol=protocol)
         return assays.count() + 1
 

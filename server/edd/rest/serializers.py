@@ -229,15 +229,25 @@ class MeasurementUnitSerializer(serializers.ModelSerializer):
         fields = ("display", "pk", "name")
 
 
-class ProtocolSerializer(EDDObjectSerializer):
+class ProtocolSerializer(serializers.ModelSerializer):
+    created = UpdateSerializer(read_only=True)
+    pk = serializers.IntegerField(read_only=True)
+    updated = UpdateSerializer(read_only=True)
+    uuid = serializers.UUIDField(format="hex_verbose", read_only=True)
+
     class Meta:
         model = models.Protocol
         depth = 0
-        fields = EDDObjectSerializer.Meta.fields + (
-            "categorization",
-            "default_units",
-            "owned_by",
-            "variant_of",
+        fields = (
+            "active",
+            "created",
+            "destructive",
+            "external_url",
+            "name",
+            "pk",
+            "sbml_category",
+            "updated",
+            "uuid",
         )
 
 

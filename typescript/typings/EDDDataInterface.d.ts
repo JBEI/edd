@@ -133,8 +133,17 @@ interface MetadataTypeRecord {
     uuid: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface ProtocolRecord extends EDDRecord {}
+interface ProtocolRecord {
+    pk: number;
+    uuid: string;
+    name: string;
+    external_url: string;
+    active: boolean;
+    destructive: boolean;
+    sbml_category: string;
+    created: UpdateRecord;
+    updated: UpdateRecord;
+}
 
 interface StrainRecord {
     name: string;

@@ -18,9 +18,7 @@ def cytometry_constants():
     if not hasattr(cytometry_constants, "const"):
         cytometry_constants.const = {
             # this should be unique
-            "protocol": Protocol.objects.filter(
-                name="Flow Cytometry Characterization", owned_by__is_superuser=True
-            )[0],
+            "protocol": Protocol.lookup("Flow Cytometry Characterization"),
             "hours": MeasurementUnit.objects.get(unit_name="hours"),
             # FIXME probably don't want to use n/a
             "na": MeasurementUnit.objects.get(unit_name="n/a"),

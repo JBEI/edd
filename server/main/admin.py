@@ -190,65 +190,17 @@ class EDDObjectAdmin(admin.ModelAdmin):
     search_fields = ["name", "description"]
 
 
-class ProtocolAdminForm(forms.ModelForm):
-
-    owned_by = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True),
-        widget=AutocompleteSelect(
-            models.Protocol._meta.get_field("owned_by"), admin.site,
-        ),
-    )
-
-    class Meta:
-        model = models.Protocol
-        fields = (
-            "name",
-            "variant_of",
-            "active",
-            "owned_by",
-            "description",
-            "default_units",
-            "categorization",
-        )
-        help_texts = {
-            "default_units": _(
-                "(When measurement data are imported without units, this will "
-                "automatically be assigned.)"
-            ),
-            "categorization": _("(Determines the handling of data in SBML exports.)"),
-        }
-        labels = {
-            "name": _("Protocol"),
-            "variant_of": _("Variant Of"),
-            "active": _("Is Active"),
-            "owned_by": _("Owner"),
-            "description": _("Description"),
-            "default_units": _("Default Units"),
-            "categorization": _("SBML Categorization"),
-        }
-
-
-class ProtocolAdmin(EDDObjectAdmin):
+class ProtocolAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Protocols """
 
-    form = ProtocolAdminForm
     list_display = [
         "name",
-        "description",
+        "external_url",
         "active",
-        "variant_of",
-        "categorization",
-        "owner",
+        "destructive",
+        "sbml_category",
     ]
-    inlines = (
-        AttachmentTabular,
-        AttachmentStacked,
-    )
-
-    def save_model(self, request, obj, form, change):
-        if not change:
-            obj.owned_by = request.user
-        super().save_model(request, obj, form, change)
+    search_fields = ["name"]
 
 
 def render_study_links(study_queryset, *, limit=10):

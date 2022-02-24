@@ -220,7 +220,7 @@ class SbmlExport:
                 line=line,
                 qfilter=(
                     Q(measurement_type__short_name="OD")
-                    & Q(assay__protocol__categorization=models.Protocol.CATEGORY_OD)
+                    & Q(assay__protocol__sbml_category=models.Protocol.CATEGORY_OD)
                 ),
                 **kwargs,
             ),
@@ -228,18 +228,14 @@ class SbmlExport:
                 data=payload,
                 prefix="hplc",
                 line=line,
-                qfilter=Q(
-                    assay__protocol__categorization=models.Protocol.CATEGORY_HPLC
-                ),
+                qfilter=Q(assay__protocol__sbml_category=models.Protocol.CATEGORY_HPLC),
                 **kwargs,
             ),
             "ms_select_form": SbmlExportMeasurementsForm(
                 data=payload,
                 prefix="ms",
                 line=line,
-                qfilter=Q(
-                    assay__protocol__categorization=models.Protocol.CATEGORY_LCMS
-                ),
+                qfilter=Q(assay__protocol__sbml_category=models.Protocol.CATEGORY_LCMS),
                 **kwargs,
             ),
             "ramos_select_form": SbmlExportMeasurementsForm(
@@ -247,7 +243,7 @@ class SbmlExport:
                 prefix="ramos",
                 line=line,
                 qfilter=Q(
-                    assay__protocol__categorization=models.Protocol.CATEGORY_RAMOS
+                    assay__protocol__sbml_category=models.Protocol.CATEGORY_RAMOS
                 ),
                 **kwargs,
             ),
@@ -256,7 +252,7 @@ class SbmlExport:
                 prefix="omics",
                 line=line,
                 qfilter=Q(
-                    assay__protocol__categorization=models.Protocol.CATEGORY_TPOMICS
+                    assay__protocol__sbml_category=models.Protocol.CATEGORY_TPOMICS
                 ),
                 **kwargs,
             ),

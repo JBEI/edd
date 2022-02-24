@@ -528,15 +528,15 @@ class MeasurementUnitFilter(filters.FilterSet):
         return x_unit.union(y_unit).order_by("pk")
 
 
-class ProtocolFilter(EDDObjectFilter):
+class ProtocolFilter(filters.FilterSet):
     in_study = django_filters.CharFilter(
         help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method="used_in_study",
     )
 
     class Meta:
+        fields = []
         model = models.Protocol
-        fields = ["owned_by", "variant_of", "default_units"]
 
     def used_in_study(self, queryset, name, value):
         pk = fuzzy_study_subquery(value)

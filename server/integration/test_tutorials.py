@@ -469,7 +469,7 @@ class FBAExportDataTests(TestCase):
 
     @classmethod
     def _build_measurements(cls, measurement_id, category, line, metabolite, values):
-        protocol = factory.ProtocolFactory(categorization=category)
+        protocol = factory.ProtocolFactory(sbml_category=category)
         assay = factory.AssayFactory(line=line, protocol=protocol)
         measurement = factory.MeasurementFactory(
             id=measurement_id, assay=assay, measurement_type=metabolite

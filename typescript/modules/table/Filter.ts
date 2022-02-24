@@ -511,7 +511,7 @@ class StrainFilterSection extends FilterSection<StrainRecord, string> {
     }
 }
 
-class ProtocolFilterSection extends EDDRecordFilter<ProtocolRecord> {
+class ProtocolFilterSection extends FilterSection<ProtocolRecord, number> {
     static create(source: ProtocolRecord[]): ProtocolFilterSection {
         const section = new ProtocolFilterSection("Protocol");
         section.values.push(...source.map((p) => new FilterValue(p)));
@@ -538,6 +538,14 @@ class ProtocolFilterSection extends EDDRecordFilter<ProtocolRecord> {
 
     protected keysItem(item: Item): number[] {
         return [item.assay?.protocol];
+    }
+
+    protected keyValue(value: ProtocolRecord): number {
+        return value.pk;
+    }
+
+    valueToDisplay(value: ProtocolRecord) {
+        return value.name;
     }
 }
 

@@ -218,7 +218,7 @@ class TableImport:
                 if assay_name is None or assay_name.strip() == "":
                     # if we have no name, 'named_or_new' and 'new' are treated the same
                     # TODO uncovered
-                    index = line.new_assay_number(protocol)
+                    index = line.new_assay_number(protocol, self._user)
                     assay_name = models.Assay.build_name(line, protocol, index)
                     # END uncovered
                 key = (line.id, assay_name)

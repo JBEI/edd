@@ -59,19 +59,20 @@ def set_file_info_mime_type(instance):
 core_eddobject = [
     models.Assay,
     models.Line,
-    models.Protocol,
     models.Strain,
     models.Study,
     models.WorklistTemplate,
 ]
 has_uuid = core_eddobject + [
     models.MetadataType,
+    models.Protocol,
 ]
 has_update = core_eddobject + [
     models.Attachment,
     models.Comment,
     models.Measurement,
     models.MeasurementValue,
+    models.Protocol,
 ]
 
 

@@ -137,10 +137,6 @@ class LineTests(TestCase):
 
 
 class AssayDataTests(TestCase):
-    def test_protocol_requires_name(self):
-        with pytest.raises(ValueError):
-            factory.ProtocolFactory(name="")
-
     def test_assay_numbering(self):
         a = factory.AssayFactory()
         assert a.line.new_assay_number(a.protocol) == 2
