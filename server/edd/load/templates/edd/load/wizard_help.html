@@ -88,7 +88,9 @@
       </p>
       <details>
         <summary>{% trans "Available Protocols" %}</summary>
-        <ul id="protocolList"></ul>
+        <ul id="protocolList" data-url="{% url 'rest:protocols-list' %}">
+          <li><a class="loadmore hidden" href="#">{% trans "Load More ..." %}</a></li>
+        </ul>
       </details>
       <h4>{% trans "Adding New Protocols" %}</h4>
       <p>
@@ -328,7 +330,9 @@
       </p>
       <details>
         <summary>{% trans "Available Types" %}</summary>
-        <ul id="typesList"></ul>
+        <ul id="typesList" data-url="{% url 'rest:types-list' %}">
+          <li><a class="loadmore hidden" href="#">{% trans "Load More ..." %}</a></li>
+        </ul>
       </details>
       {% if mtype_scripts %}
       <button id="request-mtype">{% trans "Request a Measurement Type" %}</button>
@@ -343,7 +347,9 @@
         {% endblocktrans %}
         <details>
           <summary>{% trans "Units Available" %}</summary>
-          <ul id="unitList"></ul>
+          <ul id="unitList" data-url="{% url 'rest:units-list' %}">
+            <li><a class="loadmore hidden" href="#">{% trans "Load More ..." %}</a></li>
+          </ul>
         </details>
         {% if units_scripts %}
         <button id="request-units">{% trans "Request Units" %}</button>

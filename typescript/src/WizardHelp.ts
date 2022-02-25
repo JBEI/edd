@@ -2,44 +2,48 @@
 
 import "jquery";
 
-import * as EDDRest from "../modules/EDDRest";
+type NamedRecord = { name: string };
 
-function populateMeasurementTypes(mtypes: EDDRest.MeasurementType[]) {
-    const list = $("#typesList");
-    for (const item of mtypes) {
-        $(`<li>${item.type_name}</li>`).appendTo(list);
-    }
+function loadItems<T extends NamedRecord>(url, list, query = null) {
+    return $.ajax({ "data": query, "type": "GET", "url": url }).then(
+        (rpi: RestPageInfo<T>) => {
+            const more = list.find(".loadmore").parent().detach();
+            for (const item of rpi.results) {
+                $(`<li>${item.name}</li>`).appendTo(list);
+            }
+            if (rpi.next) {
+                more.removeClass("hidden").appendTo(list);
+            }
+            return rpi.next;
+        },
+    );
 }
 
-function populateProtocols(protocols: EDDRest.Protocol[]) {
-    const list = $("#protocolList");
-    for (const item of protocols) {
-        $(`<li>${item.name}</li>`).appendTo(list);
-    }
-}
-
-function populateUnits(units: EDDRest.MeasurementUnits[]) {
-    const list = $("#unitList");
-    for (const item of units) {
-        $(`<li>${item.unit_name}</li>`).appendTo(list);
-    }
+function setupList(list: JQuery, initialQuery = null) {
+    let url = list.data("url");
+    let query = initialQuery;
+    const loadMore = () => {
+        // remove the element to load more, until items are fetched
+        const more = list.find(".loadmore").parent().detach();
+        loadItems(url, list, query).then((next) => {
+            url = next;
+            // no need of a query after initial one
+            query = null;
+            // restore the element to load more items only if there's a next page
+            if (next) {
+                more.appendTo(list);
+            }
+        });
+        // prevent following link, so page does not jump
+        return false;
+    };
+    list.on("click", ".loadmore", loadMore);
+    // fake a click to load the first set of items
+    list.find(".loadmore").removeClass("hidden").trigger("click");
 }
 
 $(() => {
-    EDDRest.loadMeasurementTypes({
-        "ordering": "type_name",
-        "request_all": true,
-        "success": populateMeasurementTypes,
-        "type_group": "_",
-    });
-    EDDRest.loadMeasurementUnits({
-        "ordering": "unit_name",
-        "request_all": true,
-        "success": populateUnits,
-    });
-    EDDRest.loadProtocols({
-        "ordering": "name",
-        "request_all": true,
-        "success": populateProtocols,
-    });
+    setupList($("#protocolList"));
+    setupList($("#typesList"), { "type_group": "_" });
+    setupList($("#unitList"));
 });
