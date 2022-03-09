@@ -67,8 +67,12 @@ class SafeExceptionReporterFilter(debug.SafeExceptionReporterFilter):
     def cleanse_setting(self, key, value):
         # use the base implementation
         cleansed = super().cleanse_setting(key, value)
+        if not isinstance(key, str):
+            logger.warning(
+                f"Not trying to match non-string key {key} while cleansing settings."
+            )
         # if the setting is a URL, try to parse it and replace any password
-        if self.url_settings.search(key):
+        elif self.url_settings.search(key):
             try:
                 parsed = None
                 if isinstance(value, str):
