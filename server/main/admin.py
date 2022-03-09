@@ -541,7 +541,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         """
 
         # override the type_name label to indicate it should be a UniProt accession ID
-        if settings.REQUIRE_UNIPROT_ACCESSION_IDS:
+        if require_uniprot := getattr(settings, "REQUIRE_UNIPROT_ACCESSION_IDS", True):
             labels = kwargs.get("labels")
             if not labels:
                 labels = {}
@@ -554,7 +554,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         # require that newly-created ProteinIdentifiers have an accession ID matching the
         # expected pattern. existing ID's that don't conform should still be editable
         new_identifier = not obj
-        if new_identifier and settings.REQUIRE_UNIPROT_ACCESSION_IDS:
+        if new_identifier and require_uniprot:
             generated_form.base_fields["type_name"].validators.append(
                 RegexValidator(
                     regex=models.ProteinIdentifier.accession_pattern,

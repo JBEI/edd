@@ -1229,7 +1229,8 @@ class CombinatorialCreationImporter:
         mail_admins(subject, message, fail_silently=True)
 
     def send_user_err_email(self):
-        subject = f"{settings.EMAIL_SUBJECT_PREFIX  }Line Creation Error"
+        prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
+        subject = f"{prefix}Line Creation Error"
         message = (
             f'Your line creation attempt failed for study "{self.study.name}". '
             f"EDD administrators have been notified of the problem."
@@ -1239,7 +1240,8 @@ class CombinatorialCreationImporter:
 
     def send_user_success_email(self, summary):
         line_count = summary["lines_created"]
-        subject = f"{settings.EMAIL_SUBJECT_PREFIX}Line Creation Complete"
+        prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
+        subject = f"{prefix}Line Creation Complete"
         message = (
             f'Line creation is complete for your study "{self.study.name}". '
             f"{line_count} lines were created."

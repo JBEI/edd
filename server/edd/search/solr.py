@@ -53,8 +53,9 @@ class SolrSearch:
             url = settings.get("URL", None)
             if url is not None:
                 return url
-        if settings_key in django_settings.EDD_MAIN_SOLR:
-            url = django_settings.EDD_MAIN_SOLR[settings_key].get("URL", None)
+        SOLR = getattr(django_settings, "EDD_MAIN_SOLR", {})
+        if settings_key in SOLR:
+            url = SOLR[settings_key].get("URL", None)
             if url is not None:
                 return url
         logger.warning("Could not resolve a URL for Solr, falling back to default")

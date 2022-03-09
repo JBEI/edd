@@ -108,7 +108,7 @@ def type_saved(sender, instance, created, raw, using, **kwargs):
 @receiver(signals.study_modified)
 def index_study(sender, study, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
-    if using in settings.EDD_MAIN_SOLR:
+    if is_valid_database(using):
         study_index = load_study_index()
         _schedule_solr_update(study_index.update, study)
 
@@ -116,7 +116,7 @@ def index_study(sender, study, using, **kwargs):
 @receiver(signals.type_modified)
 def index_type(sender, measurement_type, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
-    if using in settings.EDD_MAIN_SOLR:
+    if is_valid_database(using):
         type_index = load_type_index()
         _schedule_solr_update(type_index.update, measurement_type)
 
@@ -124,7 +124,7 @@ def index_type(sender, measurement_type, using, **kwargs):
 @receiver(signals.user_modified)
 def index_user(sender, user, using, **kwargs):
     # only submit for indexing when the database key has a matching solr key
-    if using in settings.EDD_MAIN_SOLR:
+    if is_valid_database(using):
         users_index = load_users_index()
         _schedule_solr_update(users_index.update, user)
 
@@ -132,7 +132,7 @@ def index_user(sender, user, using, **kwargs):
 @receiver(signals.study_removed)
 def remove_study(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
-    if using in settings.EDD_MAIN_SOLR:
+    if is_valid_database(using):
         study_index = load_study_index()
         _schedule_solr_update(study_index.remove, doc)
 
@@ -140,7 +140,7 @@ def remove_study(sender, doc, using, **kwargs):
 @receiver(signals.type_removed)
 def remove_type(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
-    if using in settings.EDD_MAIN_SOLR:
+    if is_valid_database(using):
         type_index = load_type_index()
         _schedule_solr_update(type_index.remove, doc)
 
@@ -148,9 +148,13 @@ def remove_type(sender, doc, using, **kwargs):
 @receiver(signals.user_removed)
 def remove_user(sender, doc, using, **kwargs):
     # only submit for removal when the database key has a matching solr key
-    if using in settings.EDD_MAIN_SOLR:
+    if is_valid_database(using):
         users_index = load_users_index()
         _schedule_solr_update(users_index.remove, doc)
+
+
+def is_valid_database(using):
+    return using in getattr(settings, "EDD_MAIN_SOLR", {})
 
 
 __all__ = []

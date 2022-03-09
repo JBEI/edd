@@ -15,7 +15,8 @@ class LatestViewedStudies:
     def __init__(self, user, n=5, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._end = n - 1
-        self._redis = get_redis_connection(settings.EDD_LATEST_CACHE)
+        db = getattr(settings, "EDD_LATEST_CACHE", "default")
+        self._redis = get_redis_connection(db)
         self._user = user
 
     def __iter__(self):
@@ -60,7 +61,8 @@ class ScratchStorage:
         self._key_prefix = key_prefix
         if self._key_prefix is None:
             self._key_prefix = f"{__name__}.{self.__class__.__name__}"
-        self._redis = get_redis_connection(settings.EDD_LATEST_CACHE)
+        db = getattr(settings, "EDD_LATEST_CACHE", "default")
+        self._redis = get_redis_connection(db)
 
     def _key(self, name):
         return f"{self._key_prefix}:{name}"

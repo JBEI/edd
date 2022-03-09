@@ -36,8 +36,8 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
             protocols=protocols,
             writable=user_can_write,
             import_id=uuid.uuid4(),
-            page_size_limit=settings.EDD_IMPORT_PAGE_SIZE,
-            page_count_limit=settings.EDD_IMPORT_PAGE_LIMIT,
+            page_size_limit=getattr(settings, "EDD_IMPORT_PAGE_SIZE", 1000),
+            page_count_limit=getattr(settings, "EDD_IMPORT_PAGE_LIMIT", 1000),
         )
 
     def delete(self, request, *args, **kwargs):

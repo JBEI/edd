@@ -242,7 +242,7 @@ def line_strain_changed(
     if check_ice_cannot_proceed():
         return
     # only execute these signals if using a non-testing database
-    if using in settings.DATABASES:  # pragma: no cover
+    if is_valid_database(using):  # pragma: no cover
         # map a m2m change action to a function to handle the action
         action_map = {"post_add": strain_added, "post_remove": strain_removed}
         action_function = action_map.get(action, None)
@@ -254,12 +254,16 @@ def line_strain_changed(
 
 
 def check_ice_cannot_proceed():
-    if not settings.ICE_URL:
+    if not getattr(settings, "ICE_URL", False):
         logger.warning(
             "ICE URL is not configured. Skipping ICE experiment link updates."
         )
         return True
     return False
+
+
+def is_valid_database(using):
+    return using in getattr(settings, "DATABASES", {})
 
 
 def strain_added(line, pk_set):

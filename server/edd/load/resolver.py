@@ -494,7 +494,7 @@ class ImportCacheCreator:
         # maybe removed later
         self.paged_series = self._paginate_cache(import_records_list)
 
-        cache_page_size = settings.EDD_IMPORT_PAGE_SIZE
+        cache_page_size = getattr(settings, "EDD_IMPORT_PAGE_SIZE", 1000)
         page_count = math.ceil(len(import_records_list) / cache_page_size)
 
         # clear all data from any previous files uploaded for this import
@@ -739,13 +739,13 @@ class ImportCacheCreator:
         return import_record
 
     def _paginate_cache(self, import_records):
-        cache_page_size = settings.EDD_IMPORT_PAGE_SIZE
-        max_cache_pages = settings.EDD_IMPORT_PAGE_LIMIT
+        cache_page_size = getattr(settings, "EDD_IMPORT_PAGE_SIZE", 1000)
+        max_cache_pages = getattr(settings, "EDD_IMPORT_PAGE_LIMIT", 1000)
 
         page_count = math.ceil(len(import_records) / cache_page_size)
         if page_count > max_cache_pages:
             msg = _("Total number of pages is exceeds maximum of {max} records").format(
-                max=settings.EDD_IMPORT_PAGE_LIMIT
+                max=max_cache_pages
             )
             raise exceptions.ImportTooLargeError(details=msg)
 

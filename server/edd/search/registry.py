@@ -108,7 +108,8 @@ class StrainRegistry:
             raise RegistryError("Could not list Registry Folders") from e
 
     def login(self, user):
-        self.auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=user.email)
+        if key_id := getattr(settings, "ICE_KEY_ID", None):
+            self.auth = HmacAuth(key_id=key_id, username=user.email)
         return self
 
     def logout(self):
@@ -143,7 +144,7 @@ class StrainRegistry:
         # short-term: use same environment as exists now to load hard-code value
         # long-term: look up connected registries per user
         try:
-            url = settings.ICE_URL
+            url = getattr(settings, "ICE_URL", None)
             # strip trailing slash, if present
             if url[-1] == "/":
                 return url[:-1]
@@ -259,7 +260,8 @@ class AdminRegistry(StrainRegistry):
             raise RegistryError(f"Failed to find user {user}") from e
 
     def login(self):
-        self.auth = HmacAuth(key_id=settings.ICE_KEY_ID, username="Administrator")
+        if key_id := getattr(settings, "ICE_KEY_ID", None):
+            self.auth = HmacAuth(key_id=key_id, username="Administrator")
         return self
 
 

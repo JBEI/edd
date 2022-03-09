@@ -167,7 +167,7 @@ class ImportDataTestsMixin:
         replace = getattr(self, "_replace_series_item_values", None)
         if callable(replace):
             series = map(replace, series)
-        page_size = settings.EDD_IMPORT_PAGE_SIZE
+        page_size = getattr(settings, "EDD_IMPORT_PAGE_SIZE", 100)
         for i in range(0, int(math.ceil(item_count / page_size))):
             start = i * page_size
             end = min(start + page_size, item_count)

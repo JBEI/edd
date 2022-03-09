@@ -69,9 +69,10 @@ def stylesheet(context):
 
 @register.simple_tag()
 def edd_version_number():
-    if hasattr(settings, "EDD_VERSION_HASH") and settings.EDD_VERSION_HASH:
-        return f"{settings.EDD_VERSION_NUMBER} ({settings.EDD_VERSION_HASH})"
-    return settings.EDD_VERSION_NUMBER
+    version = getattr(settings, "EDD_VERSION_NUMBER", "UNVERSIONED")
+    if vhash := getattr(settings, "EDD_VERSION_HASH", False):
+        return f"{version} ({vhash})"
+    return version
 
 
 @register.simple_tag()
