@@ -533,7 +533,18 @@ class ProteinIdentifier(MeasurementType):
             super().to_solr_json(), **{"p_length": self.length, "p_mass": self.mass}
         )
 
+    def lookup_from_uniprot(self):
+        """
+        Adds background task to update this protein. To work in foreground, use
+        `update_from_uniprot` instead.
+        """
+        lookup_protein_in_uniprot.delay(self.id)
+
     def update_from_uniprot(self):
+        """
+        Loads protein data from UniProt if this protein accession ID is valid.
+        Use `lookup_from_uniprot` to do this in the background.
+        """
         match = self.accession_pattern.match(self.accession_id)
         if match:
             uniprot_id = match.group(1)

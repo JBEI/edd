@@ -599,7 +599,8 @@ class ProteinAdmin(MeasurementTypeAdmin):
 
     def refresh_uniprot_action(self, request, queryset):
         for entry in queryset:
-            entry.update_from_uniprot()
+            entry.lookup_from_uniprot()
+        self.message_user(request, _("Queued update tasks"), messages.SUCCESS)
 
     refresh_uniprot_action.short_description = "Refresh UniProt Information"
 
