@@ -66,10 +66,6 @@ RUN set -ex \
 
 FROM ${REPO_SERVER}/jbei/edd-node:${NODE_VERSION} as node
 
-# set environment in this build phase with the version passed as argument
-ARG EDD_VERSION
-ENV EDD_VERSION="${EDD_VERSION}"
-
 WORKDIR /run/
 COPY ./typescript ./.prettierrc.js /run/
 
