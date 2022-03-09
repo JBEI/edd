@@ -596,7 +596,7 @@ class ProteinIdentifier(MeasurementType):
         except Exception:
             logger.exception(f"Failed to read UniProt: {uniprot_id}")
             values.update(provisional=True)
-        return values
+        return values.items()
 
     @classmethod
     def _uniprot_name(cls, graph, subject, uniprot_id):
@@ -616,8 +616,8 @@ class ProteinIdentifier(MeasurementType):
             # get the literal value of the mnemonic
             getattr(graph.value(subject, mnemonic_predicate), "value", None),
         ]
-        # fallback to uniprot_id if all above are None
-        return next((name for name in names if name is not None), uniprot_id)
+        # fallback to uniprot_id if all above are None or empty or whitespace
+        return next((name for name in names if name and name.strip()), uniprot_id)
 
     @classmethod
     def _uniprot_url(cls, uniprot_id):
