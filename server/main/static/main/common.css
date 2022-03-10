@@ -1241,6 +1241,11 @@ body > .navbar {
     /* reset; otherwise text on navbar looks offset vs links */
     line-height: 1;
 }
+
+.navbar-default .navbar-text {
+    color: #727272;
+}
+
 .navbar-text.edd-nav-title {
     font-weight: bold;
     font-size: 18px;
