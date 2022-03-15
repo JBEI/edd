@@ -27,7 +27,7 @@
   {% endblock js_css%}
 </head>
 <body style="background-color:{% env_background_color %};">
-  <nav class="navbar navbar-default navbar-static-top">
+  <header class="navbar navbar-default navbar-static-top">
     <div class="container-fluid">
       <!-- mobile-friendly -->
       <div class="navbar-header">
@@ -59,44 +59,46 @@
             <p class="navbar-text">{% env_label %}</p>
           </li>
         </ul>
-        <ul class="nav navbar-nav navbar-right">
-          <li>
-            <a href="https://sites.google.com/lbl.gov/esedataautomation/data-acquisition-storage/experiment-data-depot-edd?authuser=0">
-              {% trans 'Tutorials' %}
-            </a>
-          </li>
-          <li>
-            <a href="https://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204">
-              {% trans 'EDD Publication'%}
-            </a>
-          </li>
-          {% if user.is_authenticated %}
-          <li class="dropdown" id="notification-dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
-                aria-haspopup="true" aria-expanded="false">
-              <span class="fas fa-inbox"></span>
-              <span class="badge"></span>
-            </a>
-            <ul class="dropdown-menu" id="notification-list">
-              <li class="message-empty">{% trans 'No new notifications.' %}</li>
-            </ul>
-          </li>
-          <li>
-            <p class="navbar-text">{% firstof user.get_full_name user.username %}</p>
-          </li>
-          <li>
-            <a href="{% url 'account_logout' %}">{% trans 'Logout' %}</a>
-          </li>
-          {% else %}
-          <li>
-            <a href="{% url 'account_login' %}">{% trans 'Login' %}</a>
-          </li>
-          {% endif %}
-        </ul>
+        <nav>
+          <ul class="nav navbar-nav navbar-right">
+            <li>
+              <a href="https://sites.google.com/lbl.gov/esedataautomation/data-acquisition-storage/experiment-data-depot-edd?authuser=0">
+                {% trans 'Tutorials' %}
+              </a>
+            </li>
+            <li>
+              <a href="https://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204">
+                {% trans 'EDD Publication'%}
+              </a>
+            </li>
+            {% if user.is_authenticated %}
+            <li class="dropdown" id="notification-dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
+                  aria-haspopup="true" aria-expanded="false">
+                <span class="fas fa-inbox"></span>
+                <span class="badge"></span>
+              </a>
+              <ul class="dropdown-menu" id="notification-list">
+                <li class="message-empty">{% trans 'No new notifications.' %}</li>
+              </ul>
+            </li>
+            <li>
+              <p class="navbar-text">{% firstof user.get_full_name user.username %}</p>
+            </li>
+            <li>
+              <a href="{% url 'account_logout' %}">{% trans 'Logout' %}</a>
+            </li>
+            {% else %}
+            <li>
+              <a href="{% url 'account_login' %}">{% trans 'Login' %}</a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
       </div>
     </div>
-  </nav>
-  <div id="content" class="content">
+  </header>
+  <main id="content" class="content">
     {% block status %}
       {% if messages %}
         {% csrf_token %}
@@ -114,8 +116,8 @@
     {% endblock status %}
     {% block content %}
     {% endblock content %}
-  </div>
-  <div class="footer-text">
+  </main>
+  <footer class="footer-text">
     {% edd_version_number as version %}
     <span class="footer-text-app">
       {% blocktrans trimmed with version=version context 'Footer title' %}
@@ -126,7 +128,7 @@
     <span><a href="{% url 'admin:index' %}">{% trans 'Administration' %}</a></span>
     {% endif %}
     <span><a href="{% url 'tools:index' %}">{% trans 'Utilities' %}</a></span>
-  </div>
+  </footer>
 </body>
 {% external_scripts %}
 </html>

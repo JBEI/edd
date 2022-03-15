@@ -246,13 +246,13 @@ div.errorMessage > a.close {
 }
 
 /* Main content section */
-div.content {
+.content {
     padding-left: 15px;
     padding-right: 15px;
 }
 
 /* Footer area */
-div.footer-text {
+.footer-text {
     border-top: 1px solid #ccc;
     color: #ccc;
     font-size: 0.85em;
@@ -260,7 +260,7 @@ div.footer-text {
     padding: 20px;
     text-align: center;
 }
-div.footer-text > span {
+.footer-text > span {
     margin: 0 2em;
 }
 

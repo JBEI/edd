@@ -92,7 +92,7 @@ function prepareIt(): void {
 export function buildModalPosition(): JQueryUI.JQueryPositionOptions {
     // want to position modal below the navigation bar
     // has to be in a function instead of global because navbar is built later
-    const navbar = $("nav.navbar");
+    const navbar = $("header.navbar");
     return {
         "my": "center top",
         "at": "center bottom",
@@ -103,7 +103,7 @@ export function buildModalPosition(): JQueryUI.JQueryPositionOptions {
 export function dialogDefaults(
     options: JQueryUI.DialogOptions,
 ): JQueryUI.DialogOptions {
-    const navbar = $("nav.navbar");
+    const navbar = $("header.navbar");
     const $window = $(window);
     const defaults: JQueryUI.DialogOptions = {
         "autoOpen": false,
