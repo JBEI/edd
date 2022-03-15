@@ -9,12 +9,13 @@ from pprint import pformat
 from typing import Any, Dict, List, Tuple
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.mail import mail_admins, send_mail
 from django.db import transaction
 from django.urls import reverse
 from requests import codes
 
-from edd.search.registry import StrainRegistry
+from edd.search.registry import RegistryError, StrainRegistry
 from main.forms import RegistryValidator
 from main.models import Assay, Line, Strain
 from main.signals import study_described
@@ -433,18 +434,25 @@ class IcePartResolver:
         an ICE entry.
         """
         self.individual_entries_found = 0
+        # generator for entries not yet found
+        to_lookup = (
+            entry_id
+            for entry_id in self.unique_part_ids
+            if entry_id not in self.parts_by_ice_id
+        )
         with ice:
-            for entry_id in self.unique_part_ids:
-                if entry_id not in self.parts_by_ice_id:
-                    try:
-                        entry = ice.get_entry(entry_id)
-                        self._process_entry(entry_id, entry)
-                        self.individual_entries_found += 1
-                    except Exception:
+            for entry_id in to_lookup:
+                try:
+                    entry = ice.get_entry(entry_id)
+                    self._process_entry(entry_id, entry)
+                    self.individual_entries_found += 1
+                except (RegistryError, ValidationError):
+                    msg = f"EDD could not find a reference to {entry_id}"
+                    if not self.options.ignore_ice_access_errors:
                         self.importer.add_error(
                             SINGLE_PART_ACCESS_ERROR_CATEGORY,
                             PART_NUMBER_NOT_FOUND,
-                            f"EDD could not find a reference to {entry_id}",
+                            msg,
                         )
 
     def _query_ice_folder_contents(self, ice):
