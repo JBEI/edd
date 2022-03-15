@@ -582,7 +582,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # lookup for now since it may be done for us, or will at least be impacted by EDD-438
         unsupported_names = [
             "Control",
-            "Carbon Source(s)",
             "Line Contact",
             "Line Experimenter",
         ]
@@ -1205,10 +1204,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             ###################################################
             # Strain part id(s)
             ###################################################
-            # TODO: after some initial testing, consider adding custom group support for
-            #  Carbon Source similar to that for strains. Since some changes to Carbon
-            #  Source / Media tracking are needed, we will probably want to defer support
-            # for Carbon Sources for now.
             if col_index == self.column_layout.strain_ids_col:
                 self.parse_strains_cell(row, row_index, row_inputs)
                 continue

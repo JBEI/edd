@@ -84,7 +84,7 @@ class NamingStrategy:
         a Line attribute identified by line_meta_pk.
 
         Note that EDD ships with special built-in MetadataTypes that describe Line
-        attributes (e.g. "Strain(s)", "Carbon Source").
+        attributes, e.g. "Strain(s)".
 
         :param line_metadata: a dict of metadata pk -> value identifiers(s) to be set
             on the line. It's assumed to contain pks of related objects for line_meta_pk.
