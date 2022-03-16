@@ -446,7 +446,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         $("#hStudyMod").css("border-right", "1px solid lightgrey");
         // Create a single widget for showing disabled Studies
         const array: DataGridHeaderWidget[] = [
-            new DGStudiesSearchWidget(dataGrid, this, "Search Studies", 40, true),
+            new DGStudiesSearchWidget(dataGrid, this, "Search Studies", 40, false),
             new DGPagingWidget(dataGrid, this, this),
         ];
         return array;
