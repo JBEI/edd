@@ -258,7 +258,7 @@ div.errorMessage > a.close {
 /* Footer area */
 .footer-text {
     border-top: 1px solid #ccc;
-    color: #ccc;
+    color: #767676;
     font-size: 0.85em;
     margin-top: 20px;
     padding: 20px;
@@ -1414,4 +1414,20 @@ summary.pageDivider {
 
 .pager-nav > .pagination {
     margin: 0;
+}
+
+.skip-to-content-link {
+    position: absolute;
+    left: 0;
+    top: -3.2rem;
+    transition: top 1s ease-out;
+    padding: 1rem;
+    background: white;
+    font-size: 1.2rem;
+    z-index: 2000;
+    display: inline-block;
+}
+.skip-to-content-link:focus {
+    top: 0;
+    transition: 0.1s ease-in;
 }
