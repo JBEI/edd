@@ -27,6 +27,8 @@
   {% endblock js_css%}
 </head>
 <body style="background-color:{% env_background_color %};">
+  <a class="skip-to-content-link" href="#content">Skip to main content</a>
+
   <header class="navbar navbar-default navbar-static-top">
     <div class="container-fluid">
       <!-- mobile-friendly -->
@@ -98,7 +100,7 @@
       </div>
     </div>
   </header>
-  <main id="content" class="content">
+  <main id="content" class="content" tabindex="-1">
     {% block status %}
       {% if messages %}
         {% csrf_token %}
