@@ -1246,7 +1246,8 @@ body > .navbar {
     line-height: 1;
 }
 
-.navbar-default .navbar-text {
+.navbar-default .navbar-text,
+.navbar-default .navbar-nav > li > a {
     color: #727272;
 }
 
