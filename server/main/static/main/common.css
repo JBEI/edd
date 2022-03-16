@@ -1251,6 +1251,18 @@ body > .navbar {
     color: #727272;
 }
 
+.navbar-default .navbar-nav > li > a:focus,
+.navbar-default .navbar-nav > li > a:hover {
+    text-decoration: underline;
+}
+
+.navbar-default .navbar-nav > li > a:focus svg,
+.navbar-default .navbar-nav > li > a:hover svg {
+    border-bottom: 1px solid;
+    box-sizing: content-box;
+    margin-bottom: -1px;
+}
+
 .navbar-text.edd-nav-title {
     font-weight: bold;
     font-size: 18px;
