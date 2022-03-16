@@ -74,6 +74,10 @@ a {
     color: #4c81c0;
     text-decoration: none;
 }
+a:hover,
+a:focus {
+    color: #4378b7;
+}
 a.darker {
     color: #000000;
 }
