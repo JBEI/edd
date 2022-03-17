@@ -1431,3 +1431,6 @@ summary.pageDivider {
     top: 0;
     transition: 0.1s ease-in;
 }
+h2 {
+    font-size: 2.143em;
+}
