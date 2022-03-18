@@ -11,10 +11,11 @@ import * as Notification from "../modules/Notification";
 
 import "../modules/Styles";
 
-export let notificationSocket = new Notification.NotificationSocket({ "stub": true });
-
-function buildMenu(menuElement: HTMLElement): Notification.NotificationMenu {
-    return new Notification.NotificationMenu(menuElement, notificationSocket);
+function buildMenu(
+    menuElement: HTMLElement,
+    socket: Notification.NotificationSocket,
+): Notification.NotificationMenu {
+    return new Notification.NotificationMenu(menuElement, socket);
 }
 
 // called when the page loads
@@ -37,19 +38,32 @@ function prepareIt(): void {
     // adding handlers for notifications in menubar
     const menuElement = document.getElementById("notification-dropdown");
     if (menuElement instanceof HTMLElement) {
-        notificationSocket = new Notification.NotificationSocket();
-        buildMenu(menuElement);
+        const socket = new Notification.NotificationSocket();
+        buildMenu(menuElement, socket);
 
         // Add a handler to auto-download messages with the "download" tag
-        notificationSocket.addTagAction("download", (message) => {
+        socket.addTagAction("download", (message) => {
             // only acting if the current document is active and focused
             if (document.hasFocus()) {
                 const downloadLink = message.payload.url;
                 // and only act if a link is found
                 if (downloadLink) {
-                    notificationSocket.markRead(message.uuid);
+                    socket.markRead(message.uuid);
                     window.location.replace(downloadLink);
                 }
+            }
+        });
+        // Add a handler to check for repeated failed websocket connections
+        // If a ping returns an un-authenticated status, reload to force login
+        $(document).on("eddwsclosed", (event, count: number) => {
+            // only send ping if multiple retries already failed
+            if (count > 2) {
+                $.get("/ping/").fail((xhr) => {
+                    if (xhr.status === 403) {
+                        // logged out, refresh the page
+                        window.location.reload();
+                    }
+                });
             }
         });
     }

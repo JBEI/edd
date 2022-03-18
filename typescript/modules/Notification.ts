@@ -10,12 +10,23 @@ export interface Options {
     stub?: boolean;
 }
 
+type WireMessage = [string, string[], any, number, string];
 export interface Message {
     message: string;
     tags: string[];
     payload: any;
     time: Date;
     uuid: string;
+}
+
+interface NoticeCommand {
+    unread: number;
+}
+interface NoticeMessage extends NoticeCommand {
+    messages: WireMessage[];
+}
+interface NoticeDismiss extends NoticeCommand {
+    dismiss: string;
 }
 
 function contains(object: any, key: string): boolean {
@@ -46,9 +57,9 @@ export class NotificationSocket {
             this.socket = null;
         } else {
             this.socket = new ReconnectingWebSocket(notify_url.toString());
-            this.socket.onopen = this.opened.bind(this);
-            this.socket.onclose = this.closed.bind(this);
-            this.socket.onmessage = this.receive.bind(this);
+            this.socket.onopen = (e) => this.opened(e);
+            this.socket.onclose = (e) => this.closed(e);
+            this.socket.onmessage = (e) => this.receive(e);
         }
     }
 
@@ -94,31 +105,33 @@ export class NotificationSocket {
     }
 
     private opened(event) {
+        $.event.trigger("eddwsopened");
         return;
     }
 
     private closed(event) {
+        $.event.trigger("eddwsclosed", [this.socket.retryCount]);
         return;
     }
 
-    private receive(event) {
-        const payload = JSON.parse(event.data);
+    private receive(event: MessageEvent<string>) {
+        const payload: NoticeCommand = JSON.parse(event.data);
         if (contains(payload, "messages")) {
-            this.processMessages(payload);
+            this.processMessages(payload as NoticeMessage);
         } else if (contains(payload, "reset")) {
             this.resetMessages();
         } else if (contains(payload, "dismiss")) {
-            this.dismissMessage(payload);
+            this.dismissMessage(payload as NoticeDismiss);
         }
         this.updateSubscribers();
     }
 
-    private dismissMessage(payload) {
+    private dismissMessage(payload: NoticeDismiss) {
         delete this.messages[payload.dismiss];
         this.count = payload.unread;
     }
 
-    private loadMessage(msg: any[]): Message {
+    private loadMessage(msg: WireMessage): Message {
         return {
             "message": msg[0],
             "tags": msg[1],
@@ -128,7 +141,7 @@ export class NotificationSocket {
         };
     }
 
-    private processMessages(payload) {
+    private processMessages(payload: NoticeMessage) {
         for (const msg of payload.messages) {
             const message = this.loadMessage(msg);
             // only add if not seen already; a message could arrive after it was
