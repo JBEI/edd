@@ -171,6 +171,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         }
         return [
             new DataGridDataCell(gridSpec, index, {
+                "headers": ["hStudyName"],
                 "hoverEffect": true,
                 "nowrap": true,
                 "sideMenuItems": sideMenuItems,
@@ -195,6 +196,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
                 "maxWidth": "400",
                 "customID": (id) => "editableDescriptionField" + id,
                 "contentString": gridSpec.dataObj[index].des || "",
+                "headers": ["hStudyDesc"],
                 "title": gridSpec.dataObj[index].des || "",
             }),
         ];
@@ -207,6 +209,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         return [
             new DataGridDataCell(gridSpec, index, {
                 "contentString": gridSpec.dataObj[index].initials || "?",
+                "headers": ["hStudyOwnerInitials"],
             }),
         ];
     }
@@ -218,6 +221,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         return [
             new DataGridDataCell(gridSpec, index, {
                 "contentString": gridSpec.dataObj[index].ownerName || "?",
+                "headers": ["hStudyOwnerFullName"],
             }),
         ];
     }
@@ -229,6 +233,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         return [
             new DataGridDataCell(gridSpec, index, {
                 "contentString": "?",
+                "headers": ["hStudyOwnerInstitute"],
             }),
         ];
     }
@@ -240,6 +245,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         return [
             new DataGridDataCell(gridSpec, index, {
                 "contentString": Utl.JS.utcToTodayString(gridSpec.dataObj[index].cr),
+                "headers": ["hStudyCreated"],
             }),
         ];
     }
@@ -251,6 +257,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         return [
             new DataGridDataCell(gridSpec, index, {
                 "contentString": Utl.JS.utcToTodayString(gridSpec.dataObj[index].mod),
+                "headers": ["hStudyCreated"],
             }),
         ];
     }

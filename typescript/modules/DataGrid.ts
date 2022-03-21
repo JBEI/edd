@@ -1472,6 +1472,7 @@ export class DataGridDataCell {
     // Options potentially set by the constructor
     rowspan: number;
     colspan: number;
+    headers: string[];
     align: "left" | "right" | "center";
     valign: "top" | "middle" | "bottom" | "baseline";
     maxWidth: string;
@@ -1509,6 +1510,7 @@ export class DataGridDataCell {
             "align": "left",
             "rowspan": 1,
             "colspan": 1,
+            "headers": [],
         };
         $.extend(this, defaults, opt || {});
     }
@@ -1562,7 +1564,9 @@ export class DataGridDataCell {
         if (this.customID) {
             c.setAttribute("id", this.customID.call(this.gridSpec, id));
         }
-
+        if (this.headers) {
+            c.setAttribute("headers", this.headers.join(" "));
+        }
         if (this.hoverEffect) {
             cellClasses.push("popupcell");
         }
