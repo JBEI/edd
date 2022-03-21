@@ -87,6 +87,6 @@ input.passwordButton {
 }
 
 a.forgotPassword {
-    color: red;
+    color: #e00;
     font-size: 12px;
 }
