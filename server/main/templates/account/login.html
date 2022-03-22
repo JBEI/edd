@@ -5,6 +5,13 @@
 {% load branding %}
 {% load static %}
 
+{% block head_title %}
+  {{ block.super }}
+  {% if form.non_field_errors|length %}
+    {% trans '- Login Error' %}
+  {% endif %}
+{% endblock head_title %}
+
 {% block js_css %}
   {{ block.super }}
   {% get_providers as socialaccount_providers %}
@@ -16,9 +23,22 @@
 {% block status %}
   {{ block.super }}
   {% for error in form.non_field_errors %}
-  <p class="bad">{{ error }}</p>
+  <div class="alert alert-danger" role="alert" aria-hidden="true">
+    <p>{{ error }}</p>
+  </div>
   {% endfor %}
 {% endblock status %}
+
+{% block sr_header_alert %}
+  {{ block.super }}
+  <div class="sr-only" role="alert">
+    {% for error in form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+      <p>{{ error }}</p>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
 
 {% block content %}
   {% get_providers as socialaccount_providers %}
