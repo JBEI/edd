@@ -109,3 +109,8 @@ def login_welcome(context):
     except Exception:
         # with no branding, show no welcome message
         return ""
+
+
+@register.simple_tag()
+def show_password_button():
+    return getattr(settings, "EDD_ALLOW_SHOW_PASSWORD", False)

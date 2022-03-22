@@ -18,6 +18,7 @@
   {% if socialaccount_providers %}
   {% providers_media_js %}
   {% endif %}
+  <script type="text/javascript" src="{% static 'dist/Login.js' %}"></script>
 {% endblock js_css %}
 
 {% block status %}
@@ -76,11 +77,58 @@
       <legend>{% trans 'Login with EDD Account' %}</legend>
       <div>
         {{ form.login.label_tag }}
-        <input type="text" name="login" autocomplete="username" maxlength="150" required aria-invalid="false" id="id_login">
+        <input
+          type="text"
+          name="login"
+          autocomplete="username"
+          maxlength="150"
+          required="required"
+          aria-invalid="false"
+          id="id_login"
+        />
       </div>
-      <div>
+      <div class="passwordContainer">
         {{ form.password.label_tag }}
-        <input type="password" name="password" autocomplete="current-password" required aria-invalid="false" id="id_password">
+        <input
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          required="required"
+          aria-invalid="false"
+          id="id_password"
+        />
+        {% show_password_button as show_password %}
+        {% if show_password %}
+          <a href="#"
+            class="showPassword"
+            id="show-password"
+            aria-controls="id_password"
+            role="switch"
+            aria-pressed="false"
+            aria-label="{% translate 'Show password' %}"
+          >{% translate "Show" context "password toggle" %}</a>
+          <span id="show-password-show" aria-hidden="true" class="off">
+            {% translate "Show" context "password toggle" %}
+          </span>
+          <span id="show-password-hide" aria-hidden="true" class="off">
+            {% translate "Hide" context "password toggle" %}
+          </span>
+          <span id="show-password-show-label" aria-hidden="true" class="off">
+            {% translate "Show password" %}
+          </span>
+          <span id="show-password-hide-label" aria-hidden="true" class="off">
+            {% translate "Hide password" %}
+          </span>
+          <span id="show-password-shown-sr" aria-hidden="true" class="off">
+            {% translate "Password shown." %}
+          </span>
+          <span id="show-password-hidden-sr" aria-hidden="true" class="off">
+            {% translate "Password hidden." %}
+          </span>
+          <p aria-live="polite" id="password-text" class="sr-only">
+            {% translate "Password hidden." %}
+          </p>
+        {% endif %}
         <div>
           <a class="forgotPassword" href="{% url 'account_reset_password' %}">
             {% trans 'Forgot password?' %}
