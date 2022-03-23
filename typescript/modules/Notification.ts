@@ -194,40 +194,43 @@ export class NotificationSocket {
 
 export class NotificationMenu {
     badge: JQuery;
+    dropdown: JQuery;
     messageList: JQuery;
+    messageTemplate: JQuery;
     emptyMessage: JQuery;
+    closeAllButton: JQuery;
     socket: NotificationSocket;
 
     constructor(element: HTMLElement, socket: NotificationSocket) {
         const menu = $(element);
         this.badge = menu.find(".badge");
-        this.messageList = menu.find(".dropdown-menu");
-        this.emptyMessage = this.messageList.find(".message-empty").clone();
+        this.dropdown = menu.find(".dropdown-menu");
+        this.messageList = menu.find(".message-list");
+        this.messageTemplate = menu.find(".message").clone();
+        this.emptyMessage = this.dropdown.find(".message-empty").remove();
+        this.closeAllButton = this.dropdown.find(".close-all").clone();
         this.socket = socket;
 
         this.socket.subscribe(this.display.bind(this));
-        this.messageList.on(
+        this.dropdown.on(
             "click",
-            "li.message > .message-close",
+            "li.message > .message-close button",
             this.markRead.bind(this),
         );
-        this.messageList.on("click", "li.close-all", this.markAllRead.bind(this));
+        this.dropdown.on("click", ".close-all button", this.markAllRead.bind(this));
     }
 
     display(msgs: Message[], count: number): void {
         this.messageList.empty();
-        $.map(msgs, (msg) => this.messageList.append(this.processMessage(msg)));
-        if (count) {
-            this.badge.text("" + count);
-            const closeAll = $("<li>").addClass("close-all");
-            $("<span>")
-                .addClass("message-close")
-                .text("Mark All Read")
-                .appendTo(closeAll);
-            closeAll.appendTo(this.messageList);
+        if (count > 0) {
+            this.dropdown.find(".message-empty").remove();
+            $.map(msgs, (msg) => this.messageList.append(this.processMessage(msg)));
+            this.closeAllButton.appendTo(this.dropdown);
+            this.badge.text(count.toString());
         } else {
+            this.emptyMessage.appendTo(this.dropdown);
+            this.dropdown.find(".close-all").remove();
             this.badge.empty();
-            this.emptyMessage.appendTo(this.messageList);
         }
     }
 
@@ -243,9 +246,9 @@ export class NotificationMenu {
     }
 
     private processMessage(message: Message): JQuery | null {
-        const item = $("<li>").addClass("message").data("uuid", message.uuid);
-        $("<span>").addClass("message-text").html(message.message).appendTo(item);
-        $("<span>").addClass("message-close fas fa-times").appendTo(item);
+        const item = this.messageTemplate.clone();
+        item.find(".message-text").html(message.message);
+        item.data("uuid", message.uuid);
         return item;
     }
 }

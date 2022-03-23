@@ -78,13 +78,28 @@
             {% if user.is_authenticated %}
             <li class="dropdown" id="notification-dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
-                  aria-haspopup="true" aria-expanded="false">
+                  aria-controls="notification-list" aria-expanded="false">
                 <span class="fas fa-inbox"></span>
                 <span class="badge"></span>
+                <span class="sr-only">{% translate "Notifications" %}</span>
               </a>
-              <ul class="dropdown-menu" id="notification-list">
-                <li class="message-empty">{% trans 'No new notifications.' %}</li>
-              </ul>
+              <div class="dropdown-menu" id="notification-list">
+                <ul class="message-list">
+                  <li class="message">
+                    <span class="message-text"></span>
+                    <span class="message-close">
+                      <button class="btn btn-xs btn-link">
+                        <span class="fas fa-times"></span>
+                        <span class="sr-only">{% trans 'Dismiss this notification' %}</span>
+                      </button>
+                    </span>
+                  </li>
+                </ul>
+                <p class="message-empty" aria-disabled="true">{% trans 'No new notifications.' %}</p>
+                <p class="close-all text-right">
+                  <button class="btn btn-sm btn-primary">{% trans 'Mark All Read' %}</button>
+                </p>
+              </div>
             </li>
             <li>
               <p class="navbar-text">{% firstof user.get_full_name user.username %}</p>
