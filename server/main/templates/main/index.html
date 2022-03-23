@@ -11,40 +11,14 @@
 
 {% block content %}
   {% if can_create %}
-  <button
+  <a
     class="btn btn-primary btn-lg pull-right"
     id="addStudyButton"
     title="{% trans 'Add a new Study' %}"
+    href="{% url 'main:create_study' %}"
   >
     {% trans 'New Study' context 'button' %}
-  </button>
-  {# the DIV below is hidden by default; TypeScript code removes and puts in a modal #}
-  <div id="addStudyModal"
-      class="off"
-      title="{% trans 'Add New Study' context 'modal title' %}">
-    {% if form.errors %}
-    <div class="alert alert-danger alert-dismissible" role="alert">
-      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-      <p>{{ form.errors.as_text }}</p>
-    </div>
-    {% endif %}
-    <form action="" class="edd-form" method="POST">
-      {% csrf_token %}
-      <div class="modal-body">
-      {{ form.as_p }}
-      </div>
-      <div class="modal-footer">
-        <button
-          class="btn btn-primary"
-          name="action"
-          type="submit"
-          value="assay"
-        >{% trans 'Add Study' context 'button' %}</button>
-      </div>
-    </form>
-  </div>
+  </a>
   {% endif %}
   <h2>{% trans 'Recently Viewed Studies:' context 'heading' %}</h2>
   <div class="lastViewed" style="min-height: 30px;">

@@ -17,6 +17,6 @@
 <form action="{% url 'main:create_study' %}"  class="edd-form" method="POST">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">{% trans 'Add Study' %}</button>
+    <button class="btn btn-primary" type="submit">{% trans 'Add Study' %}</button>
 </form>
 {% endblock content %}

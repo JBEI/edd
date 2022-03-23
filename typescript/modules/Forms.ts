@@ -622,3 +622,30 @@ export class FormMetadataManager {
         return addingRow;
     }
 }
+
+export function handleChangeRequiredInput(event: JQueryEventObject): void {
+    const input = event.target as HTMLInputElement;
+    input.setCustomValidity("");
+    input.checkValidity();
+}
+
+export function handleInvalidRequiredInput(event: JQueryEventObject): void {
+    const $input = $(event.target);
+    const input = event.target as HTMLInputElement;
+    if (input.validity.customError) {
+        // if already reporting a customized error, skip doing anything
+        return;
+    } else if (input.validity.valueMissing || input.validity.patternMismatch) {
+        const elementValidity = $input.data("validationText");
+        const id = $input.attr("id");
+        const labelText = $(`label[for=${id}]`).text();
+        if (elementValidity) {
+            // prefer text added to element with i18n
+            input.setCustomValidity(elementValidity);
+        } else if (labelText) {
+            // fall back to assumed English with label
+            input.setCustomValidity(`${labelText} required.`);
+        }
+        input.reportValidity();
+    }
+}

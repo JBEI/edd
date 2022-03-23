@@ -6,17 +6,9 @@ import "jquery";
 import "jquery-ui/ui/widgets/dialog";
 import "jquery-ui/ui/widgets/tooltip";
 
-import * as EDDAuto from "./EDDAutocomplete";
 import * as EDDEditable from "./EDDEditableElement";
 
 $(window).on("load", () => {
-    // Shortcutting this to .load confuses jQuery
-    EDDAuto.BaseAuto.initPreexisting();
-    // this makes the autocomplete work like a dropdown box
-    // fires off a search as soon as the element gains focus
-    $(document).on("focus", ".autocomp", (ev) => {
-        $(ev.target).addClass("autocomp_search").mcautocomplete("search");
-    });
     const accesslink = $("#accesslink");
     if (accesslink.length) {
         $.ajax({

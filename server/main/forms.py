@@ -434,7 +434,14 @@ class CreateStudyForm(forms.ModelForm):
         }
         widgets = {
             "name": forms.widgets.TextInput(
-                attrs={"size": 50, "class": "form-control", "placeholder": "(required)"}
+                attrs={
+                    "aria-invalid": "false",
+                    "class": "form-control",
+                    "data-validation-text": _("Study Name is required."),
+                    # at least one non-whitespace character
+                    "pattern": r".*[\S]+.*",
+                    "size": 50,
+                },
             ),
             "description": forms.widgets.Textarea(
                 attrs={"cols": 49, "class": "form-control"}

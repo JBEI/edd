@@ -42,11 +42,6 @@ function prepareIt(): void {
         modal.removeClass("off").dialog("open");
     }
 
-    $("#addStudyButton").click(function () {
-        modal.removeClass("off").dialog("open");
-        return false;
-    });
-
     prepareTable();
 }
 
