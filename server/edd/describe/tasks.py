@@ -14,9 +14,7 @@ User = get_user_model()
 
 
 @shared_task
-def send_describe_failed_email_admin(
-    request, user_pk, study_uuid, duration, **kwargs
-):
+def send_describe_failed_email_admin(request, user_pk, study_uuid, duration, **kwargs):
     errs_report = DescribeErrorReport(request=request)
     subject_template = get_template("edd/describe/mail/admin_failure_subject.txt")
     html_template = get_template("edd/describe/mail/admin_failure_body.html")
@@ -42,9 +40,7 @@ def send_describe_failed_email_admin(
 
 
 @shared_task
-def send_describe_failed_email_user(
-    request, user_pk, study_uuid, duration, **kwargs
-):
+def send_describe_failed_email_user(request, user_pk, study_uuid, duration, **kwargs):
     errs_report = DescribeErrorReport(request=request)
     subject_template = get_template("edd/describe/mail/user_failure_subject.txt")
     html_template = get_template("edd/describe/mail/user_failure_body.html")
@@ -68,6 +64,12 @@ def send_describe_failed_email_user(
     send_mail(
         subject.strip(), text, settings.SERVER_EMAIL, [user.email], html_message=html,
     )
+
+
+@shared_task
+def clear_error_report(request):
+    errs_report = DescribeErrorReport(request=request)
+    errs_report.clear_stash()
 
 
 @shared_task
@@ -96,3 +98,4 @@ def send_describe_success_email(
     html = html_template.render(context)
 
     send_mail(subject, text, settings.SERVER_EMAIL, [user.email], html_message=html)
+    report.clear_stash()

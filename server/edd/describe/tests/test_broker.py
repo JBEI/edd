@@ -8,6 +8,7 @@ def test_DescribeErrorReport_stash_errors_empty():
     dr = DescribeErrorReport()
     dr.stash_errors()
     assert dr.unstash_errors() == {"errors": [], "warnings": []}
+    dr.clear_stash()
 
 
 def test_DescribeErrorReport_stash_errors_only_errors():
@@ -24,6 +25,7 @@ def test_DescribeErrorReport_stash_errors_only_errors():
         ],
         "warnings": [],
     }
+    dr.clear_stash()
 
 
 def test_DescribeErrorReport_stash_errors_only_warnings():
@@ -45,6 +47,7 @@ def test_DescribeErrorReport_stash_errors_only_warnings():
             }
         ],
     }
+    dr.clear_stash()
 
 
 def test_DescribeErrorReport_stash_massages_both():
@@ -72,6 +75,7 @@ def test_DescribeErrorReport_stash_massages_both():
             }
         ],
     }
+    dr.clear_stash()
 
 
 @patch.object(DescribeErrorReport, "_connect")
