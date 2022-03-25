@@ -736,6 +736,9 @@ class Protocol(models.Model):
         # return the first created Protocol matching the name
         return qs.order_by(sort, "created__mod_time").first()
 
+    def __str__(self):
+        return self.name
+
 
 class Strain(EDDObject):
     """A link to a strain/part in the JBEI ICE Registry."""
