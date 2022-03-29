@@ -7,14 +7,14 @@
 {% block js_css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/study-overview.css' %}" />
-  <script type="text/javascript" src="{% static 'dist/StudyOverview.js' %}"></script>
+  <script src="{% static 'dist/StudyOverview.js' %}"></script>
 {% endblock js_css %}
 
 
 {% block content %}
   {{ block.super }}
 
-<form action=""
+<form
     class="edd-form"
     data-rest="{{ rest }}"
     enctype="multipart/form-data"
@@ -35,11 +35,9 @@
           {{ edit_study.name }}
         </div>
         {% url "main:load:wizard" slug=study.slug as wizard_url %}
-        <a class="{% if not lines %}off{% endif %}" href="{{ wizard_url}}">
-          <button class="btn btn-primary btn-large" type="button">
+        <a class="{% if not lines %}off{% endif %} btn btn-primary btn-large" href="{{ wizard_url}}">
             <span class="fas fa-cloud-upload-alt"></span>
             {% trans 'Import Data' %}
-          </button>
         </a>
         {% else %}
         <div class="flex-item">
@@ -122,13 +120,13 @@
         <div id="dz-title">
           <span id="experimentDescTitle">{% trans 'Experiment Description File' %}
             <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
-                <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'Help' %}
-                  <div class="helpContent">
-                    <p>
+                <span id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'Help' %}
+                  <span class="helpContent">
+                    <span>
                       {% trans "Click for help on Experiment Description files" %}
-                    </p>
-                  </div>
-                </div>
+                    </span>
+                  </span>
+                </span>
               </a></span>
         </div>
         <div class="dz-message" data-dz-message>
@@ -154,42 +152,25 @@
           Other line creation options:
           {% endblocktrans %}
         </p>
-        <a class="dropLink" href="{% url 'main:describe:describe' slug=study.slug %}">
-          <button
-            class="btn btn-default combosButton"
-            id="combosButton"
-            name="action"
-            type="button"
-          >
-            <span class="fas fa-random"></span>
-            {% trans "Add Line Combo's" %}
-          </button>
+        <a class="dropLink btn btn-default combosButton" href="{% url 'main:describe:describe' slug=study.slug %}"
+          id="combosButton"
+        >
+          <span class="fas fa-random"></span>
+          {% trans "Add Line Combo's" %}
         </a>
       </div>
       <div>
-        <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
-          <button
-            class="btn btn-default"
-            id="manualButton"
-            name="action"
-            type="button"
-          >
-            <span class="fas fa-pencil-alt"></span>
-            {% trans 'Enter Manually' %}
-          </button>
+        <a class="dropLink btn btn-default" href="{% url 'main:lines' slug=study.slug %}"
+          id="manualButton"
+        >
+          <span class="fas fa-pencil-alt"></span>
+          {% trans 'Enter Manually' %}
         </a>
       </div>
       <div>
-        <a class="dropLink" href="#">
-          <button
-            class="btn btn-default dz-browse-link"
-            id="browseButton"
-            name="action"
-            type="button"
-          >
-            <span class="fas fa-folder-open"></span>
-            {% trans 'Browse for file' %}
-          </button>
+        <a class="dropLink btn btn-default dz-browse-link" href="#" id="browseButton">
+          <span class="fas fa-folder-open"></span>
+          {% translate "Browse for file" %}
         </a>
       </div>
     </div>
@@ -201,7 +182,7 @@
   <div class="sectionContent">
     {% with perms=study.get_combined_permission %}
     {% if perms %}
-    <table cellpadding="0" cellspacing="0" width="640px">
+    <table class="permissions">
       <tr class="columnLabels">
         <th class="smaller">{% trans 'Who' %}</th>
         <th class="smaller">{% trans 'Level' %}</th>
@@ -234,7 +215,6 @@
     {% endwith %}
     {% if writable %}
     <form
-      action=""
       class="attachments edd-form"
       enctype="multipart/form-data"
       method="POST"
@@ -279,7 +259,7 @@
       {% endfor %}
     </ol>
     <div class="sectionActions">
-      <form method="POST" class="comments edd-form" action="">
+      <form method="POST" class="comments edd-form">
         {% csrf_token %}
         {{ new_comment.as_p }}
         <p>
@@ -301,7 +281,7 @@
 <details class="clearfix">
   <summary class="pageDivider">{% trans " Manage Study" %}</summary>
   <div class="sectionContent indent">
-    <form action="" class="edd-form" method="POST">
+    <form class="edd-form" method="POST">
       {% csrf_token %}
       <input type="hidden" name="studyId" value="{{ object.id }}" />
       {% if object.active %}

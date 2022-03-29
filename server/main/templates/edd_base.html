@@ -7,22 +7,20 @@
   lang="{{ LANGUAGE_CODE }}"
 >
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Language" content="{{ LANGUAGE_CODE }}">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta charset="UTF-8" />
   <title>
     {% block head_title %}
     {% trans 'Experiment Data Depot' context 'HTML Title' %}
     {% endblock head_title %}
   </title>
-  <script type="text/javascript" src="{% static 'dist/vendor.js' %}"></script>
+  <script src="{% static 'dist/vendor.js' %}"></script>
   <link rel="stylesheet" type="text/css" href="{% static 'dist/vendor.css' %}" />
   <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
   {% stylesheet as branding_css %}
   {% if branding_css %}
   <link rel="stylesheet" type="text/css" href="{{ branding_css }}" />
   {% endif %}
-  <script type="text/javascript" src="{% static 'dist/Common.js' %}"></script>
+  <script src="{% static 'dist/Common.js' %}"></script>
   {% block js_css %}
   {% endblock js_css%}
 </head>

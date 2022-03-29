@@ -16,7 +16,7 @@
 {% block content %}
 <a id="accesslink" href="{% url 'main:access' slug=study.slug %}" class="off"></a>
 <div class="studyNav">
-  <ui class="nav nav-pills">
+  <ul class="nav nav-pills">
     <li class="{% if showingoverview %}active{% endif %}">
       <a href="{% url 'main:overview' slug=study.slug %}">{% trans 'Overview' %}</a>
     </li>
@@ -30,7 +30,7 @@
       <a href="{% url 'main:detail' slug=study.slug %}">{% trans 'Data' %}</a>
     </li>
     {% endif %}
-  </ui>
+  </ul>
 </div>
 
 {% endblock content %}

@@ -90,7 +90,7 @@ export class BaseAuto {
     static initPreexisting(context?: Element | JQuery): void {
         $("input.autocomp", context).each((i, element) => {
             const visibleInput: JQuery = $(element);
-            const autocompleteType: string = $(element).attr("eddautocompletetype");
+            const autocompleteType: string = $(element).data("eddautocompletetype");
             if (!autocompleteType) {
                 throw Error("eddautocompletetype must be defined!");
             }
