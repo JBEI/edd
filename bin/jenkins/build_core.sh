@@ -7,9 +7,7 @@ SERVER="cr.ese.lbl.gov"
 # build the core image
 DOCKER_BUILDKIT=1 docker build \
     --pull \
-    --progress plain \
     --build-arg "EDD_VERSION=${TAG}" \
-    --build-arg "NODE_VERSION=${TAG}" \
     --build-arg "REPO_SERVER=${SERVER}" \
     --build-arg "SKLEARN_BASE_VERSION=latest" \
     -f ./docker/edd/core/Dockerfile \

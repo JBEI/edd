@@ -7,6 +7,22 @@ ARG TARGET="dev"
 
 # ---
 
+FROM node:lts-alpine as edd-node
+
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
+
+COPY ./docker/edd/core/package.json /run/
+
+WORKDIR /run/
+
+RUN apk add --no-cache zsh \
+ && yarn install --non-interactive --ignore-optional \
+ && yarn cache clean
+
+CMD ["/bin/zsh"]
+
+# ---
+
 FROM ${REPO_SERVER}/jbei/scikit-learn:${SKLEARN_BASE_VERSION} as prod-preinstall
 
 WORKDIR /install
@@ -64,7 +80,7 @@ RUN set -ex \
 
 # ---
 
-FROM ${REPO_SERVER}/jbei/edd-node:${NODE_VERSION} as node
+FROM edd-node as typescript
 
 WORKDIR /run/
 COPY ./typescript ./.prettierrc.js /run/
@@ -117,7 +133,7 @@ COPY ./docker/edd/core/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY --from=staticfiles /usr/local/edd /usr/local/edd
 # Copy in static assets
 COPY --from=staticfiles /usr/local/edd-static /usr/local/edd-static
-COPY --from=node /run/dist /usr/local/edd-static/dist
+COPY --from=typescript /run/dist /usr/local/edd-static/dist
 # Copy in commit hash from configure image
 COPY --from=configure /tmp/edd.hash /edd.hash
 

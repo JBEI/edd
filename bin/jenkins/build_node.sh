@@ -6,8 +6,9 @@ SERVER="cr.ese.lbl.gov"
 
 DOCKER_BUILDKIT=1 docker build \
     --pull \
-    --progress plain \
+    --target edd-node \
     -t "jbei/edd-node:${TAG}" \
     -t "${SERVER}/jbei/edd-node:${TAG}" \
-    ./docker/node
+    -f ./docker/edd/core/Dockerfile \
+    .
 docker push "${SERVER}/jbei/edd-node:${TAG}"
