@@ -25,6 +25,8 @@ EDD_DEPLOYMENT_ENVIRONMENT = env("EDD_DEPLOYMENT_ENVIRONMENT", default="TEST")
 # EDD_ALLOW_SIGNUP: False disables signup; callable will be called with a
 #   request object; string type will attempt to import and call module
 EDD_ALLOW_SIGNUP = True
+# EDD_ALLOW_SHOW_PASSWORD: False removes the "Show password" button
+EDD_ALLOW_SHOW_PASSWORD = env("EDD_ALLOW_SHOW_PASSWORD", default=False)
 # EDD_ONLY_SUPERUSER_CREATE: True disables all study creation by non-superusers.
 EDD_ONLY_SUPERUSER_CREATE = False
 # EDD_DEFAULT_STUDY_READ_GROUPS: list of groups that automatically get READ

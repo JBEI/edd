@@ -90,3 +90,8 @@ a.forgotPassword {
     color: #e00;
     font-size: 12px;
 }
+
+.alert p {
+    margin: 0;
+    padding: 0;
+}

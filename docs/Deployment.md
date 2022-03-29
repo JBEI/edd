@@ -124,6 +124,7 @@ The following configuration options are specific to EDD and may be overridden in
 
 -   `EDD_ALLOW_SIGNUP` -- boolean flag; if True, self-registration of accounts
     is enabled.
+-   `EDD_ALLOW_SHOW_PASSWORD` -- boolean flag; if True, show "Show password" button
 -   `EDD_DEPLOYMENT_ENVIRONMENT` -- string value, changes background color and
     adds a visual environment label to assist in telling apart testing vs
     production instances. A None value will result in no visual changes added

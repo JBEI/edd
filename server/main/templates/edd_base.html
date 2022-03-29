@@ -27,6 +27,8 @@
   {% endblock js_css%}
 </head>
 <body style="background-color:{% env_background_color %};">
+  {% block sr_header_alert %}
+  {% endblock %}
   <a class="skip-to-content-link" href="#content">Skip to main content</a>
 
   <header class="navbar navbar-default navbar-static-top">
@@ -51,11 +53,11 @@
       <div class="collapse navbar-collapse">
         <ul class="nav navbar-nav navbar-left">
           <li>
-            <p class="navbar-text edd-nav-title">
+            <h1 class="navbar-text edd-nav-title">
               {% block body_title %}
               {% trans 'Experiment Data Depot' context 'Top of page title' %}
               {% endblock body_title %}
-            </p>
+            </h1>
           </li>
           <li>
             <p class="navbar-text">{% env_label %}</p>
