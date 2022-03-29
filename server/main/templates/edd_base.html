@@ -106,11 +106,11 @@
         {% csrf_token %}
         {% for message in messages %}
         <div class="alert alert-{{ message.level_tag }} {{ message.extra_tags }}" role="alert">
-          <a
+          <button
             aria-label="{% trans 'Close' %}"
             class="close"
             data-dismiss="alert"
-          >&times;</a>
+          ><span aria-hidden>&times;</span></button>
           {{ message }}
         </div>
         {% endfor %}

@@ -38,14 +38,14 @@
       Drag-and-drop an Experiment Description file on the table below to add more lines.
       {% endblocktrans %}
       <a
-        class="label label-info label-spaced"
+        class="btn btn-primary btn-sm"
         href="{% describe_example_file %}"
       >
         <span class="fas fa-download"></span>
         {% trans 'Example File' %}
       </a>
       <a
-        class="label label-info label-spaced"
+        class="btn btn-primary btn-sm"
         href="{% url 'main:describe:help' slug=study.slug %}"
         target="_blank"
         title="{% trans 'Click to open help in a new tab' %}"

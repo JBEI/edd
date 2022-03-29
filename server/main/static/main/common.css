@@ -1320,6 +1320,7 @@ body > .navbar {
     padding: 10px 15px;
     border-bottom: 2px solid lightgray;
     border-radius: 0px;
+    text-decoration: none;
 }
 .nav {
     list-style: none;
@@ -1427,4 +1428,8 @@ summary.pageDivider {
 .skip-to-content-link:focus {
     top: 0;
     transition: 0.1s ease-in;
+}
+.dropdown-menu a,
+a.dropdown-toggle {
+    text-decoration: none;
 }
