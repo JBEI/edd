@@ -64,6 +64,14 @@ div.column {
     padding: 20px;
 }
 
+#overviewWrapper .column h2 {
+    font-size: inherit;
+}
+
+#experimentDescTitle h2 {
+    display: inline;
+}
+
 div.overviewDropZone {
     flex-grow: 1;
 }

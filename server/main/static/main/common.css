@@ -275,24 +275,19 @@ div.errorMessage > a.close {
     display: inline-block;
     padding: 1px 5px;
     margin: 0 10px 0 auto;
-    color: #44d;
-    font-size: 9px;
     text-align: center;
     border: 2px solid #66e;
     border-radius: 6px;
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
-.helpBadgeDiv:hover {
-    background-color: #ceceff;
-}
-div.helpContent {
+.helpContent {
     display: none;
 }
-div.helpContent li {
+.helpContent li {
     margin-left: 20px;
 }
-div.helpContent h1 {
+.helpContent h1 {
     font-size: 150%;
 }
 
@@ -380,6 +375,28 @@ div.flex-item {
 }
 summary:focus {
     outline: 0; /* disable outline on focus because it looks bad */
+}
+
+summary.pageDivider > span {
+    cursor: pointer;
+}
+
+summary:focus span {
+    color: #337ab7;
+    text-decoration: underline;
+}
+
+summary:hover span {
+    color: #286090;
+    text-decoration: underline;
+}
+
+summary:focus::marker {
+    color: #337ab7;
+}
+
+summary:hover::marker {
+    color: #286090;
 }
 
 div.assayFlex {
@@ -1381,10 +1398,6 @@ body > .navbar {
 }
 summary.pageDivider {
     margin-top: 10px; /* lower top margin because of added margin from <DETAILS> */
-}
-.pageDivider span {
-    background-color: white;
-    padding-right: 10px;
 }
 .pageDivider:after {
     content: "";

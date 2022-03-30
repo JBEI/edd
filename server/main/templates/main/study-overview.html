@@ -96,7 +96,7 @@
 <div id="overviewWrapper">
   <div class="row">
     <div id="describeDirectionsDiv" class="column">
-      <span id="descriptionPromptTitle">{% translate 'Experiment Description' %}</span>
+      <h2 id="descriptionPromptTitle">{% translate 'Experiment Description' %}</h2>
         <p>
         {% blocktranslate trimmed %}
           An experiment description file is an Excel file that describes your experiment: which
@@ -118,16 +118,22 @@
         data-url="{% url 'main:describe:describe' slug=study.slug %}"
       >
         <div id="dz-title">
-          <span id="experimentDescTitle">{% translate 'Experiment Description File' %}
-            <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
-                <span id="helpExperimentDescription" class="helpBadgeDiv">{% translate 'Help' %}
-                  <span class="helpContent">
-                    <span>
-                      {% translate "Click for help on Experiment Description files" %}
-                    </span>
-                  </span>
+          <div id="experimentDescTitle">
+            <h2>{% translate 'Experiment Description File' %}</h2>
+            <a
+              class="btn btn-primary btn-sm helpBadgeDiv"
+              href="{% url 'main:describe:help' slug=study.slug %}"
+              id="helpExperimentDescription"
+              target="_blank"
+            >
+              {% translate 'Help' %}
+              <span class="helpContent">
+                <span>
+                  {% translate "Click for help on Experiment Description files" %}
                 </span>
-              </a></span>
+              </span>
+            </a>
+          </div>
         </div>
         <div class="dz-message" data-dz-message>
           <span>{% translate 'Drop file here to upload, or' %}</span>
@@ -147,11 +153,11 @@
     </div>
     <div id="describeButtonsColumn" class="column">
       <div>
-        <p>
+        <h2>
           {% blocktranslate %}
           Other line creation options:
           {% endblocktranslate %}
-        </p>
+        </h2>
         <a class="dropLink btn btn-default combosButton" href="{% url 'main:describe:describe' slug=study.slug %}"
           id="combosButton"
         >
@@ -178,7 +184,9 @@
 </div>
 
 <details class="clearfix">
-  <summary class="pageDivider">{% translate "Permissions" %}</summary>
+  <summary class="pageDivider">
+    <span>{% translate "Permissions" %}</span>
+  </summary>
   <div class="sectionContent">
     {% with perms=study.get_combined_permission %}
     {% if perms %}
@@ -206,7 +214,7 @@
 <details class="clearfix">
   <summary class="pageDivider">
     {% blocktranslate with count=study.attachments|length %}
-    Attachments ({{ count }})
+    <span>Attachments ({{ count }})</span>
     {% endblocktranslate %}
   </summary>
   <div class="sectionContent">
@@ -240,7 +248,7 @@
 <details class="clearfix">
   <summary class="pageDivider">
     {% blocktranslate with count=study.comment_list|length %}
-    Comments ({{ count }})
+    <span>Comments ({{ count }})</span>
     {% endblocktranslate %}
   </summary>
   <div class="sectionContent">
@@ -279,7 +287,9 @@
 
 {% if writable %}
 <details class="clearfix">
-  <summary class="pageDivider">{% translate " Manage Study" %}</summary>
+  <summary class="pageDivider">
+    <span>{% translate " Manage Study" %}</span>
+  </summary>
   <div class="sectionContent indent">
     <form class="edd-form" method="POST">
       {% csrf_token %}

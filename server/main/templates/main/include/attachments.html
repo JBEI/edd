@@ -6,23 +6,23 @@ Template include file for displaying table of attachments
 TODO deleting a file may be a little too easy; should we require confirmation?
 -->
 {% endcomment %}
-<table id="attach-table" class="dataTable sortable">
+<table class="table table-condensed table-striped" id="attach-table">
   {% if attachments %}
-  <tr class="columnLabels">
-    <th class="sortheader smaller">{% translate 'Filename' %}</th>
-    <th class="sortheader smaller">{% translate 'Description' %}</th>
-    <th class="sortheader smaller right">{% translate 'Size' %}</th>
-    <th class="sortheader smaller center">{% translate 'Added By' %}</th>
-    <th class="sortheader smaller">{% translate 'Date Added' %}</th>
+  <tr>
+    <th>{% translate 'Filename' %}</th>
+    <th>{% translate 'Description' %}</th>
+    <th class="text-right">{% translate 'Size' %}</th>
+    <th class="text-center">{% translate 'Added By' %}</th>
+    <th>{% translate 'Date Added' %}</th>
     {% if writable %}
-    <th class="sortheader smaller right">{% translate 'Delete' %}</th>
+    <th class="text-right">{% translate 'Delete' %}</th>
     {% endif %}
   </tr>
   {% endif %}
   {% for a in attachments %}
   {% with slug=study.slug urlname=a.filename|urlencode %}
   {% url 'main:attachment' slug=slug file_id=a.id file_name=urlname as filelink %}
-  <tr class="stripeRow{% cycle 'A' 'B' %}">
+  <tr>
     <td class="nowrap">
       <img class="attach-icon" src="{% static 'main/images/' %}{{ a.icon }}"/>
       <a href="{{ filelink }}">{{ a.filename }}</a>
