@@ -191,16 +191,20 @@
     {% with perms=study.get_combined_permission %}
     {% if perms %}
     <table class="permissions table table-condensed table-striped">
-      <tr>
-        <th>{% translate 'Who' %}</th>
-        <th class="text-right">{% translate 'Level' %}</th>
-      </tr>
-      {% for perm in perms %}
-      <tr>
-        <td>{{ perm.get_who_label }}</td>
-        <td class="text-right">{{ perm.get_type_label }}</td>
-      </tr>
-      {% endfor %}
+      <thead>
+        <tr>
+          <th>{% translate 'Who' %}</th>
+          <th class="text-right">{% translate 'Level' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for perm in perms %}
+        <tr>
+          <td>{{ perm.get_who_label }}</td>
+          <td class="text-right">{{ perm.get_type_label }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
     </table>
     {% endif %}
     {% endwith %}
