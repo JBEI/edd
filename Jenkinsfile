@@ -169,6 +169,8 @@ try {
                         )
                         archiveArtifacts artifacts: 'container.log'
                         // send mail in Notify step
+                    } else {
+                        archiveArtifacts artifacts: 'coverage.json'
                     }
                 }
             }

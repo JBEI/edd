@@ -6,16 +6,16 @@
 {% with x_range=section_form.x_range %}
 {% for protocol, items in section_form.protocol_split %}
   <div>
-    {% blocktrans with name=protocol.name %}
+    {% blocktranslate with name=protocol.name %}
     Protocol <b>{{ name }}</b>
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </div>
   <div class="rounded-border">
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
-        <td>{% trans "Assay" %}</td>
-        <td colspan="2">{% trans "Measurement" %}</td>
-        <td colspan="2">{% trans "Recorded Values" %}</td>
+        <td>{% translate "Assay" %}</td>
+        <td colspan="2">{% translate "Measurement" %}</td>
+        <td colspan="2">{% translate "Recorded Values" %}</td>
       </tr>
       {% with x_range=section_form.x_range %}
       {% for measurement, widget in section_form.measurement_split %}

@@ -1,12 +1,12 @@
 {% extends "edd/load/mail/base.html" %}
 {% load i18n %}
 {% block body %}
-  <h2>{% trans "Data saved!" %}</h2>
+  <h2>{% translate "Data saved!" %}</h2>
   <p class="alert alert-success">
-    {% blocktrans %}
+    {% blocktranslate %}
     The EDD has finished loading data into <a href="{{ study_uri }}">{{ study }}</a>.
     The loading process added {{ added }} and updated {{ updated }} values in the Study.
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </p>
   {% include "edd/load/mail/_wizard_warnings.html" %}
 {% endblock body %}

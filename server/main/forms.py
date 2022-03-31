@@ -147,7 +147,7 @@ class UserAutocompleteWidget(AutocompleteWidget):
             {
                 "text_attr": {
                     "class": "autocomp form-control",
-                    "eddautocompletetype": "User",
+                    "data-eddautocompletetype": "User",
                 }
             }
         )
@@ -159,7 +159,9 @@ class GroupAutocompleteWidget(AutocompleteWidget):
 
     def __init__(self, attrs=None, opt=None):
         opt = {} if opt is None else opt
-        opt.update({"text_attr": {"class": "autocomp", "eddautocompletetype": "Group"}})
+        opt.update(
+            {"text_attr": {"class": "autocomp", "data-eddautocompletetype": "Group"}}
+        )
         super().__init__(attrs=attrs, model=Group, opt=opt)
 
 
@@ -169,7 +171,7 @@ class ProtocolAutocompleteWidget(AutocompleteWidget):
     def __init__(self, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update(
-            {"text_attr": {"class": "autocomp", "eddautocompletetype": "Protocol"}}
+            {"text_attr": {"class": "autocomp", "data-eddautocompletetype": "Protocol"}}
         )
         super().__init__(attrs=attrs, model=Protocol, opt=opt)
 
@@ -273,7 +275,7 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
             {
                 "text_attr": {
                     "class": "autocomp form-control",
-                    "eddautocompletetype": "Registry",
+                    "data-eddautocompletetype": "Registry",
                 }
             }
         )
@@ -304,7 +306,12 @@ class MetadataTypeAutocompleteWidget(AutocompleteWidget):
     def __init__(self, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update(
-            {"text_attr": {"class": "autocomp", "eddautocompletetype": "MetadataType"}}
+            {
+                "text_attr": {
+                    "class": "autocomp",
+                    "data-eddautocompletetype": "MetadataType",
+                }
+            }
         )
         super().__init__(attrs=attrs, model=MetadataType, opt=opt)
 
@@ -318,7 +325,7 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
         my_opt = {
             "text_attr": {
                 "class": "autocomp form-control",
-                "eddautocompletetype": "MeasurementType",
+                "data-eddautocompletetype": "MeasurementType",
             }
         }
         my_opt.update(**opt)
@@ -375,7 +382,10 @@ class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
     def __init__(self, template, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update(
-            text_attr={"class": "autocomp", "eddautocompletetype": "MetaboliteExchange"}
+            text_attr={
+                "class": "autocomp",
+                "data-eddautocompletetype": "MetaboliteExchange",
+            }
         )
         super().__init__(
             template=template, attrs=attrs, model=MetaboliteExchange, opt=opt
@@ -392,7 +402,10 @@ class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
     def __init__(self, template, attrs=None, opt=None):
         opt = {} if opt is None else opt
         opt.update(
-            text_attr={"class": "autocomp", "eddautocompletetype": "MetaboliteSpecies"}
+            text_attr={
+                "class": "autocomp",
+                "data-eddautocompletetype": "MetaboliteSpecies",
+            }
         )
         super().__init__(
             template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt
@@ -421,7 +434,14 @@ class CreateStudyForm(forms.ModelForm):
         }
         widgets = {
             "name": forms.widgets.TextInput(
-                attrs={"size": 50, "class": "form-control", "placeholder": "(required)"}
+                attrs={
+                    "aria-invalid": "false",
+                    "class": "form-control",
+                    "data-validation-text": _("Study Name is required."),
+                    # at least one non-whitespace character
+                    "pattern": r".*[\S]+.*",
+                    "size": 50,
+                },
             ),
             "description": forms.widgets.Textarea(
                 attrs={"cols": 49, "class": "form-control"}

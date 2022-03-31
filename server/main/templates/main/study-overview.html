@@ -7,14 +7,14 @@
 {% block js_css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/study-overview.css' %}" />
-  <script type="text/javascript" src="{% static 'dist/StudyOverview.js' %}"></script>
+  <script src="{% static 'dist/StudyOverview.js' %}"></script>
 {% endblock js_css %}
 
 
 {% block content %}
   {{ block.super }}
 
-<form action=""
+<form
     class="edd-form"
     data-rest="{{ rest }}"
     enctype="multipart/form-data"
@@ -35,11 +35,9 @@
           {{ edit_study.name }}
         </div>
         {% url "main:load:wizard" slug=study.slug as wizard_url %}
-        <a class="{% if not lines %}off{% endif %}" href="{{ wizard_url}}">
-          <button class="btn btn-primary btn-large" type="button">
+        <a class="{% if not lines %}off{% endif %} btn btn-primary btn-large" href="{{ wizard_url}}">
             <span class="fas fa-cloud-upload-alt"></span>
-            {% trans 'Import Data' %}
-          </button>
+            {% translate 'Import Data' %}
         </a>
         {% else %}
         <div class="flex-item">
@@ -98,18 +96,18 @@
 <div id="overviewWrapper">
   <div class="row">
     <div id="describeDirectionsDiv" class="column">
-      <span id="descriptionPromptTitle">{% trans 'Experiment Description' %}</span>
+      <span id="descriptionPromptTitle">{% translate 'Experiment Description' %}</span>
         <p>
-        {% blocktrans trimmed %}
+        {% blocktranslate trimmed %}
           An experiment description file is an Excel file that describes your experiment: which
           strains you are using (part ID from ICE), how they are being cultured (lines and
           metadata), the procedure for processing samples (protocol), and which samples are being
           taken (assays).
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <p>
         <a href="{% url 'main:describe:help' slug=study.slug %}#column_options" target="_blank">
-          {% trans 'Click here for column options' %}
+          {% translate 'Click here for column options' %}
         </a>
       </p>
     </div>
@@ -120,28 +118,28 @@
         data-url="{% url 'main:describe:describe' slug=study.slug %}"
       >
         <div id="dz-title">
-          <span id="experimentDescTitle">{% trans 'Experiment Description File' %}
+          <span id="experimentDescTitle">{% translate 'Experiment Description File' %}
             <a href="{% url 'main:describe:help' slug=study.slug %}" target="_blank">
-                <div id="helpExperimentDescription" class="helpBadgeDiv">{% trans 'Help' %}
-                  <div class="helpContent">
-                    <p>
-                      {% trans "Click for help on Experiment Description files" %}
-                    </p>
-                  </div>
-                </div>
+                <span id="helpExperimentDescription" class="helpBadgeDiv">{% translate 'Help' %}
+                  <span class="helpContent">
+                    <span>
+                      {% translate "Click for help on Experiment Description files" %}
+                    </span>
+                  </span>
+                </span>
               </a></span>
         </div>
         <div class="dz-message" data-dz-message>
-          <span>{% trans 'Drop file here to upload, or' %}</span>
-          <a href="#" class="dz-browse-link"><span>{% trans 'browse' %}</span></a>
+          <span>{% translate 'Drop file here to upload, or' %}</span>
+          <a href="#" class="dz-browse-link"><span>{% translate 'browse' %}</span></a>
           <div>
             <img id="describeExampleImage" src="{% describe_preview_img %}"
-               alt="{% trans 'Example description file preview' %}" />
+               alt="{% translate 'Example description file preview' %}" />
           </div>
           <div>
             <a href="{% describe_example_file %}"
                 class="sampleFileDownloadLink">
-              {% trans 'Example File' %} <span class="fas fa-download"></span>
+              {% translate 'Example File' %} <span class="fas fa-download"></span>
             </a>
           </div>
         </div>
@@ -150,46 +148,29 @@
     <div id="describeButtonsColumn" class="column">
       <div>
         <p>
-          {% blocktrans %}
+          {% blocktranslate %}
           Other line creation options:
-          {% endblocktrans %}
+          {% endblocktranslate %}
         </p>
-        <a class="dropLink" href="{% url 'main:describe:describe' slug=study.slug %}">
-          <button
-            class="btn btn-default combosButton"
-            id="combosButton"
-            name="action"
-            type="button"
-          >
-            <span class="fas fa-random"></span>
-            {% trans "Add Line Combo's" %}
-          </button>
+        <a class="dropLink btn btn-default combosButton" href="{% url 'main:describe:describe' slug=study.slug %}"
+          id="combosButton"
+        >
+          <span class="fas fa-random"></span>
+          {% translate "Add Line Combo's" %}
         </a>
       </div>
       <div>
-        <a class="dropLink" href="{% url 'main:lines' slug=study.slug %}">
-          <button
-            class="btn btn-default"
-            id="manualButton"
-            name="action"
-            type="button"
-          >
-            <span class="fas fa-pencil-alt"></span>
-            {% trans 'Enter Manually' %}
-          </button>
+        <a class="dropLink btn btn-default" href="{% url 'main:lines' slug=study.slug %}"
+          id="manualButton"
+        >
+          <span class="fas fa-pencil-alt"></span>
+          {% translate 'Enter Manually' %}
         </a>
       </div>
       <div>
-        <a class="dropLink" href="#">
-          <button
-            class="btn btn-default dz-browse-link"
-            id="browseButton"
-            name="action"
-            type="button"
-          >
-            <span class="fas fa-folder-open"></span>
-            {% trans 'Browse for file' %}
-          </button>
+        <a class="dropLink btn btn-default dz-browse-link" href="#" id="browseButton">
+          <span class="fas fa-folder-open"></span>
+          {% translate "Browse for file" %}
         </a>
       </div>
     </div>
@@ -197,14 +178,14 @@
 </div>
 
 <details class="clearfix">
-  <summary class="pageDivider">{% trans "Permissions" %}</summary>
+  <summary class="pageDivider">{% translate "Permissions" %}</summary>
   <div class="sectionContent">
     {% with perms=study.get_combined_permission %}
     {% if perms %}
-    <table cellpadding="0" cellspacing="0" width="640px">
+    <table class="permissions">
       <tr class="columnLabels">
-        <th class="smaller">{% trans 'Who' %}</th>
-        <th class="smaller">{% trans 'Level' %}</th>
+        <th class="smaller">{% translate 'Who' %}</th>
+        <th class="smaller">{% translate 'Level' %}</th>
       </tr>
       {% for perm in perms %}
       <tr class="stripeRow{% cycle 'A' 'B' %}">
@@ -216,7 +197,7 @@
     {% endif %}
     {% endwith %}
     <button class="btn btn-primary" id="addPermission">
-      {% trans 'Configure Permissions' %}
+      {% translate 'Configure Permissions' %}
     </button>
   </div>
 </details>
@@ -224,9 +205,9 @@
 
 <details class="clearfix">
   <summary class="pageDivider">
-    {% blocktrans with count=study.attachments|length %}
+    {% blocktranslate with count=study.attachments|length %}
     Attachments ({{ count }})
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </summary>
   <div class="sectionContent">
     {% with attachments=study.attachments %}
@@ -234,7 +215,6 @@
     {% endwith %}
     {% if writable %}
     <form
-      action=""
       class="attachments edd-form"
       enctype="multipart/form-data"
       method="POST"
@@ -249,7 +229,7 @@
           type="submit"
           value="attach"
         >
-          {% trans 'Attach File' %}
+          {% translate 'Attach File' %}
         </button>
       </p>
     </form>
@@ -259,9 +239,9 @@
 
 <details class="clearfix">
   <summary class="pageDivider">
-    {% blocktrans with count=study.comment_list|length %}
+    {% blocktranslate with count=study.comment_list|length %}
     Comments ({{ count }})
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </summary>
   <div class="sectionContent">
     <ol class="comment-list">
@@ -269,9 +249,9 @@
       <li>
         <span>
           {% with created=comment.created %}
-          {% blocktrans with name=created.full_name time=created.format_timestamp %}
+          {% blocktranslate with name=created.full_name time=created.format_timestamp %}
           {{ name }} at {{ time }}
-          {% endblocktrans %}
+          {% endblocktranslate %}
           {% endwith %}
         </span>
         <p>{{ comment.body }}</p>
@@ -279,7 +259,7 @@
       {% endfor %}
     </ol>
     <div class="sectionActions">
-      <form method="POST" class="comments edd-form" action="">
+      <form method="POST" class="comments edd-form">
         {% csrf_token %}
         {{ new_comment.as_p }}
         <p>
@@ -289,7 +269,7 @@
             type="submit"
             value="comment"
           >
-            {% trans 'Add Comment' %}
+            {% translate 'Add Comment' %}
           </button>
         </p>
       </form>
@@ -299,9 +279,9 @@
 
 {% if writable %}
 <details class="clearfix">
-  <summary class="pageDivider">{% trans " Manage Study" %}</summary>
+  <summary class="pageDivider">{% translate " Manage Study" %}</summary>
   <div class="sectionContent indent">
-    <form action="" class="edd-form" method="POST">
+    <form class="edd-form" method="POST">
       {% csrf_token %}
       <input type="hidden" name="studyId" value="{{ object.id }}" />
       {% if object.active %}
@@ -311,7 +291,7 @@
         type="submit"
         value="study_delete"
       >
-        {% trans "Delete Study" %}
+        {% translate "Delete Study" %}
       </button>
       {% else %}
       <button
@@ -320,7 +300,7 @@
         type="submit"
         value="study_restore"
       >
-        {% trans "Restore Study" %}
+        {% translate "Restore Study" %}
       </button>
       {% endif %}
     </form>
@@ -328,7 +308,7 @@
 </details>
 
 {# add permissions modal #}
-<div class="indent off" title="{% trans 'Configure Permissions' %}" id="permissionsSection">
+<div class="indent off" title="{% translate 'Configure Permissions' %}" id="permissionsSection">
   <div class="sectionActions">
     <form action="{% url 'main:permissions' slug=study.slug %}"
         method="POST"
@@ -339,39 +319,39 @@
       <div class="permission" id="permission_user_box">
         <label for="permission_user">
           <input type="radio" id="permission_user" name="class" value="User" hidden/>
-          <span>{% trans 'User' %}</span>
+          <span>{% translate 'User' %}</span>
         </label>
         <select id="user_permission_options" name="type">
-          <option value="{{ permission_none }}">{% trans 'None' %}</option>
-          <option value="{{ permission_read }}">{% trans 'Read' %}</option>
-          <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+          <option value="{{ permission_none }}">{% translate 'None' %}</option>
+          <option value="{{ permission_read }}">{% translate 'Read' %}</option>
+          <option value="{{ permission_write }}">{% translate 'Write' %}</option>
         </select>
-        <button id="set_user_permission">{% trans 'Set Permission' %}</button>
+        <button id="set_user_permission">{% translate 'Set Permission' %}</button>
       </div>
       <div class="permission" id="permission_group_box">
         <label for="permission_group">
           <input type="radio" id="permission_group" name="class" value="Group" hidden/>
-          <span>{% trans 'Group' %}</span>
+          <span>{% translate 'Group' %}</span>
         </label>
         <select id="group_permission_options" name="type">
-          <option value="{{ permission_none }}">{% trans 'None' %}</option>
-          <option value="{{ permission_read }}">{% trans 'Read' %}</option>
-          <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+          <option value="{{ permission_none }}">{% translate 'None' %}</option>
+          <option value="{{ permission_read }}">{% translate 'Read' %}</option>
+          <option value="{{ permission_write }}">{% translate 'Write' %}</option>
         </select>
-        <button id="set_group_permission">{% trans 'Set Permission' %}</button>
+        <button id="set_group_permission">{% translate 'Set Permission' %}</button>
       </div>
       {% if can_make_public %}
       <div class="permission" id="permission_public_box">
         <input type="radio" id="permission_public" name="class" value="Public" hidden/>
         <label for="permission_public">
-          <span>{% trans 'Everyone' %}</span>
+          <span>{% translate 'Everyone' %}</span>
         </label>
         <select name="type">
-          <option value="{{ permission_none }}">{% trans 'None' %}</option>
-          <option value="{{ permission_read }}">{% trans 'Read' %}</option>
-          <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+          <option value="{{ permission_none }}">{% translate 'None' %}</option>
+          <option value="{{ permission_read }}">{% translate 'Read' %}</option>
+          <option value="{{ permission_write }}">{% translate 'Write' %}</option>
         </select>
-        <button id="set_everyone_permission">{% trans 'Set Permission' %}</button>
+        <button id="set_everyone_permission">{% translate 'Set Permission' %}</button>
       </div>
       {% endif %}
     </form>

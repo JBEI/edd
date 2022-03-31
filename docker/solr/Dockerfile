@@ -9,6 +9,6 @@ HEALTHCHECK \
     --interval=60s \
     --retries=4 \
     --timeout=15s \
-    CMD curl -f http://localhost:8983/solr/admin/info/health || exit 1
+    CMD curl -fsSL http://localhost:8983/solr/admin/info/system | grep '"status":0,' || exit 1
 
 ENTRYPOINT ["/entrypoint.sh"]

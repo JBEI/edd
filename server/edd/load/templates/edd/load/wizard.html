@@ -17,92 +17,86 @@
 <form id="create_load" action="{% url 'rest:study_load-list' study_pk=study.pk %}">
   {% csrf_token %}
 </form>
-<a href="{% url 'main:load:table' slug=study.slug %}">
-  <button type="button" class="btn btn-primary pull-right">
-    <span class="fas fa-cloud-upload-alt"></span>
-    {% trans 'Legacy Import' %}
-  </button>
-</a>
 
 <div id="wizard" class="off">
-  <span class="_ack">{% trans "Continue Anyway" %}</span>
-  <span class="_category">{% trans "Category" %}</span>
-  <span class="_protocol">{% trans "Protocol" %}</span>
-  <span class="_layout">{% trans "Layout" %}</span>
-  <span class="_file">{% trans "File" %}</span>
+  <span class="_ack">{% translate "Continue Anyway" %}</span>
+  <span class="_category">{% translate "Category" %}</span>
+  <span class="_protocol">{% translate "Protocol" %}</span>
+  <span class="_layout">{% translate "Layout" %}</span>
+  <span class="_file">{% translate "File" %}</span>
   <div id="_step1">
-    <span class="_title">{% trans "Identify" %}</span>
+    <span class="_title">{% translate "Identify" %}</span>
     <!-- options in first three fieldsets are dynamic and inter-related;
         load from following URL -->
     <a class="_data off" href="{% url 'rest:load_categories-list' %}"></a>
     <fieldset class="_category">
-      <legend>{% trans "What category of data do you have?" %}</legend>
+      <legend>{% translate "What category of data do you have?" %}</legend>
       <aside>
         <p>
-          {% blocktrans %}
+          {% blocktranslate %}
           The choice of category influences which protocols and layouts are
           available, and also dictates how measurements from your file are
           resolved to known types.
-          {% endblocktrans %}
+          {% endblocktranslate %}
           <a
             href="{% url 'main:load_flat:wizard_help' %}#category"
             target="_blank"
-          >{% trans "Click here for more information on categories." %}</a>
+          >{% translate "Click here for more information on categories." %}</a>
         </p>
       </aside>
       <span class="_placeholder">
-        {% trans 'Checking available categories …' %}
+        {% translate 'Checking available categories …' %}
       </span>
     </fieldset>
     <fieldset class="_protocol">
-      <legend>{% trans "What lab protocol did you use?" %}</legend>
+      <legend>{% translate "What lab protocol did you use?" %}</legend>
       <aside>
         <p>
-          {% blocktrans %}
+          {% blocktranslate %}
           Each protocol should uniquely describe both the sample prep you
           performed, as well as the instrumentation and unique configuration
           used. Ideally, another researcher should be able to replicate the
           experiment using your protocol and the information captured in EDD.
           Minor variations in protocol should be captured in EDD, for example
           in your study description or in line metadata.
-          {% endblocktrans %}
+          {% endblocktranslate %}
           <a
             href="{% url 'main:load_flat:wizard_help' %}#protocol"
             target="_blank"
-          >{% trans "Click here for more information on protocols." %}</a>
+          >{% translate "Click here for more information on protocols." %}</a>
         </p>
       </aside>
       <span class="_placeholder">
-        {% trans 'Choose a Category to continue …' %}
+        {% translate 'Choose a Category to continue …' %}
       </span>
     </fieldset>
     <fieldset class="_layout">
-      <legend>{% trans "What layout is your data in?" %}</legend>
+      <legend>{% translate "What layout is your data in?" %}</legend>
       <aside>
         <p>
-          {% blocktrans %}
+          {% blocktranslate %}
           EDD supports a limited number of pre-defined layouts, and also
           supports user-defined tabular inputs. The tool on this page supports
           pre-defined layouts only. Use the legacy import tool to upload
           custom-formatted data. The capability to interpret custom layouts
           will also eventually be ported to this loading tool. You can also
           contact EDD administrators to request support for a new layout.
-          {% endblocktrans %}
+          {% endblocktranslate %}
           <a
             href="{% url 'main:load_flat:wizard_help' %}#layout"
             target="_blank"
-          >{% trans "Click here for more information on layouts." %}</a>
+          >{% translate "Click here for more information on layouts." %}</a>
           <a
             href="{% url 'main:load:table' slug=study.slug %}"
-          >{% trans "Click here for the legacy import tool." %}</a>
+          >{% translate "Click here for the legacy import tool." %}</a>
         </p>
       </aside>
       <span class="_placeholder">
-        {% trans 'Choose a Category to continue …' %}
+        {% translate 'Choose a Category to continue …' %}
       </span>
     </fieldset>
     <fieldset class="_options">
-      <legend>{% trans "Options" %}</legend>
+      <legend>{% translate "Options" %}</legend>
       <div>
         <input
           id="email_when_complete"
@@ -112,10 +106,10 @@
         />
         <label
           for="email_when_complete"
-        >{% trans "Email me when finished" %}</label>
+        >{% translate "Email me when finished" %}</label>
       </div>
       <details>
-        <summary>{% trans "Advanced" %}</summary>
+        <summary>{% translate "Advanced" %}</summary>
         <div>
           <input
             id="allow_overwrite"
@@ -125,7 +119,7 @@
           />
           <label
             for="allow_overwrite"
-          >{% trans "Allow value overwrite (assay ID's only)" %}</label>
+          >{% translate "Allow value overwrite (assay ID's only)" %}</label>
         </div>
         <div>
           <input
@@ -136,90 +130,90 @@
           />
           <label
             for="allow_duplication"
-          >{% trans "Allow duplicate values (line ID's only)" %}</label>
+          >{% translate "Allow duplicate values (line ID's only)" %}</label>
         </div>
       </details>
     </fieldset>
   </div>
   <div id="_step2">
-    <span class="_title">{% trans "Upload" %}</span>
-    <span class="_directions">{% trans "Click or drag-and-drop to upload a file." %}</span>
+    <span class="_title">{% translate "Upload" %}</span>
+    <span class="_directions">{% translate "Click or drag-and-drop to upload a file." %}</span>
     <div class="_message" data-class="alert-info" id="_step2_wait">
-      <span class="_title">{% trans "Checking file" %}</span>
+      <span class="_title">{% translate "Checking file" %}</span>
       <p class="_message">
-        {% blocktrans %}
+        {% blocktranslate %}
         Please hang tight...
-        {% endblocktrans %}
+        {% endblocktranslate %}
         <span className="wait wizard-wait" />
       </p>
     </div>
     <div class="_message" data-class="alert-success" id="_step2_accepted">
-      <span class="_title">{% trans "File accepted" %}</span>
+      <span class="_title">{% translate "File accepted" %}</span>
       <p class="_message">
-        {% blocktrans %}
+        {% blocktranslate %}
         Your file has been accepted for loading. Please wait while the server
         prepares to parse and save the data.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
     <div class="_message" data-class="alert-danger" id="_step2_timeout">
-      <span class="_title">{% trans "Request timed out" %}</span>
+      <span class="_title">{% translate "Request timed out" %}</span>
       <p class="_message">
-        {% blocktrans %}
+        {% blocktranslate %}
         Please retry your request or contact system administrators.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
     <div class="_message" data-class="alert-danger" id="_step2_error">
-      <span class="_title">{% trans "Upload error" %}</span>
+      <span class="_title">{% translate "Upload error" %}</span>
       <p class="_message">
-        {% blocktrans %}
+        {% blocktranslate %}
         There was an unexpected error submitting your import. Please try again.
         If your upload still fails, please contact system administrators to
         confirm that they're aware of this problem.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
   </div>
   <div id="_step3">
-    <span class="_title">{% trans "Interpret" %}</span>
+    <span class="_title">{% translate "Interpret" %}</span>
     <p class="_directions">
-      {% blocktrans %}
+      {% blocktranslate %}
       This step of the data loading process is for setting any additional
       details needed to interpret the uploaded data. If no additional details
       are required, the data will begin saving to EDD automatically.
-      {% endblocktrans %}
+      {% endblocktranslate %}
     </p>
   </div>
   <div id="_step4">
-    <span class="_title">{% trans "Save" %}</span>
+    <span class="_title">{% translate "Save" %}</span>
     <div class="_message" data-class="alert-success" id="_step4_success">
-      <span class="_title">{% trans "Save complete" %}</span>
+      <span class="_title">{% translate "Save complete" %}</span>
     </div>
     <div class="_message" data-class="alert-info" id="_step4_wait">
-      <span class="_title">{% trans "Processing" %}</span>
+      <span class="_title">{% translate "Processing" %}</span>
       <p class="_message">
-        {% blocktrans %}
+        {% blocktranslate %}
         You can wait here to monitor progress, or continue using EDD. You'll
         get a notification at the top right when your data is saved.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
     <div class="_message" data-class="alert-danger" id="_step4_error">
-      <span class="_title">{% trans "Save error" %}</span>
+      <span class="_title">{% translate "Save error" %}</span>
       <p class="_message">
-        {% blocktrans %}
+        {% blocktranslate %}
         There was an unexpected error saving your data. Please try again. If
         your upload still fails, please contact system administrators to
         confirm that they're aware of this problem.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
   </div>
   <div id="_actions">
-    <label for="back">{% trans "Back" %}</label>
-    <label for="next">{% trans "Next" %}</label>
-    <label for="save">{% trans "Save" %}</label>
+    <label for="back">{% translate "Back" %}</label>
+    <label for="next">{% translate "Next" %}</label>
+    <label for="save">{% translate "Save" %}</label>
   </div>
 </div>
 

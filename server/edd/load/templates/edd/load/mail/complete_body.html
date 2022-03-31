@@ -1,11 +1,11 @@
 {% extends "edd/load/mail/base.html" %}
 {% load i18n %}
 {% block body %}
-  <h2>{% trans "Import Complete!" %}</h2>
+  <h2>{% translate "Import Complete!" %}</h2>
   <p class="alert alert-success">
-    {% blocktrans %}
+    {% blocktranslate %}
     Your import to <a href="{{ study_uri }}">{{ study }}</a> is complete.
     The import process added {{ added }} and updated {{ updated }} values in {{ duration }}.
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </p>
 {% endblock body %}

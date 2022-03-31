@@ -8,7 +8,7 @@
 {% block head_title %}
   {{ block.super }}
   {% if form.non_field_errors|length %}
-    {% trans '- Login Error' %}
+    {% translate '- Login Error' %}
   {% endif %}
 {% endblock head_title %}
 
@@ -51,11 +51,11 @@
     {% endif %}
     <fieldset>
     {% if socialaccount_providers %}
-      <legend>{% trans 'Login with third-party accounts' %}</legend>
+      <legend>{% translate 'Login with third-party accounts' %}</legend>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         Please sign in with one of your existing third-party accounts.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <div class="socialaccount_ballot">
         <ul class="socialaccount_providers">
@@ -63,18 +63,18 @@
         </ul>
       </div>
     {% else %}
-      <legend>{% trans 'Create an account' %}</legend>
+      <legend>{% translate 'Create an account' %}</legend>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         If you have not created an account yet, then please
         <a href="{{ signup_url }}">sign up</a> first.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     {% endif %}
     </fieldset>
-    <div class="login_or">{% trans 'or' %}</div>
+    <div class="login_or">{% translate 'or' %}</div>
     <fieldset>
-      <legend>{% trans 'Login with EDD Account' %}</legend>
+      <legend>{% translate 'Login with EDD Account' %}</legend>
       <div>
         {{ form.login.label_tag }}
         <input
@@ -131,12 +131,12 @@
         {% endif %}
         <div>
           <a class="forgotPassword" href="{% url 'account_reset_password' %}">
-            {% trans 'Forgot password?' %}
+            {% translate 'Forgot password?' %}
           </a>
         </div>
       </div>
 
-      <button class="btn btn-primary" id="id_click" type="submit">{% trans 'Login' %}</button>
+      <button class="btn btn-primary" id="id_click" type="submit">{% translate 'Login' %}</button>
       <input
           type="hidden"
           name="{{ redirect_field_name }}"
@@ -145,9 +145,9 @@
 
     {% if socialaccount_providers %}
     <p>
-      {% blocktrans with site.name as site_name %}
+      {% blocktranslate with site.name as site_name %}
       <a href="{{ signup_url }}">Sign up</a> for a {{ site_name }} account.
-      {% endblocktrans %}
+      {% endblocktranslate %}
     </p>
     {% endif %}
   </form>

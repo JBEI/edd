@@ -8,6 +8,6 @@
   <form action="{% url 'campaign:index' %}" class="edd-form" method="POST">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">{% trans 'Create' %}</button>
+    <button type="submit">{% translate 'Create' %}</button>
   </form>
 {% endblock content %}

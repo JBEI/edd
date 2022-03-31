@@ -17,17 +17,17 @@
 
 
 {% block head_title %}
-  {% blocktrans with study_name=study.name site_name=block.super %}
+  {% blocktranslate with study_name=study.name site_name=block.super %}
   Edit Measurements &ndash; {{ study_name }} &ndash; {{ site_name }}
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock head_title %}
 
 
 {% block body_title %}
   {% url 'main:detail' slug=study.slug as study_link %}
-  {% blocktrans with study_name=study.name study_link=study_link %}
+  {% blocktranslate with study_name=study.name study_link=study_link %}
   Edit Measurements &ndash; <a href="{{ study_link }}">{{ study_name }}</a>
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock body_title %}
 
 
@@ -60,6 +60,6 @@
       </ul>
     </fieldset>
     {% endfor %}
-    <button type="submit" name="action" value="measurement_update">{% trans 'Update' %}</button>
+    <button type="submit" name="action" value="measurement_update">{% translate 'Update' %}</button>
   </form>
 {% endblock content %}

@@ -1,6 +1,6 @@
 {% load i18n %}
-{% blocktrans %}
+{% blocktranslate %}
 Your import to {{ study }} was unsuccessful after {{ duration }} with message '{{ message }}'. EDD administrators have received notice of the issue for further investigation.
 
 View the study at <{{ study_uri }}>.
-{% endblocktrans %}
+{% endblocktranslate %}

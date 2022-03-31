@@ -2,14 +2,14 @@
 {% load i18n %}
 
 {% block body_title %}
-  {% trans 'Page Unavailable' %}
+  {% translate 'Page Unavailable' %}
 {% endblock body_title %}
 
 {% block content %}
   <p>
-    {% blocktrans %}
+    {% blocktranslate %}
     EDD has encountered an error and cannot show the requested page. The site administrators have
     been notified of the problem, please check back later.
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </p>
 {% endblock content %}

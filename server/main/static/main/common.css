@@ -1282,16 +1282,24 @@ body > .navbar {
 #notification-list {
     width: 30em;
 }
-#notification-list > li {
-    display: flex;
-    padding: 0 1em;
+#notification-list ul {
+    list-style: none outside;
 }
-#notification-list > li.message {
+#notification-list ul > li {
+    display: flex;
+    padding: 0.3em 1em 0;
+}
+#notification-list ul > li.message {
     border-bottom: 1px solid #eee;
 }
+#notification-list .message-text {
+    line-height: 1.4;
+}
 #notification-list .message-close {
-    cursor: pointer;
     margin-left: auto;
+}
+#notification-list .close-all {
+    margin: 0.5em;
 }
 #notification-list > .message-empty {
     text-align: center;

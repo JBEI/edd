@@ -243,7 +243,7 @@ export class DescriptionDropzone {
         return Object.entries(grouped).map(([category, items]): JQuery => {
             const alert = template.clone();
             alert
-                .children("h4")
+                .children("span.alertSubject")
                 .text(DescriptionDropzone.faultTitle(category, alertType));
             items.forEach((fault) => {
                 $("<p>")

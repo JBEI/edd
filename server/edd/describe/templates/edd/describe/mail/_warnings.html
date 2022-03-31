@@ -1,6 +1,6 @@
 {% load i18n %}
 {% if warnings %}
-  <h3>{% trans "Warnings" %}</h3>
+  <h3>{% translate "Warnings" %}</h3>
   {% regroup warnings by category as messages %}
   {% for category in messages %}
     <div class="alert alert-warning">

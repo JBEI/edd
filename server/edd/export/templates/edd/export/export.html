@@ -10,21 +10,21 @@
 
 
 {% block head_title %}
-  {% blocktrans with name=primary_study.name count count=selection.studies|length %}
+  {% blocktranslate with name=primary_study.name count count=selection.studies|length %}
   Data Export for {{ name }}
   {% plural %}
   Data Export for {{ count }} Studies
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock head_title %}
 
 
 {% block body_title %}
   {% url 'main:detail' slug=primary_study.slug as study_url %}
-  {% blocktrans with name=primary_study.name url=study_url count count=selection.studies|length %}
+  {% blocktranslate with name=primary_study.name url=study_url count count=selection.studies|length %}
   Data Export for <a href="{{ url }}">{{ name }}</a>
   {% plural %}
   Data Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock body_title %}
 
 
@@ -36,7 +36,7 @@
 <form method="post" id="exportForm" action="{% url 'export:export' %}">
   {% csrf_token %}
   <div class="pageSection">
-    <div class="sectionHead">{% trans 'Choose the export layout.' %}</div>
+    <div class="sectionHead">{% translate 'Choose the export layout.' %}</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
       {{ option_form.as_p }}
@@ -47,7 +47,7 @@
         value="download"
       >
         <span class="fas fa-cloud-download-alt"></span>
-        {% trans 'Request Download' %}
+        {% translate 'Request Download' %}
       </button>
     </div>
   </div>

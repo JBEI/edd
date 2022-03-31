@@ -1,2 +1,2 @@
 {% load i18n %}
-{% blocktrans %}Removed e-mail address {{email}}.{% endblocktrans %}
+{% blocktranslate %}Removed e-mail address {{email}}.{% endblocktranslate %}

@@ -3,17 +3,17 @@
 {% load i18n %}
 
 {% block head_title %}
-  {% trans 'EDD - Error: Bad Request' %}
+  {% translate 'EDD - Error: Bad Request' %}
 {% endblock head_title %}
 
 {% block body_title %}
-  {% trans 'Error: Bad Request' %}
+  {% translate 'Error: Bad Request' %}
 {% endblock body_title %}
 
 {% block content %}
-  {% blocktrans trimmed as error_message %}
+  {% blocktranslate trimmed as error_message %}
   The received request is malformed, and cannot be fulfilled. The site administrators have been
   notified of the problem, please check back later.
-  {% endblocktrans %}
+  {% endblocktranslate %}
   <p>{{ error_message }}</p>
 {% endblock content %}

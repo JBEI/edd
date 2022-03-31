@@ -90,3 +90,7 @@ div.overviewDropZone {
 #describeDirectionsDiv ul {
     margin-left: 10px;
 }
+
+table.permissions {
+    width: 640px;
+}

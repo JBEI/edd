@@ -1,9 +1,9 @@
 {% load i18n %}
-{% blocktrans with site_name=current_site.name site_domain=current_site.domain %}
+{% blocktranslate with site_name=current_site.name site_domain=current_site.domain %}
 Hello from {{ site_name|default:"EDD" }}!
 
 You're receiving this e-mail because you or someone else has requested a password for your user account. The account associated with this address is authenticated using {{ provider }}. {{ site_name|default:"EDD" }} will not accept or keep passwords for this account. Log in using the {{ provider }} button on the log in page.
 
 Thank you for using {{ site_name|default:"EDD" }}!
 {{ site_domain }}
-{% endblocktrans %}
+{% endblocktranslate %}

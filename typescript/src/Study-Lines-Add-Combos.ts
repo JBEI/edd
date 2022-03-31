@@ -940,7 +940,7 @@ class LinePropertyAutoInput extends LinePropertyInput {
                 this.lineProperty.jsonId as number,
             ) >= 0
         ) {
-            visible.attr("eddautocompletetype", "User");
+            visible.data("eddautocompletetype", "User");
             this.autoInput = new EDDAuto.User({
                 "container": inputCell,
                 "visibleInput": visible,
@@ -948,7 +948,7 @@ class LinePropertyAutoInput extends LinePropertyInput {
             });
             this.autoInput.init();
         } else if (EddRest.LINE_STRAINS_META_UUID === this.lineProperty.metaUUID) {
-            visible.attr("eddautocompletetype", "Registry");
+            visible.data("eddautocompletetype", "Registry");
             this.autoInput = new EDDAuto.Registry({
                 "container": inputCell,
                 "visibleInput": visible,

@@ -1,6 +1,6 @@
 {% load i18n %}
 {% if errors %}
-  <h3>{% trans "Errors" %}</h3>
+  <h3>{% translate "Errors" %}</h3>
   {% regroup errors by category as messages %}
   {% for category in messages %}
     <div class="alert alert-danger">

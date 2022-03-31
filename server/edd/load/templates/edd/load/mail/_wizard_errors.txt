@@ -1,6 +1,6 @@
 {% load i18n %}
 {% if errors %}
-  {% trans "Errors" %}
+  {% translate "Errors" %}
   {% regroup errors by category as messages %}
   {% for category in messages %}
     * {{ category.grouper }}

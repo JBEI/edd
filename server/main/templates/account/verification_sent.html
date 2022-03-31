@@ -3,10 +3,10 @@
 {% load i18n %}
 {% load static %}
 
-{% block head_title %}{% trans "Verify Your E-mail Address" %} &mdash; {{ block.super }}{% endblock %}
+{% block head_title %}{% translate "Verify Your E-mail Address" %} &mdash; {{ block.super }}{% endblock %}
 
 {% block body_title %}
-    {% trans "Verification Sent" %}
+    {% translate "Verification Sent" %}
 {% endblock body_title %}
 
 {% block js_css %}
@@ -16,10 +16,10 @@
 {% block content %}
     <div class="login_form">
         <p>
-            {% blocktrans %}
+            {% blocktranslate %}
             We have sent an e-mail to you for verification. Follow the link provided to finalize
             the signup process. Please contact us if you do not receive it within a few minutes.
-            {% endblocktrans %}
+            {% endblocktranslate %}
         </p>
     </div>
 {% endblock content %}

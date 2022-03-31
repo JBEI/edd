@@ -3,11 +3,11 @@
 {% load static %}
 
 {% block head_title %}
-{% trans "Sign Out" %} &mdash; {{ block.super }}
+{% translate "Sign Out" %} &mdash; {{ block.super }}
 {% endblock %}
 
 {% block body_title %}
-  {% trans 'Sign Out' %}
+  {% translate 'Sign Out' %}
 {% endblock body_title %}
 
 {% block js_css %}
@@ -19,10 +19,10 @@
 {% block content %}
   <form class="login_form" method="post" action="{% url 'account_logout' %}">
     {% csrf_token %}
-    <p>{% trans 'Are you sure you want to sign out?' %}</p>
+    <p>{% translate 'Are you sure you want to sign out?' %}</p>
     {% if redirect_field_value %}
       <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
     {% endif %}
-    <button type="submit">{% trans 'Sign Out' %}</button>
+    <button type="submit">{% translate 'Sign Out' %}</button>
   </form>
 {% endblock content %}

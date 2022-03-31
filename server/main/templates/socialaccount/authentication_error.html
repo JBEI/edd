@@ -2,16 +2,16 @@
 
 {% load i18n %}
 
-{% block head_title %}{% trans "Social Network Login Failure" %} &mdash; {{ block.super }}{% endblock %}
+{% block head_title %}{% translate "Social Network Login Failure" %} &mdash; {{ block.super }}{% endblock %}
 
 {% block content %}
     <div class="login_form">
         <fieldset>
-            <legend>{% trans "Social Network Login Failure" %}</legend>
+            <legend>{% translate "Social Network Login Failure" %}</legend>
             <p>
-                {% blocktrans %}
+                {% blocktranslate %}
                 An error occurred while attempting to login via your social network account.
-                {% endblocktrans %}
+                {% endblocktranslate %}
             </p>
         </fieldset>
     </div>
