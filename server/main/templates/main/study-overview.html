@@ -190,15 +190,15 @@
   <div class="sectionContent">
     {% with perms=study.get_combined_permission %}
     {% if perms %}
-    <table class="permissions">
-      <tr class="columnLabels">
-        <th class="smaller">{% translate 'Who' %}</th>
-        <th class="smaller">{% translate 'Level' %}</th>
+    <table class="permissions table table-condensed table-striped">
+      <tr>
+        <th>{% translate 'Who' %}</th>
+        <th class="text-right">{% translate 'Level' %}</th>
       </tr>
       {% for perm in perms %}
-      <tr class="stripeRow{% cycle 'A' 'B' %}">
+      <tr>
         <td>{{ perm.get_who_label }}</td>
-        <td>{{ perm.get_type_label }}</td>
+        <td class="text-right">{{ perm.get_type_label }}</td>
       </tr>
       {% endfor %}
     </table>
