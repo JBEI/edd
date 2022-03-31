@@ -3,7 +3,8 @@ FROM library/python:3.10-slim-bullseye as build
 RUN pip install \
         mkdocs \
         mkdocs-bootswatch \
-        pygments
+        pygments \
+        pymdown-extensions
 
 WORKDIR /usr/local/edd
 

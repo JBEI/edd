@@ -27,9 +27,14 @@ nav:
       - Releasing: Releasing.md
       - "Use Cases": Use_Cases.md
       - "User Stories": User_Stories.md
-theme: spacelab
+theme:
+  name: spacelab
+  navigation_depth: 4
 markdown_extensions:
-  - codehilite:
+  - admonition:
+  - pymdownx.highlight:
+  - pymdownx.inlinehilite:
+  - pymdownx.superfences:
   - sane_lists:
   - smarty:
   - toc:
