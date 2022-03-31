@@ -2,6 +2,7 @@ import logging
 
 from allauth import account, exceptions, socialaccount
 from allauth.account.forms import ResetPasswordForm as BaseResetPasswordForm
+from django import forms
 from django.conf import settings
 from django.contrib import auth, messages, sites
 from django.db.models import Q
@@ -163,6 +164,20 @@ class EDDSocialAccountAdapter(socialaccount.adapter.DefaultSocialAccountAdapter)
 
 
 class ResetPasswordForm(BaseResetPasswordForm):
+
+    email = forms.EmailField(
+        label=_("Email"),
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "type": "email",
+                "placeholder": _(""),
+                "autocomplete": "email",
+            }
+        ),
+    )
+
     def clean_email(self):
         # base class will raise a user-visible error if no matching email found
         # we should not be confirming/denying any email exists via web
