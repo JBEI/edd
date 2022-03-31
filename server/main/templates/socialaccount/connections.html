@@ -2,18 +2,18 @@
 
 {% load i18n %}
 
-{% block head_title %}{% trans "Account Connections" %} &mdash; {{ block.super }}{% endblock %}
+{% block head_title %}{% translate "Account Connections" %} &mdash; {{ block.super }}{% endblock %}
 
 {% block content %}
     <form class="login_form" method="post" action="{% url 'socialaccount_connections' %}">
         {% csrf_token %}
         <fieldset>
-            <legend>{% trans "Account Connections" %}</legend>
+            <legend>{% translate "Account Connections" %}</legend>
             {% if form.accounts %}
                 <p>
-                    {% blocktrans %}
+                    {% blocktranslate %}
                     You can sign in to your account using any of the following third party accounts:
-                    {% endblocktrans %}
+                    {% endblocktranslate %}
                 </p>
                 {% if form.non_field_errors %}
                 <div id="errorMsg">{{ form.non_field_errors }}</div>
@@ -35,19 +35,19 @@
                 {% endfor %}
                 </ul>
                 <div class="buttonHolder">
-                    <button type="submit">{% trans 'Remove Third Party' %}</button>
+                    <button type="submit">{% translate 'Remove Third Party' %}</button>
                 </div>
             {% else %}
                 <p>
-                    {% blocktrans %}
+                    {% blocktranslate %}
                     You currently have no social network accounts connected to this account.
-                    {% endblocktrans %}
+                    {% endblocktranslate %}
                 </p>
             {% endif %}
         </fieldset>
-        <div class="login_or">{% trans 'or' %}</div>
+        <div class="login_or">{% translate 'or' %}</div>
         <fieldset>
-            <legend>{% trans 'Add a 3rd Party Account' %}</legend>
+            <legend>{% translate 'Add a 3rd Party Account' %}</legend>
             <ul class="socialaccount_providers">
                 {% include "socialaccount/snippets/provider_list.html" with process="connect" %}
             </ul>

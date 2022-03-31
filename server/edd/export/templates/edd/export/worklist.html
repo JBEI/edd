@@ -10,21 +10,21 @@
 
 
 {% block head_title %}
-  {% blocktrans with name=primary_study.name count count=selection.studies|length %}
+  {% blocktranslate with name=primary_study.name count count=selection.studies|length %}
   Worklist Export for {{ name }}
   {% plural %}
   Worklist Export for {{ count }} Studies
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock head_title %}
 
 
 {% block body_title %}
   {% url 'main:detail' slug=primary_study.slug as study_url %}
-  {% blocktrans with name=primary_study.name url=study_url count count=selection.studies|length %}
+  {% blocktranslate with name=primary_study.name url=study_url count count=selection.studies|length %}
   Worklist Export for <a href="{{ url }}">{{ name }}</a>
   {% plural %}
   Worklist Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock body_title %}
 
 
@@ -39,14 +39,14 @@
 <form method="post" id="worklistForm" action="{% url 'export:worklist' %}">
   {% csrf_token %}
   <div class="pageSection">
-    <div class="sectionHead">{% trans 'Choose a worklist template and options.' %}</div>
+    <div class="sectionHead">{% translate 'Choose a worklist template and options.' %}</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
       {{ worklist_form.as_p }}
       <input type="hidden" id="id_separator" value=","/>
       {% if defaults_form %}
       <div class="disclose discloseHide">
-        <a href="#" class="discloseLink">{% trans 'Modify Column Default Values' %}</a>
+        <a href="#" class="discloseLink">{% translate 'Modify Column Default Values' %}</a>
         <div class="discloseBody">
           {{ defaults_form.as_p }}
         </div>
@@ -54,7 +54,7 @@
       {% endif %}
       {% if flush_form %}
       <div class="disclose discloseHide">
-        <a href="#" class="discloseLink">{% trans 'Add Flush Rows' %}</a>
+        <a href="#" class="discloseLink">{% translate 'Add Flush Rows' %}</a>
         <div class="discloseBody">
           {{ flush_form.as_p }}
         </div>
@@ -67,7 +67,7 @@
         value="download"
       >
         <span class="fas fa-cloud-download-alt"></span>
-        {% trans 'Request Download' %}
+        {% translate 'Request Download' %}
       </button>
     </div>
   </div>

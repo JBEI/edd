@@ -3,21 +3,21 @@
 {% if is_paginated %}
   <div class="paging_controls">
     {% if page_first %}
-      <a href="{{ page_first }}">{% trans 'First' %}</a>
+      <a href="{{ page_first }}">{% translate 'First' %}</a>
     {% endif %}
     {% if page_previous %}
-      <a href="{{ page_previous }}">{% trans 'Previous' %}</a>
+      <a href="{{ page_previous }}">{% translate 'Previous' %}</a>
     {% endif %}
     <span>
-      {% blocktrans with page_num=page_obj.number total=paginator.num_pages %}
+      {% blocktranslate with page_num=page_obj.number total=paginator.num_pages %}
       Page {{ page_num }} of {{ total }}
-      {% endblocktrans %}
+      {% endblocktranslate %}
     </span>
     {% if page_next %}
-      <a href="{{ page_next }}">{% trans 'Next' %}</a>
+      <a href="{{ page_next }}">{% translate 'Next' %}</a>
     {% endif %}
     {% if page_last %}
-      <a href="{{ page_last }}">{% trans 'Last' %}</a>
+      <a href="{{ page_last }}">{% translate 'Last' %}</a>
     {% endif %}
   </div>
 {% endif %}

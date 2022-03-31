@@ -28,113 +28,113 @@
 <div class="masterHelpDiv">
   <div class="helpNavBar">
     <ol>
-      <li><a href="#category">{% trans "Category" %}</a></li>
-      <li><a href="#protocol">{% trans "Protocol" %}</a></li>
-      <li><a href="#layout">{% trans "Layout" %}</a>
+      <li><a href="#category">{% translate "Category" %}</a></li>
+      <li><a href="#protocol">{% translate "Protocol" %}</a></li>
+      <li><a href="#layout">{% translate "Layout" %}</a>
         <ol>
-          <li><a href="#generic">{% trans "Generic" %}</a></li>
-          <li><a href="#skyline">{% trans "Skyline" %}</a></li>
-          <li><a href="#custom">{% trans "Custom Layout" %}</a></li>
+          <li><a href="#generic">{% translate "Generic" %}</a></li>
+          <li><a href="#skyline">{% translate "Skyline" %}</a></li>
+          <li><a href="#custom">{% translate "Custom Layout" %}</a></li>
         </ol>
       </li>
       <li>
-        <a href="#file-content">{% trans "Content" %}</a>
+        <a href="#file-content">{% translate "Content" %}</a>
         <ol>
-          <li><a href="#ids">{% trans "Standard Identifiers" %}</a></li>
-          <li><a href="#omics-refs">{% trans "'Omics References" %}</a></li>
-          <li><a href="#generic-mtypes">{% trans "Generic Types" %}</a></li>
-          <li><a href="#units">{% trans "Measurement Units" %}</a></li>
-          <li><a href="#size">{% trans "Size Limitations" %}</a></li>
+          <li><a href="#ids">{% translate "Standard Identifiers" %}</a></li>
+          <li><a href="#omics-refs">{% translate "'Omics References" %}</a></li>
+          <li><a href="#generic-mtypes">{% translate "Generic Types" %}</a></li>
+          <li><a href="#units">{% translate "Measurement Units" %}</a></li>
+          <li><a href="#size">{% translate "Size Limitations" %}</a></li>
         </ol>
       </li>
-      <li><a href="#advanced">{% trans "Advanced" %}</a></li>
+      <li><a href="#advanced">{% translate "Advanced" %}</a></li>
     </ol>
   </div>
   <div class="helpMasterContent">
     <div class="helpSectionContent">
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         This wizard is a work in progress! Our goal is to fully replace EDD's
         existing import tool with an updated version, and we're adding support
         for new data categories and layouts over time.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
     <a name="category"></a>
     <h2 class="helpSectionHeader">Category</h2>
     <div class="helpSectionContent">
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         Your choice of category dictates how measurement types (e.g. chemical
         identifiers) from your data are resolved to known types during the
         import. The category you choose will also affect which protocols and
         layouts are available. See <a href="#file-content">Content</a> below
         for more information on how your choice of category impacts EDD's
         interpretation of your data.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
     <a name="protocol"></a>
-    <h2 class="helpSectionHeader">{% trans "Protocol" %}</h2>
+    <h2 class="helpSectionHeader">{% translate "Protocol" %}</h2>
     <div class="helpSectionContent">
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         A protocol is the series of unique steps performed in the lab,
         including the instrumentation used, as well as how the instruments were
         configured. Ideally, another researcher should be able to reproduce
         your results solely from the protocol and the metadata you've entered
         into EDD.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <details>
-        <summary>{% trans "Available Protocols" %}</summary>
+        <summary>{% translate "Available Protocols" %}</summary>
         <ul id="protocolList" data-url="{% url 'rest:protocols-list' %}">
-          <li><a class="loadmore hidden" href="#">{% trans "Load More ..." %}</a></li>
+          <li><a class="loadmore hidden" href="#">{% translate "Load More ..." %}</a></li>
         </ul>
       </details>
-      <h4>{% trans "Adding New Protocols" %}</h4>
+      <h4>{% translate "Adding New Protocols" %}</h4>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         If EDD doesn't already contain a protocol that matches in your
         experiment, new protocols can be added with relative ease.
-        {% endblocktrans %}
+        {% endblocktranslate %}
         {% if prot_scripts %}
-        <button id="request-protocol">{% trans "Request a Protocol" %}</button>
+        <button id="request-protocol">{% translate "Request a Protocol" %}</button>
         {% endif %}
       </p>
     </div>
     <a name="layout"></a>
-    <h2 class="helpSectionHeader">{% trans "Layout" %}</h2>
+    <h2 class="helpSectionHeader">{% translate "Layout" %}</h2>
     <div class="helpSectionContent">
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         EDD includes parsing of a few simple layouts, with more planned. EDD
         also supports adding custom parsers that may not be included in the
         base distribution. Built-in layouts are described below.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <a name="generic"></a>
-      <h3>{% trans "Generic" %}</h3>
+      <h3>{% translate "Generic" %}</h3>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         EDD defines a "Generic" layout that is the default in case there is no
         well-known layout for your workflow. In principal, EDD should be
         configured to accept files directly from the instruments, but if your
         instrumentation is not supported yet you can always expect the generic
         layout to be available.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         The essential structure of the Generic layout is a single header row,
         defining the contents of columns, followed by one or more data rows.
         Each data row corresponds to a single value, with the column contents
         placing that value at a specific location in the EDD ontology; linked
         to a Study, Line, Assay, and Measurement.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <table class="figureTable">
-        <caption>{% trans "Figure 1: Generic Example" %}</caption>
+        <caption>{% translate "Figure 1: Generic Example" %}</caption>
         <thead>
           <tr>
             <th>Line Name</th>
@@ -155,26 +155,26 @@
         </tbody>
       </table>
       <p>
-        {% blocktrans with "https://pubchem.ncbi.nlm.nih.gov/compound/8193" as url %}
+        {% blocktranslate with "https://pubchem.ncbi.nlm.nih.gov/compound/8193" as url %}
         In this simplified example, a single flask (line R1) is measured for
         concentration of <a href="{{ url }}">Lauryl Alcohol</a> (a.k.a
         butanol), using the PubChem CID (8193) at time = 24 hours after the
         beginning of the experiment. The concentration is 0.5 g/L.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <a name="skyline"></a>
-      <h3>{% trans "Skyline" %}</h3>
+      <h3>{% translate "Skyline" %}</h3>
       <p>
-        {% blocktrans with url="https://skyline.ms/project/home/software/Skyline/begin.view" %}
+        {% blocktranslate with url="https://skyline.ms/project/home/software/Skyline/begin.view" %}
         Skyline is an <a href="{{ url }}">open source tool</a> used to analyze
         mass spec data, including targeted proteomics data. The Skyline layout
         corresponds to the form Skyline exports analysis of mass spec
         detections. Each row of the table describes the number of detections of
         a particular peptide, as well as the name of the measured assay.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <table class="figureTable">
-        <caption>{% trans "Figure 2: Skyline Example" %}</caption>
+        <caption>{% translate "Figure 2: Skyline Example" %}</caption>
         <thead>
           <tr>
             <th>Replicate Name</th>
@@ -199,76 +199,76 @@
         </tbody>
       </table>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         When EDD processes Skyline files for Proteomics, it sums measurements
         for each peptide associated with the same protein, and reports summed
         measurement counts. EDD also treats the "#N/A" values produced by
         Skyline as zero detections.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <a name="custom"></a>
-      <h3>{% trans "Custom Layout" %}</h3>
+      <h3>{% translate "Custom Layout" %}</h3>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         Support for configurable parsing of custom layouts will be added in a
         future version. In the meantime, there a placeholder "Interpret" step
         in the prototype where you'll eventually be able to inform EDD about
         how your data is structured.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
     <a name="file-content"></a>
-    <h2 class="helpSectionHeader">{% trans "Content" %}</h2>
+    <h2 class="helpSectionHeader">{% translate "Content" %}</h2>
     <div class="helpSectionContent">
       <a name="ids"></a>
-      <h4>{% trans "Standard Identifiers" %}</h4>
+      <h4>{% translate "Standard Identifiers" %}</h4>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         In most cases, EDD requires that you use standard identifiers to import
         your data. While each researcher may have a naming convention or
         shorthand they prefer to use for chemicals or other quantities being
         measured, it's important to make experiments understandable to
         collaborators and to promote transparency in the legacy of research as
         captured in EDD.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <a name="omics-refs"></a>
-      <h4>{% trans "Reference Databases for 'Omics Measurements" %}</h4>
+      <h4>{% translate "Reference Databases for 'Omics Measurements" %}</h4>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         EDD uses several third-party databases to provide standard
         identifiers for 'omics:
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <table class="figureTable">
         <thead>
           <tr>
-            <th>{% trans "Category" %}</th>
-            <th>{% trans "Reference Databases" %}</th>
-            <th>{% trans "Required Identifier" %}</th>
-            <th>{% trans "Examples" %} </th>
+            <th>{% translate "Category" %}</th>
+            <th>{% translate "Reference Databases" %}</th>
+            <th>{% translate "Required Identifier" %}</th>
+            <th>{% translate "Examples" %} </th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>{% trans "Proteomics" %}</td>
+            <td>{% translate "Proteomics" %}</td>
             <td>
               {% if ice_url %}
-                {% blocktrans with ice_url=ice_url %}
+                {% blocktranslate with ice_url=ice_url %}
                 <a href="https://www.uniprot.org">Uniprot</a> and
                 <a href="{{ ice_url }}">ICE</a>
-                {% endblocktrans %}
+                {% endblocktranslate %}
               {% else %}
-                {% blocktrans %}
+                {% blocktranslate %}
                 <a href="https://www.uniprot.org">Uniprot</a> and ICE
-                {% endblocktrans %}
+                {% endblocktranslate %}
               {% endif %}
             </td>
             <td>
-              {% blocktrans %}
+              {% blocktranslate %}
               <a href="https://www.uniprot.org/help/accession_numbers">Uniprot
               Accession ID</a>, or ICE part ID's accepted for custom proteins
-              {% endblocktrans %}
+              {% endblocktranslate %}
             </td>
             <td>
               <a href="https://www.uniprot.org/uniprot/P76461">
@@ -277,9 +277,9 @@
             </td>
           </tr>
           <tr>
-            <td>{% trans "Metabolomics" %}</td>
+            <td>{% translate "Metabolomics" %}</td>
             <td>
-              <a href="https://pubchem.ncbi.nlm.nih.gov/">{% trans "PubChem"%}</a>
+              <a href="https://pubchem.ncbi.nlm.nih.gov/">{% translate "PubChem"%}</a>
             </td>
             <td>CID</td>
             <td>
@@ -288,35 +288,35 @@
             </td>
           </tr>
           <tr>
-            <td>{% trans "Transcriptomics" %}</td>
+            <td>{% translate "Transcriptomics" %}</td>
             <td>
               {% if ice_url %}
-                {% blocktrans %}
+                {% blocktranslate %}
                 <a href="{{ ice_url }}">ICE</a> preferred, or direct EDD input
                 (arbitrary ID's accepted)
-                {% endblocktrans %}
+                {% endblocktranslate %}
               {% else %}
-                {% blocktrans %}
+                {% blocktranslate %}
                 Genbank Gene ID or ICE part ID preferred. Direct EDD input
                 (arbitrary ID's accepted)
-                {% endblocktrans %}
+                {% endblocktranslate %}
               {% endif%}
             </td>
-            <td>{% trans "ICE Part Number preferred" %}</td>
+            <td>{% translate "ICE Part Number preferred" %}</td>
             <td>JBx_12345, ABF_12345, JPUB_12345</td>
           </tr>
         </tbody>
       </table>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         In addition to the built-in categories above, EDD's categories are
         configurable, so you might see others.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <a name="generic-mtypes"></a>
-      <h4>{% trans "Generic Measurement Types" %}</h4>
+      <h4>{% translate "Generic Measurement Types" %}</h4>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         EDD largely relies on other domain-specific databases such as PubChem
         or GenBank to provide identifiers for the quantities being measured.
         However, EDD also needs to store measurements of a few other important
@@ -326,43 +326,43 @@
         "Metabolites" that are tracked by other domain databases such as
         PubChem. EDD includes a small handful of these generic measurement
         types by default, and others can be added with relative ease.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
       <details>
-        <summary>{% trans "Available Types" %}</summary>
+        <summary>{% translate "Available Types" %}</summary>
         <ul id="typesList" data-url="{% url 'rest:types-list' %}">
-          <li><a class="loadmore hidden" href="#">{% trans "Load More ..." %}</a></li>
+          <li><a class="loadmore hidden" href="#">{% translate "Load More ..." %}</a></li>
         </ul>
       </details>
       {% if mtype_scripts %}
-      <button id="request-mtype">{% trans "Request a Measurement Type" %}</button>
+      <button id="request-mtype">{% translate "Request a Measurement Type" %}</button>
       {% endif %}
       <a name="units"></a>
-      <h4>{% trans "Measurement Units" %}</h4>
+      <h4>{% translate "Measurement Units" %}</h4>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         EDD also requires that imported files use known units. EDD comes
         configured with a set of commonly-used units, and new units can also be
         added as needed.
-        {% endblocktrans %}
+        {% endblocktranslate %}
         <details>
-          <summary>{% trans "Units Available" %}</summary>
+          <summary>{% translate "Units Available" %}</summary>
           <ul id="unitList" data-url="{% url 'rest:units-list' %}">
-            <li><a class="loadmore hidden" href="#">{% trans "Load More ..." %}</a></li>
+            <li><a class="loadmore hidden" href="#">{% translate "Load More ..." %}</a></li>
           </ul>
         </details>
         {% if units_scripts %}
-        <button id="request-units">{% trans "Request Units" %}</button>
+        <button id="request-units">{% translate "Request Units" %}</button>
         {% endif %}
       </p>
     </div>
     <a name="advanced"></a>
     <div class="helpSectionContent">
-      <h2 class="helpSectionHeader">{% trans "Advanced" %}</h2>
-      <h3>{% trans "Assay Metadata Workflow" %}</h3>
+      <h2 class="helpSectionHeader">{% translate "Advanced" %}</h2>
+      <h3>{% translate "Assay Metadata Workflow" %}</h3>
       <p>
         {% url "main:describe_flat:help" as description_help_url %}
-        {% blocktrans %}
+        {% blocktranslate %}
         Some files generated by instrumentation won't include all the data that
         EDD needs to create complete, unambiguous records of your experiment.
         For example, Skyline is important to the default proteomics workflow,
@@ -375,13 +375,13 @@
         section in the Experiment Description help. If assay time data is
         detected during the import process, it will be used when the data file
         doesn't contain time.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       </p>
     </div>
     <div class="helpSectionContent">
-    <h3 class="helpSectionHeader">{% trans "Planning for Success" %}</h3>
+    <h3 class="helpSectionHeader">{% translate "Planning for Success" %}</h3>
       <p>
-        {% blocktrans %}
+        {% blocktranslate %}
         EDD's import tool requires your file to match line/assay names from
         your study, as well standard measurement type identifiers. A common
         workflow that helps avoid identifier mismatches is to first create
@@ -392,7 +392,7 @@
         a lot of manual effort or scripting to fix problems. Inconsistencies
         often aren't apparent until you attempt to import your data into EDD,
         and it can be labor intensive to fix them at that late stage.
-        {% endblocktrans %}
+        {% endblocktranslate %}
         </p>
       </div>
   </div>

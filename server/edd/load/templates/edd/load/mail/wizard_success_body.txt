@@ -1,7 +1,7 @@
 {% load i18n %}
-{% blocktrans %}
+{% blocktranslate %}
 The EDD has finished loading data into {{ study }} at <{{ study_uri }}>. The
 loading process added {{ added }} and updated {{ updated }} values in the Study.
-{% endblocktrans %}
+{% endblocktranslate %}
 
 {% include "edd/load/mail/_wizard_warnings.txt" %}

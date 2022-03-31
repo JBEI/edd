@@ -4,12 +4,12 @@
 
 
 {% block head_title %}
-  {% trans 'Create Study' %} &mdash; {{ block.super }}
+  {% translate 'Create Study' %} &mdash; {{ block.super }}
 {% endblock head_title %}
 
 
 {% block body_title %}
-  {% trans 'Create Study' %}
+  {% translate 'Create Study' %}
 {% endblock body_title %}
 
 
@@ -17,6 +17,6 @@
 <form action="{% url 'main:create_study' %}"  class="edd-form" method="POST">
     {% csrf_token %}
     {{ form.as_p }}
-    <button class="btn btn-primary" type="submit">{% trans 'Add Study' %}</button>
+    <button class="btn btn-primary" type="submit">{% translate 'Add Study' %}</button>
 </form>
 {% endblock content %}

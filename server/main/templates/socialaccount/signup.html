@@ -4,7 +4,7 @@
 
 
 {% block head_title %}
-{% trans "Signup" %} &mdash; {{ block.super }}
+{% translate "Signup" %} &mdash; {{ block.super }}
 {% endblock %}
 
 
@@ -18,12 +18,12 @@
     <form class="login_form" id="signup_form" method="post"
             action="{% url 'socialaccount_signup' %}">
         <fieldset>
-            <legend>{% trans "Sign Up" %}</legend>
+            <legend>{% translate "Sign Up" %}</legend>
             <p>
-            {% blocktrans with provider_name=account.get_provider.name site_name=site.name %}
+            {% blocktranslate with provider_name=account.get_provider.name site_name=site.name %}
             You are about to use your {{provider_name}} account to login to {{site_name}}. As a
             final step, please complete the following form:
-            {% endblocktrans %}
+            {% endblocktranslate %}
             </p>
             {% csrf_token %}
             {% if form.non_field_errors %}
@@ -48,7 +48,7 @@
                     name="{{ redirect_field_name }}"
                     value="{{ redirect_field_value }}" />
             {% endif %}
-            <button type="submit">{% trans "Sign Up" %} &raquo;</button>
+            <button type="submit">{% translate "Sign Up" %} &raquo;</button>
         </fieldset>
     </form>
 {% endblock %}

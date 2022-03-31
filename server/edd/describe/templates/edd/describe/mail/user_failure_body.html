@@ -1,12 +1,12 @@
 {% extends "edd/describe/mail/base.html" %}
 {% load i18n %}
 {% block body %}
-  <h2>{% trans "Add Lines Failed!" %}</h2>
+  <h2>{% translate "Add Lines Failed!" %}</h2>
   <p class="alert alert-danger">
-    {% blocktrans %}
+    {% blocktranslate %}
     Adding lines to <a href="{{ study_uri }}">{{ study }}</a> failed after {{ duration }}.
     Try again after fixing the errors below, or contact EDD administrators for help.
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </p>
   {% include "edd/describe/mail/_errors.html" %}
   {% include "edd/describe/mail/_warnings.html" %}

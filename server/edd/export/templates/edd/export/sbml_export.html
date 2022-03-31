@@ -10,21 +10,21 @@
 
 
 {% block head_title %}
-  {% blocktrans with name=primary_study.name count count=selection.studies|length %}
+  {% blocktranslate with name=primary_study.name count count=selection.studies|length %}
   SBML Export for {{ name }}
   {% plural %}
   SBML Export for {{ count }} Studies
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock head_title %}
 
 
 {% block body_title %}
   {% url 'main:detail' slug=primary_study.slug as study_url %}
-  {% blocktrans with name=primary_study.name url=study_url count count=selection.studies|length %}
+  {% blocktranslate with name=primary_study.name url=study_url count count=selection.studies|length %}
   SBML Export for <a href="{{ url }}">{{ name }}</a>
   {% plural %}
   SBML Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
-  {% endblocktrans %}
+  {% endblocktranslate %}
 {% endblock body_title %}
 
 
@@ -47,14 +47,14 @@
     <!-- Export settings section -->
     <div class="pageSection" style="margin:10px;" id="allstatusmain">
       <!-- Show warnings count, if applicable -->
-      <div class="sectionHead">{% trans "Export Settings:" %}
+      <div class="sectionHead">{% translate "Export Settings:" %}
         {% if sbml_warnings|length > 0 %}
           <span class="warn2">
-            {% blocktrans count counter=sbml_warnings|length %}
+            {% blocktranslate count counter=sbml_warnings|length %}
             {{ counter }} warning
             {% plural %}
             {{ counter }} warnings
-            {% endblocktrans %}
+            {% endblocktranslate %}
           </span>
         {% endif %}
       </div>
@@ -66,7 +66,7 @@
         {% if export_settings_form.is_open %}open="open"{% endif %}
       >
         <summary>
-          {% trans "Step 1: Select the SBML template file to use for export" %}
+          {% translate "Step 1: Select the SBML template file to use for export" %}
           {% include 'edd/export/warningnotice.html' %}
         </summary>
         <div class="sectionContent" id="statusstep0main">
@@ -86,7 +86,7 @@
         {% if od_select_form.is_open %}open="open"{% endif %}
       >
         <summary>
-          {% trans "Step 2: Find OD Data" %}
+          {% translate "Step 2: Find OD Data" %}
           {% include 'edd/export/warningnotice.html' %}
         </summary>
         <div class="sectionContent" id="statusstep1main">
@@ -110,7 +110,7 @@
         {% if hplc_select_form.is_open %}open="open"{% endif %}
       >
         <summary>
-          {% trans "Step 3: Select HPLC-like Measurements, and inputs" %}
+          {% translate "Step 3: Select HPLC-like Measurements, and inputs" %}
           {% include 'edd/export/warningnotice.html' %}
         </summary>
         <div class="sectionContent" id="statusstep2main">
@@ -132,7 +132,7 @@
         {% if ms_select_form.is_open %}open="open"{% endif %}
       >
         <summary>
-          {% trans "Step 4: Select LCMS-like Measurements, and inputs" %}
+          {% translate "Step 4: Select LCMS-like Measurements, and inputs" %}
           {% include 'edd/export/warningnotice.html' %}
         </summary>
         <div class="sectionContent" id="statusstep3main">
@@ -153,7 +153,7 @@
         {% if ramos_select_form.is_open %}open="open"{% endif %}
       >
         <summary>
-          {% trans "Step 5: Select RAMOS O2/CO2 Measurements" %}
+          {% translate "Step 5: Select RAMOS O2/CO2 Measurements" %}
           {% include 'edd/export/warningnotice.html' %}
         </summary>
         <div class="sectionContent" id="statusstep4main">
@@ -174,7 +174,7 @@
         {% if omics_select_form.is_open %}open="open"{% endif %}
       >
         <summary>
-          {% trans "Step 6: Select Transcriptomics/Proteomics Measurements" %}
+          {% translate "Step 6: Select Transcriptomics/Proteomics Measurements" %}
           {% include 'edd/export/warningnotice.html' %}
         </summary>
         <div class="sectionContent" id="statusstep5main">
@@ -195,7 +195,7 @@
         {% if match_form.is_open %}open="open"{% endif %}
       >
         <summary>
-          {% trans "Step 7: Pre-parse SBML model and match exchanges and species to measurements" %}
+          {% translate "Step 7: Pre-parse SBML model and match exchanges and species to measurements" %}
           {% include 'edd/export/warningnotice.html' %}
         </summary>
         <div class="sectionContent" id="statusstep6main">
@@ -207,9 +207,9 @@
             <table class="dataTable" cellspacing="0">
               <thead>
                 <tr>
-                  <td>{% trans "Measurement Type" %}</td>
-                  <td>{% trans "Species in model" %}</td>
-                  <td>{% trans "Reactant / Exchange in model" %}</td>
+                  <td>{% translate "Measurement Type" %}</td>
+                  <td>{% translate "Species in model" %}</td>
+                  <td>{% translate "Reactant / Exchange in model" %}</td>
                 </tr>
               </thead>
               <tbody>
@@ -237,7 +237,7 @@
       END OF EXPORT SETTINGS
       -->
       <div class="sectionContent sectionRight">
-        <button type="submit" name="action" value="update">{% trans "Update Settings" %}</button>
+        <button type="submit" name="action" value="update">{% translate "Update Settings" %}</button>
       </div>
     </div><!-- #allstatusmain -->
 
@@ -245,7 +245,7 @@
     {% with warnings_list=time_form.sbml_warnings %}
     <div class="pageSection" style="margin:10px;" id="timeselectmain">
       <div class="sectionHead">
-        <span>{% trans "Export SBML at timepoint" %}</span>
+        <span>{% translate "Export SBML at timepoint" %}</span>
         {% include 'edd/export/warningnotice.html' %}
       </div>
       <div class="sectionContent">
@@ -256,7 +256,7 @@
         {{ time_form.as_p }}
       </div>
       <div class="sectionContent sectionRight">
-        <button type="submit" name="action" value="download">{% trans "Download SBML" %}</button>
+        <button type="submit" name="action" value="download">{% translate "Download SBML" %}</button>
       </div>
     </div>
     {% endwith %}

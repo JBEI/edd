@@ -10,7 +10,7 @@
   <meta charset="UTF-8" />
   <title>
     {% block head_title %}
-    {% trans 'Experiment Data Depot' context 'HTML Title' %}
+    {% translate 'Experiment Data Depot' context 'HTML Title' %}
     {% endblock head_title %}
   </title>
   <script src="{% static 'dist/vendor.js' %}"></script>
@@ -37,14 +37,14 @@
             data-toggle="collapse"
             data-target="#bs-example-navbar-collapse-1"
             aria-expanded="false">
-          <span class="sr-only">{% trans 'Toggle navigation' %}</span>
+          <span class="sr-only">{% translate 'Toggle navigation' %}</span>
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
         <a class="navbar-brand" href="{% url 'main:index' %}">
           <img class="eddLogo" src="{% static 'main/images/edd_logo.png' %}"
-              alt="{% trans 'EDD Logo' %}" />
+              alt="{% translate 'EDD Logo' %}" />
           <img class="companyLogo" src="{% logo %}" alt="{% logo_title %}" />
         </a>
       </div>
@@ -53,7 +53,7 @@
           <li>
             <h1 class="navbar-text edd-nav-title">
               {% block body_title %}
-              {% trans 'Experiment Data Depot' context 'Top of page title' %}
+              {% translate 'Experiment Data Depot' context 'Top of page title' %}
               {% endblock body_title %}
             </h1>
           </li>
@@ -65,12 +65,12 @@
           <ul class="nav navbar-nav navbar-right">
             <li>
               <a href="https://sites.google.com/lbl.gov/esedataautomation/data-acquisition-storage/experiment-data-depot-edd?authuser=0">
-                {% trans 'Tutorials' %}
+                {% translate 'Tutorials' %}
               </a>
             </li>
             <li>
               <a href="https://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204">
-                {% trans 'EDD Publication'%}
+                {% translate 'EDD Publication'%}
               </a>
             </li>
             {% if user.is_authenticated %}
@@ -88,14 +88,14 @@
                     <span class="message-close">
                       <button class="btn btn-xs btn-link">
                         <span class="fas fa-times"></span>
-                        <span class="sr-only">{% trans 'Dismiss this notification' %}</span>
+                        <span class="sr-only">{% translate 'Dismiss this notification' %}</span>
                       </button>
                     </span>
                   </li>
                 </ul>
-                <p class="message-empty" aria-disabled="true">{% trans 'No new notifications.' %}</p>
+                <p class="message-empty" aria-disabled="true">{% translate 'No new notifications.' %}</p>
                 <p class="close-all text-right">
-                  <button class="btn btn-sm btn-primary">{% trans 'Mark All Read' %}</button>
+                  <button class="btn btn-sm btn-primary">{% translate 'Mark All Read' %}</button>
                 </p>
               </div>
             </li>
@@ -103,11 +103,11 @@
               <p class="navbar-text">{% firstof user.get_full_name user.username %}</p>
             </li>
             <li>
-              <a href="{% url 'account_logout' %}">{% trans 'Logout' %}</a>
+              <a href="{% url 'account_logout' %}">{% translate 'Logout' %}</a>
             </li>
             {% else %}
             <li>
-              <a href="{% url 'account_login' %}">{% trans 'Login' %}</a>
+              <a href="{% url 'account_login' %}">{% translate 'Login' %}</a>
             </li>
             {% endif %}
           </ul>
@@ -122,7 +122,7 @@
         {% for message in messages %}
         <div class="alert alert-{{ message.level_tag }} {{ message.extra_tags }}" role="alert">
           <a
-            aria-label="{% trans 'Close' %}"
+            aria-label="{% translate 'Close' %}"
             class="close"
             data-dismiss="alert"
           >&times;</a>
@@ -137,12 +137,12 @@
   <footer class="footer-text">
     {% edd_version_number as version %}
     <span class="footer-text-app">
-      {% blocktrans trimmed with version=version context 'Footer title' %}
+      {% blocktranslate trimmed with version=version context 'Footer title' %}
       Experiment Data Depot {{ version }}
-      {% endblocktrans %}
+      {% endblocktranslate %}
     </span>
     {% if user.is_staff %}
-    <span><a href="{% url 'admin:index' %}">{% trans 'Administration' %}</a></span>
+    <span><a href="{% url 'admin:index' %}">{% translate 'Administration' %}</a></span>
     {% endif %}
   </footer>
 </body>

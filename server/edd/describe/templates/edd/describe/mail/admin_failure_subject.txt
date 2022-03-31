@@ -1,1 +1,1 @@
-{% load i18n %}{% blocktrans %}{{ instance_tag }}Add Lines Failed{% endblocktrans %}
+{% load i18n %}{% blocktranslate %}{{ instance_tag }}Add Lines Failed{% endblocktranslate %}

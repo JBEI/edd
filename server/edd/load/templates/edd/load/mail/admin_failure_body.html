@@ -1,13 +1,13 @@
 {% extends "edd/load/mail/base.html" %}
 {% load i18n %}
 {% block body %}
-  <h2>{% trans "Import Failed!" %}</h2>
+  <h2>{% translate "Import Failed!" %}</h2>
   <p class="alert alert-danger">
-    {% blocktrans %}
+    {% blocktranslate %}
     An import to <a href="{{ study_uri }}">{{ study }}</a>
     started by {{ user }} was unsuccessful
     after {{ duration }} with message '{{ message }}'.
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </p>
   <p>
     {{ trace }}

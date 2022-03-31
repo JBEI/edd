@@ -1,11 +1,11 @@
 {% load i18n %}
 <p class="bulk-note off">
-  {% blocktrans trimmed %}
+  {% blocktranslate trimmed %}
   Disabled fields have conflicting values, and will be ignored until edited. Editing
   these will overwrite to the new value. Use the Don't Change button to discard edits
   and keep original value(s) for a field. Use the Clear Value button to remove
   metadata.
-  {% endblocktrans %}
+  {% endblocktranslate %}
 </p>
 <div class="meta-add-row meta-row form-group">
   <span class="edd-label">
@@ -14,12 +14,12 @@
         autocomplete="off"
         class="autocomp {{ meta_class }} form-control-meta ui-autocomplete-input"
         data-eddautocompletetype="{{ meta_type }}"
-        placeholder="{% trans 'Metadata Type' %}" />
+        placeholder="{% translate 'Metadata Type' %}" />
     <input type="hidden" value="" />
   </span>
   <button class="meta-add btn btn-default">
     <i class="fas fa-plus-circle"></i>
-    {% trans "Add Field" %}
+    {% translate "Add Field" %}
   </button>
 </div>
 <p class="off meta-model">
@@ -27,21 +27,21 @@
   <label></label>
   <span class="meta-postfix"></span>
   <span class="off meta-restore">
-    {% trans "Values of <label></label> will be removed on Save." %}
+    {% translate "Values of <label></label> will be removed on Save." %}
   </span>
   <br/>
   <input type="text" class="form-control"/>
   <span class="meta-description help-block"></span>
   <span class="off meta-restore btn btn-default btn-xs">
     <i class="fas fa-plus-circle"></i>
-    {% trans "Restore Field" %}
+    {% translate "Restore Field" %}
   </span>
   <span class="meta-clear btn btn-default btn-xs">
     <i class="fas fa-times-circle"></i>
-    {% trans "Clear Value" %}
+    {% translate "Clear Value" %}
   </span>
   <span class="meta-remove btn btn-default btn-xs">
     <i class="fas fa-minus-circle"></i>
-    {% trans "Don't Change" %}
+    {% translate "Don't Change" %}
   </span>
 </p>

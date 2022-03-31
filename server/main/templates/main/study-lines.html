@@ -26,7 +26,7 @@
   {% if writable %}
   <div class="alert alert-info alert-dismissible" role="alert">
     <button
-      aria-label="{% trans 'Close' %}"
+      aria-label="{% translate 'Close' %}"
       class="close"
       data-dismiss="alert"
       type="button"
@@ -34,23 +34,23 @@
       <span aria-hidden="true">&times;</span>
     </button>
     <p>
-      {% blocktrans trimmed %}
+      {% blocktranslate trimmed %}
       Drag-and-drop an Experiment Description file on the table below to add more lines.
-      {% endblocktrans %}
+      {% endblocktranslate %}
       <a
         class="label label-info label-spaced"
         href="{% describe_example_file %}"
       >
         <span class="fas fa-download"></span>
-        {% trans 'Example File' %}
+        {% translate 'Example File' %}
       </a>
       <a
         class="label label-info label-spaced"
         href="{% url 'main:describe:help' slug=study.slug %}"
         target="_blank"
-        title="{% trans 'Click to open help in a new tab' %}"
+        title="{% translate 'Click to open help in a new tab' %}"
       >
-        {% trans 'Help' %}
+        {% translate 'Help' %}
       </a>
     </p>
   </div>
@@ -60,17 +60,17 @@
       <nav class="hidden pager-nav">
         <ul class="pagination pagination-sm">
           <li class="disabled pager-prev">
-            <a href="#" aria-label="{% trans 'Previous' %}">
+            <a href="#" aria-label="{% translate 'Previous' %}">
               <span aria-hidden="true">&laquo;</span>
             </a>
           </li>
           <li>
             <span>
-              <span class="pager-label text-muted">{% trans 'Lines @range of @total' %}</span>
+              <span class="pager-label text-muted">{% translate 'Lines @range of @total' %}</span>
             </span>
           </li>
           <li class="disabled pager-next">
-            <a href="#" aria-label="{% trans 'Next' %}">
+            <a href="#" aria-label="{% translate 'Next' %}">
               <span aria-hidden="true">&raquo;</span>
             </a>
           </li>
@@ -82,7 +82,7 @@
     <a class="{% if not lines %}off{% endif %} pull-right" href="{{ wizard_url}}">
       <button class="btn btn-primary btn-large" type="button">
         <span class="fas fa-cloud-upload-alt"></span>
-        {% trans 'Import Data' %}
+        {% translate 'Import Data' %}
       </button>
     </a>
     {% endif %}
@@ -98,24 +98,24 @@
   </div>
   {% endif %}
   <div id="noLinesDiv" class="hide jumbotron">
-    <h2>{% trans 'This study has no lines.' %}</h2>
+    <h2>{% translate 'This study has no lines.' %}</h2>
     {% if writable %}
     <p>
       <button class="btn btn-primary addNewLineButton" type="button">
         <span class="fas fa-plus"></span>
-        {% trans 'Add Line' %}
+        {% translate 'Add Line' %}
       </button>
       <a href="{% url 'main:describe:describe' slug=study.slug %}">
         <button class="btn btn-primary" type="button">
           <span class="fas fa-random"></span>
-          {% trans "Add Line Combinations" %}
+          {% translate "Add Line Combinations" %}
         </button>
       </a>
     </p>
     {% endif %}
   </div>
   <div id="loadingLinesDiv" class="jumbotron">
-    <h2>{% trans 'Loading study lines...'%}</h2>
+    <h2>{% translate 'Loading study lines...'%}</h2>
     <span class="waitbadge wait"></span>
   </div>
   <div id="studyLinesTable"></div>
@@ -125,7 +125,7 @@
       <div class="btn-group dropup">
         <button class="btn btn-primary needs-lines-selected" id="editButton" type="button">
           <span class="fas fa-pencil-alt"></span>
-          {% trans 'Edit' %}
+          {% translate 'Edit' %}
           <span class="badge selected-line-count"></span>
         </button>
         <button
@@ -136,32 +136,32 @@
           type="button"
         >
           <span class="caret"></span>
-          <span class="sr-only">{% trans 'Toggle Menu' %}</span>
+          <span class="sr-only">{% translate 'Toggle Menu' %}</span>
         </button>
         <ul class="dropdown-menu">
           <li class="needs-lines-selected">
             <a href="#" id="disableButton">
               <span class="fas fa-trash-alt"></span>
-              {% trans 'Delete' %}
+              {% translate 'Delete' %}
             </a>
           </li>
           <li class="needs-lines-selected">
             <a href="#" id="enableButton">
               <span class="fas fa-sync-alt"></span>
-              {% trans 'Restore' %}
+              {% translate 'Restore' %}
             </a>
           </li>
           <li role="separator" class="divider"></li>
           <li class="needs-lines-selected">
             <a href="#" id="replicateButton">
               <span class="fas fa-link"></span>
-              {% trans 'Group as replicates ...' %}
+              {% translate 'Group as replicates ...' %}
             </a>
           </li>
           <li class="needs-lines-selected">
             <a href="#" id="unreplicateButton">
               <span class="fas fa-unlink"></span>
-              {% trans 'Ungroup replicates ...' %}
+              {% translate 'Ungroup replicates ...' %}
             </a>
           </li>
         </ul>
@@ -169,7 +169,7 @@
       <div class="btn-group dropup">
         <button class="btn btn-primary addNewLineButton" type="button">
           <span class="fas fa-plus"></span>
-          {% trans 'Add Line' %}
+          {% translate 'Add Line' %}
         </button>
         <button
           aria-expanded="false"
@@ -179,19 +179,19 @@
           type="button"
         >
           <span class="caret"></span>
-          <span class="sr-only">{% trans 'Toggle Menu' %}</span>
+          <span class="sr-only">{% translate 'Toggle Menu' %}</span>
         </button>
         <ul class="dropdown-menu">
           <li>
             <a href="{% url 'main:describe:describe' slug=study.slug %}">
               <span class="fas fa-random"></span>
-              {% trans "Add Line Combinations" %}
+              {% translate "Add Line Combinations" %}
             </a>
           </li>
           <li class="needs-lines-selected">
             <a href="#" id="cloneButton">
               <span class="fas fa-copy"></span>
-              {% trans 'Clone Lines' %}
+              {% translate 'Clone Lines' %}
               <span class="badge selected-line-count"></span>
             </a>
           </li>
@@ -199,7 +199,7 @@
           <li class="needs-lines-selected">
             <a href="#" id="addAssayButton">
               <span class="fas fa-plus"></span>
-              {% trans 'Add Assay' %}
+              {% translate 'Add Assay' %}
               <span class="badge selected-line-count"></span>
             </a>
           </li>
@@ -215,19 +215,19 @@
           type="button"
         >
           <span class="fas fa-filter"></span>
-          {% trans 'View Options' %}
+          {% translate 'View Options' %}
         </button>
         <ul class="dropdown-menu table-filter-options">
           <li>
             <a href="#" id="showDisabledItem">
               <span class="fas fa-toggle-off"></span>
-              {% trans 'Show Deleted' %}
+              {% translate 'Show Deleted' %}
             </a>
           </li>
           <li>
             <a href="#" id="groupReplicateItem">
               <span class="fas fa-toggle-off"></span>
-              {% trans 'Group Replicates' %}
+              {% translate 'Group Replicates' %}
             </a>
           </li>
         </ul>
@@ -237,11 +237,11 @@
       <button
         class="btn btn-primary"
         id="exportLineButton"
-        title="{% trans 'Export data as CSV' %}"
+        title="{% translate 'Export data as CSV' %}"
         type="button"
       >
         <span class="fas fa-cloud-download-alt"></span>
-        {% trans 'Export Data' %}
+        {% translate 'Export Data' %}
       </button>
       <button
         aria-expanded="false"
@@ -251,26 +251,26 @@
         type="button"
       >
         <span class="caret"></span>
-        <span class="sr-only">{% trans 'Toggle Menu' %}</span>
+        <span class="sr-only">{% translate 'Toggle Menu' %}</span>
       </button>
       <ul class="dropdown-menu dropdown-menu-right">
         <li>
           <a href="#" id="exportNewStudyButton">
             <span class="fas fa-copy"></span>
-            {% trans 'to New Study' %}
+            {% translate 'to New Study' %}
           </a>
         </li>
         <li>
           <a href="#" id="sbmlButton">
             <span class="fas fa-paper-plane"></span>
-            {% trans 'SBML Export' %}
+            {% translate 'SBML Export' %}
           </a>
         </li>
         <li role="separator" class="divider"></li>
         <li>
           <a href="#" id="worklistButton">
             <span class="fas fa-clipboard-list"></span>
-            {% trans 'Generate Worklist' %}
+            {% translate 'Generate Worklist' %}
           </a>
         </li>
       </ul>
@@ -280,23 +280,23 @@
 
 {% if writable %}
 <div id="editLineModal" class="off {% if new_line.errors %}validation_error{% endif %}">
-  <span class="off" id="new_line_title">{% trans "Add New Line" %}</span>
-  <span class="off" id="edit_line_title">{% trans "Edit Line" %}</span>
-  <span class="off" id="bulk_line_title">{% trans "Bulk Edit Lines" %}</span>
+  <span class="off" id="new_line_title">{% translate "Add New Line" %}</span>
+  <span class="off" id="edit_line_title">{% translate "Edit Line" %}</span>
+  <span class="off" id="bulk_line_title">{% translate "Bulk Edit Lines" %}</span>
   <form action="" method="POST">
     {% csrf_token %}
     <div class="modal-body">
       <fieldset>
-        <legend>{% trans "Basic Line Information" %}</legend>
-        <p class="bulk-note off">{% trans "Only enabled fields will be modified." %}</p>
+        <legend>{% translate "Basic Line Information" %}</legend>
+        <p class="bulk-note off">{% translate "Only enabled fields will be modified." %}</p>
         {{ new_line.as_p }}
         <span class="off bulk-ignore btn btn-default btn-xs">
           <i class="fas fa-minus-circle"></i>
-          {% trans "Don't Change" %}
+          {% translate "Don't Change" %}
         </span>
       </fieldset>
       <fieldset>
-        <legend>{% trans "Line Metadata" %}</legend>
+        <legend>{% translate "Line Metadata" %}</legend>
         {% with meta_class="autocomp_ltype" meta_type="LineFormMetadataType" %}
         {% include "main/include/metadata-template.html" %}
         {% endwith %}
@@ -304,18 +304,18 @@
     </div>
     <div class="modal-footer">
       <button type="submit" class="btn btn-primary" name="action" value="line">
-        {% trans 'Save' %}
+        {% translate 'Save' %}
       </button>
     </div>
   </form>
 </div>
 
 {% if new_assay.is_editing %}
-  {% trans 'Edit Assay' context 'modal title' as add_assay_modal_title %}
-  {% trans 'Edit Assay' context 'button' as add_assay_button %}
+  {% translate 'Edit Assay' context 'modal title' as add_assay_modal_title %}
+  {% translate 'Edit Assay' context 'button' as add_assay_button %}
 {% else %}
-  {% trans 'Add Assays To Selected Lines' as add_assay_modal_title %}
-  {% trans 'Add Assay' context 'button' as add_assay_button %}
+  {% translate 'Add Assays To Selected Lines' as add_assay_modal_title %}
+  {% translate 'Add Assay' context 'button' as add_assay_button %}
 {% endif %}
 <div id="addAssayModal" class="off" title="{{ add_assay_modal_title }}">
   <form action="" method="POST">
@@ -323,11 +323,11 @@
     <div class="off hidden-line-inputs"></div>
     <div class="modal-body">
       <fieldset>
-        <legend>{% trans "Basic Assay Information" %}</legend>
+        <legend>{% translate "Basic Assay Information" %}</legend>
         {{ new_assay.as_p }}
       </fieldset>
       <fieldset>
-        <legend>{% trans "Assay Metadata" %}</legend>
+        <legend>{% translate "Assay Metadata" %}</legend>
         {% with meta_class="autocomp_atype" meta_type="AssayFormMetadataType" %}
         {% include "main/include/metadata-template.html" %}
         {% endwith %}

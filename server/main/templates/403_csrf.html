@@ -3,16 +3,16 @@
 {% load i18n %}
 
 {% block head_title %}
-  {% trans 'EDD - Error: Forbidden' %}
+  {% translate 'EDD - Error: Forbidden' %}
 {% endblock head_title %}
 
 {% block body_title %}
-  {% trans 'Error: Forbidden' %}
+  {% translate 'Error: Forbidden' %}
 {% endblock body_title %}
 
 {% block content %}
-  <p>{% blocktrans trimmed %}
+  <p>{% blocktranslate trimmed %}
   Your request could not be validated. The site administrators have been notified of the problem,
   please check back later.
-  {% endblocktrans %}</p>
+  {% endblocktranslate %}</p>
 {% endblock content %}

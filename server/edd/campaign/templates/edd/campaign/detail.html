@@ -14,14 +14,14 @@
     <button
       class="btn btn-primary btn-lg pull-right"
       id="addStudyButton"
-      title="{% trans 'Add a new Study' %}"
+      title="{% translate 'Add a new Study' %}"
     >
-      {% trans 'New Study' context 'button' %}
+      {% translate 'New Study' context 'button' %}
     </button>
     {# the DIV below is hidden by default; TypeScript code removes and puts in a modal #}
     <div id="addStudyModal"
         class="off"
-        title="{% trans 'Add New Study' context 'modal title' %}">
+        title="{% translate 'Add New Study' context 'modal title' %}">
       {% if create_study.errors %}
         <div class="alert alert-danger alert-dismissible" role="alert">
           <button type="button" class="close" data-dismiss="alert" aria-label="Close">
@@ -36,7 +36,7 @@
           {{ create_study.as_p }}
         </div>
         <div class="modal-footer">
-          <button type="submit">{% trans "Create Study" context "button" %}</button>
+          <button type="submit">{% translate "Create Study" context "button" %}</button>
         </div>
       </form>
     </div>
@@ -61,8 +61,8 @@
     <thead>
       <tr>
         <td><input type="checkbox" id="study-select-all"/></td>
-        <td>{% trans 'Name' context 'campaign table heading' %}</td>
-        <td>{% trans 'Description' context 'campaign table heading' %}</td>
+        <td>{% translate 'Name' context 'campaign table heading' %}</td>
+        <td>{% translate 'Description' context 'campaign table heading' %}</td>
       </tr>
     </thead>
     <tbody>
@@ -84,15 +84,15 @@
     <button id="removeStudyButton"
         class="btn btn-danger"
         style="float: right;"
-        title="{% trans 'Remove Selected Studies' %}">
-      {% trans "Remove Studies" %}
+        title="{% translate 'Remove Selected Studies' %}">
+      {% translate "Remove Studies" %}
     </button>
   {% endif %}
   {% include "edd/campaign/page_controls.html" %}
   {% if can_write %}
     <div class="disclose discloseHide">
       <div class="pageDivider">
-        <span class="discloseLink">{% trans " Permissions" %}</span>
+        <span class="discloseLink">{% translate " Permissions" %}</span>
       </div>
       <div class="discloseBody">
         <div class="sectionContent indent">
@@ -100,10 +100,10 @@
           <table class="dataTable table-striped">
             <thead>
               <tr class="columnLabels">
-                <th class="sortheader smaller">{% trans "Who" context "permission list" %}</th>
-                <th class="sortheader smaller">{% trans "Level" context "permission list" %}</th>
-                <th class="smaller">{% trans "Add Study" context "permission list" %}</th>
-                <th class="smaller">{% trans "Remove Study" context "permission list" %}</th>
+                <th class="sortheader smaller">{% translate "Who" context "permission list" %}</th>
+                <th class="sortheader smaller">{% translate "Level" context "permission list" %}</th>
+                <th class="smaller">{% translate "Add Study" context "permission list" %}</th>
+                <th class="smaller">{% translate "Remove Study" context "permission list" %}</th>
               </tr>
             </thead>
             <tbody>
@@ -129,7 +129,7 @@
                 </tr>
               {% empty %}
                 <tr>
-                  <td colspan="4">{% trans "No permissions set" %}</td>
+                  <td colspan="4">{% translate "No permissions set" %}</td>
                 </tr>
               {% endfor %}
               {% endwith %}
@@ -137,13 +137,13 @@
           </table>
           {% endwith %}
           <button class="actionButton primary" id="addPermission">
-            {% trans "Configure Permissions" context "button" %}
+            {% translate "Configure Permissions" context "button" %}
           </button>
         </div>
       </div>
     </div>
     {# add permissions modal #}
-    <div class="indent off" title="{% trans 'Configure Permissions' %}" id="permissionsSection">
+    <div class="indent off" title="{% translate 'Configure Permissions' %}" id="permissionsSection">
       <div class="sectionActions">
         <form action="{% url 'campaign:permission' slug=campaign.slug %}"
             method="POST"
@@ -154,30 +154,30 @@
           <div class="permission">NOTE: this dialog is not functional yet!</div>
           <div class="permission">
             <label for="usergroup_permission">
-              <span>{% trans 'User or Group' %}</span>
+              <span>{% translate 'User or Group' %}</span>
             </label>
           </div>
           <div class="permission">
             <label for="campaign_permission">
-              <span>{% trans 'Campaign Access' %}</span>
+              <span>{% translate 'Campaign Access' %}</span>
             </label>
             <select id="campaign_permission" name="campaign_type">
-              <option value="{{ permission_none }}">{% trans 'None' %}</option>
-              <option value="{{ permission_read }}">{% trans 'Read' %}</option>
-              <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+              <option value="{{ permission_none }}">{% translate 'None' %}</option>
+              <option value="{{ permission_read }}">{% translate 'Read' %}</option>
+              <option value="{{ permission_write }}">{% translate 'Write' %}</option>
             </select>
           </div>
           <div class="permission">
             <label for="study_permission">
-              <span>{% trans 'Study Access' %}</span>
+              <span>{% translate 'Study Access' %}</span>
             </label>
             <select id="study_permission" name="study_type">
-              <option value="{{ permission_none }}">{% trans 'None' %}</option>
-              <option value="{{ permission_read }}">{% trans 'Read' %}</option>
-              <option value="{{ permission_write }}">{% trans 'Write' %}</option>
+              <option value="{{ permission_none }}">{% translate 'None' %}</option>
+              <option value="{{ permission_read }}">{% translate 'Read' %}</option>
+              <option value="{{ permission_write }}">{% translate 'Write' %}</option>
             </select>
           </div>
-          <button id="set_permission">{% trans 'Set Access' %}</button>
+          <button id="set_permission">{% translate 'Set Access' %}</button>
         </form>
       </div>
     </div>

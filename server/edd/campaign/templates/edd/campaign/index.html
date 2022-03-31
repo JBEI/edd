@@ -10,7 +10,7 @@
 
 
 {% block body_title %}
-  {{ block.super }} &ndash; {% trans 'Campaign Index' context 'heading' %}
+  {{ block.super }} &ndash; {% translate 'Campaign Index' context 'heading' %}
 {% endblock body_title %}
 
 
@@ -20,17 +20,17 @@
     <button
       class="btn btn-primary btn-lg pull-right"
       id="addCampaignButton"
-      title="{% trans 'Add a new Campaign' context 'button tooltip' %}"
+      title="{% translate 'Add a new Campaign' context 'button tooltip' %}"
     >
-      {% trans 'New Campaign' context 'button label' %}
+      {% translate 'New Campaign' context 'button label' %}
     </button>
     <div id="addCampaignModal"
         class="off"
-        title="{% trans 'Add New Campaign' context 'modal title' %}">
+        title="{% translate 'Add New Campaign' context 'modal title' %}">
       <form action="{% url 'campaign:index' %}" class="edd-form" method="POST">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">{% trans 'Create' %}</button>
+        <button type="submit">{% translate 'Create' %}</button>
       </form>
     </div>
   {% endif %}
@@ -38,8 +38,8 @@
   <table class="dataTable table-striped">
     <thead>
       <tr>
-        <td>{% trans 'Name' context 'campaign table heading' %}</td>
-        <td>{% trans 'Description' context 'campaign table heading' %}</td>
+        <td>{% translate 'Name' context 'campaign table heading' %}</td>
+        <td>{% translate 'Description' context 'campaign table heading' %}</td>
       </tr>
     </thead>
     <tbody>

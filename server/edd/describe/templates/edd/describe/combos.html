@@ -17,31 +17,31 @@
 
 
 {% block content %}
-<div id="add-prop-dialog" title="{% trans 'Add Line Properties' %}" class="hide">
+<div id="add-prop-dialog" title="{% translate 'Add Line Properties' %}" class="hide">
   <ul id="line-properties-list"></ul>
-  <div id="no-properties-div" class="hide">{% trans "No more items available" %}</div>
+  <div id="no-properties-div" class="hide">{% translate "No more items available" %}</div>
 </div>
-<div id="add-abbrev-dialog" title="{% trans 'Add Abbreviation' %}" class="hide">
-  <p>{% trans "Include abbreviations for line name elements:"}</p>
+<div id="add-abbrev-dialog" title="{% translate 'Add Abbreviation' %}" class="hide">
+  <p>{% translate "Include abbreviations for line name elements:"}</p>
   <ul id="line-name-abbrev-list"></ul>
-  <div id="no-abbrev-options-div" class="hide">{% trans "No more items available"%}</div>
+  <div id="no-abbrev-options-div" class="hide">{% translate "No more items available"%}</div>
 </div>
-<div id="add-ice-folder-dialog" title="{% trans 'Add ICE Folder' %}" class="hide">
+<div id="add-ice-folder-dialog" title="{% translate 'Add ICE Folder' %}" class="hide">
   <form id="ice-folder-form" class="needs-validation" novalidate="novalidate">
     {% csrf_token %}
     <div class="form-group">
-      <label for="ice-folder-url-input">{% trans "Folder:" %}</label>
+      <label for="ice-folder-url-input">{% translate "Folder:" %}</label>
       <input
         type="url"
         id="ice-folder-url-input"
-        placeholder="{% trans 'Folder url' %}"
+        placeholder="{% translate 'Folder url' %}"
         size="40"
         required="required"
       />
       <!--div class="invalid-feedback"> Please enter a folder</div-->
     </div>
     <div class="form-group">
-      <label>{% trans "Entry Type:" %}</label>
+      <label>{% translate "Entry Type:" %}</label>
       <div id="entry-types-div" class="btn-group-toggle" data-toggle="buttons">
         <label class="btn btn-secondary active" for="type-strain">
           <input
@@ -52,7 +52,7 @@
             class="form-control"
             checked="checked"
           />
-          {% trans "Strain" %}
+          {% translate "Strain" %}
         </label>
         <label class="btn btn-secondary" for="type-protein">
           <input
@@ -62,7 +62,7 @@
             id="type-protein"
             class="form-control"
           />
-          {% trans "Protein" %}
+          {% translate "Protein" %}
         </label>
         <label class="btn btn-secondary" for="type-plasmid">
           <input
@@ -72,7 +72,7 @@
             id="type-plasmid"
             class="form-control"
           />
-          {% trans "Plasmid" %}
+          {% translate "Plasmid" %}
         </label>
         <label class="btn btn-secondary" for="type-part">
           <input
@@ -82,7 +82,7 @@
             id="type-part"
             class="form-control"
           />
-          {% trans "Part" %}
+          {% translate "Part" %}
         </label>
         <label class="btn btn-secondary" for="type-seed">
           <input
@@ -92,18 +92,18 @@
             id="type-seed"
             class="form-control"
           />
-          {% trans "Arabidopsis Seed" %}
+          {% translate "Arabidopsis Seed" %}
         </label>
       </div>
     </div>
   </form>
   <div id="querying-folder-div" class="hide">
-    <span class="waitbadge wait-larger hide">{% trans "EDD is querying ICE..." %}</span>
+    <span class="waitbadge wait-larger hide">{% translate "EDD is querying ICE..." %}</span>
   </div>
   <div id="folder-lookup-status-div"></div>
 </div>
 <div id="creating-lines-dialog" class="hide">
-  <p>{% trans "Please wait a moment while your lines are created..." %}
+  <p>{% translate "Please wait a moment while your lines are created..." %}
     <span id="creation-wait-spinner" class="wait waitbadge">&nbsp;</span>
   </p>
   <div id="creation-status-div"></div>
@@ -111,7 +111,7 @@
   <!-- Step 1; -->
   <div id="step1" class="pageSection stepBorder">
     <div class="sectionHead">
-      {% trans "Step 1: Choose line properties that describe your experiment" %}
+      {% translate "Step 1: Choose line properties that describe your experiment" %}
     </div>
     <div class="sectionContent">
       <div class="bulk-line-table" id="line-properties-table">
@@ -120,7 +120,7 @@
             <!-- empty for add button-->
           </div>
           <div class="bulk_lines_table_cell">
-            <label for="addPropertyButton">{% trans "Property" %}</label>
+            <label for="addPropertyButton">{% translate "Property" %}</label>
             <button id="addPropertyButton" class="addButton">
               <span class="ui-icon ui-icon-plusthick"></span>
             </button>
@@ -129,13 +129,13 @@
             <!--empty for value input-->
           </div>
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Apply to All Lines" %}</label>
+            <label>{% translate "Apply to All Lines" %}</label>
           </div>
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Make Combinations" %}</label>
+            <label>{% translate "Make Combinations" %}</label>
           </div>
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Description" %}</label>
+            <label>{% translate "Description" %}</label>
           </div>
         </div>
       </div>
@@ -147,31 +147,31 @@
         class="next-btn btn btn-primary"
         disabled="disabled"
       >
-        {% trans "Next" %}
+        {% translate "Next" %}
       </button>
     </div>
   </div>
   <!-- Step 2 -->
   <div id="step2" class="pageSection stepBorder hide">
     <div class="sectionHead">
-      {% trans "Step 2: Choose the order of identifying data in line names" %}
+      {% translate "Step 2: Choose the order of identifying data in line names" %}
     </div>
     <div class="sectionContent" id="custom-elts-wrapper">
       <div>
         <div class="add-combos-subsection">
-          <label>{% trans "Custom Name Elements:" %}</label>
+          <label>{% translate "Custom Name Elements:" %}</label>
           <button id="add-custom-elt-btn" class="addButton">
             <span class="ui-icon ui-icon-plusthick"></span>
           </button>
         </div>
-        <div id="no-custom-elts-div">{% trans "None (optional)" %}</div>
+        <div id="no-custom-elts-div">{% translate "None (optional)" %}</div>
         <div id="custom-elements-table" class="bulk-line-table hide">
           <div class="step2_table_heading">
             <div class="bulk_lines_table_cell">
-              <label>{% trans "Label" %}</label>
+              <label>{% translate "Label" %}</label>
             </div>
             <div class="bulk_lines_table_cell">
-              <label>{% trans "Value" %}</label>
+              <label>{% translate "Value" %}</label>
             </div>
           </div>
         </div>
@@ -179,16 +179,16 @@
     </div>
     <div class="sectionContent stepSeparator">
       <div class="add-combos-subsection">
-        <label for="name_ordering_table">{% trans "Name Element Order:" %}</label>
+        <label for="name_ordering_table">{% translate "Name Element Order:" %}</label>
         <div id="name-elements-status-div" class="hide"></div>
       </div>
       <div class="bulk-line-table" id="name_ordering_table">
         <div class="step2_table_heading">
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Order:" %}</label>
+            <label>{% translate "Order:" %}</label>
           </div>
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Unused Elements:" %}</label>
+            <label>{% translate "Unused Elements:" %}</label>
           </div>
         </div>
         <div class="table-row">
@@ -211,14 +211,14 @@
         class="next-btn btn btn-primary"
         disabled="disabled"
       >
-        {% trans "Next" %}
+        {% translate "Next" %}
       </button>
     </div>
   </div>
   <!-- Step 3 -->
   <div id="step3" class="pageSection stepBorder hide">
     <div id="step3Label" class="sectionHead">
-      <span class="sectionTitle">{% trans "Step 3: Review Summary" %}</span>
+      <span class="sectionTitle">{% translate "Step 3: Review Summary" %}</span>
       <span id="refresh-summary-div" class="fas fa-sync-alt"></span>
     </div>
     <div class="sectionContent">
@@ -226,47 +226,47 @@
     </div>
     <div class="sectionContent">
       <div id="step3-waiting-div">
-        <h3>{% trans "Updating preview... please wait." %}</h3>
+        <h3>{% translate "Updating preview... please wait." %}</h3>
         <div class="wait-larger preview-wait-lg">&nbsp;</div>
       </div>
       <div id="step3-errors-div"></div>
       <div class="add-combos-subsection">
-        <label>{% trans "Abbreviations:" %}</label>
+        <label>{% translate "Abbreviations:" %}</label>
         <button id="addAbbreviationButton" class="addButton">
           <span class="ui-icon ui-icon-plusthick"></span>
         </button>
       </div>
-      <div id="no-abbrevs-div">{% trans "None (optional)" %}</div>
+      <div id="no-abbrevs-div">{% translate "None (optional)" %}</div>
       <div id="abbreviations-table" class="bulk-line-table hide">
         <div class="step2_table_heading">
           <div class="bulk_lines_table_cell">
             <!-- empty for add button-->
           </div>
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Name Element" %}</label>
+            <label>{% translate "Name Element" %}</label>
           </div>
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Value" %}</label>
+            <label>{% translate "Value" %}</label>
           </div>
           <div class="bulk_lines_table_cell">
-            <label>{% trans "Abbreviation" %}</label>
+            <label>{% translate "Abbreviation" %}</label>
           </div>
         </div>
       </div>
       <div id="line-preview-div" class="hide">
         <div class="add-combos-subsection">
-          <label>{% trans "Preview:" %}</label>
+          <label>{% translate "Preview:" %}</label>
         </div>
         <div class="bulk-line-table">
           <div class="table-row">
             <div class="bulk_lines_table_cell">
-              <label>{% trans "Lines to create:" %}</label>
+              <label>{% translate "Lines to create:" %}</label>
             </div>
             <div id="line-count-div" class="bulk_lines_table_cell"></div>
           </div>
           <div class="table-row">
             <div class="bulk_lines_table_cell">
-              <label>{% trans "Sample line names:" %}</label>
+              <label>{% translate "Sample line names:" %}</label>
             </div>
             <div id="line-preview-table" class="bulk_lines_table_cell"></div>
           </div>
@@ -287,7 +287,7 @@
               class="non-strains-chkbx"
             >
             <label for="non-strains-opts-chkbx">
-              {% trans "Lines contain extracted cell parts" %}
+              {% translate "Lines contain extracted cell parts" %}
             </label>
           </div>
         </div>
@@ -299,10 +299,10 @@
               class="ignore-ice-errors-chkbx"
             >
             <label for="ignore-ice-access-errors-opts-chkbx">
-              {% trans "Ignore ICE access errors" %}
+              {% translate "Ignore ICE access errors" %}
             </label>
             <span id="strains-omitted-span" class="hide">
-              {% trans "Inaccessible ICE entries will be dropped" %}
+              {% translate "Inaccessible ICE entries will be dropped" %}
             </span>
           </div>
         </div>
@@ -314,7 +314,7 @@
               class="completion-email-chkbx"
             >
             <label for="completion-email-opt-chkbx">
-              {% trans "Email me when finished" %}
+              {% translate "Email me when finished" %}
             </label>
           </div>
         </div>
@@ -325,7 +325,7 @@
         disabled="disabled"
       >
         <span class="fas fa-random"></span>
-        <span>{% trans "Add Lines" %}</span>
+        <span>{% translate "Add Lines" %}</span>
       </button>
     </div>
   </div>

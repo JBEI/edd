@@ -2,31 +2,31 @@
 
 <details>
   <summary>
-    {% blocktrans with measurements=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
+    {% blocktranslate with measurements=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
       {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
-    {% endblocktrans %}
+    {% endblocktranslate %}
   </summary>
   <div id="existingLinesSection" class="pageSection" style="margin:10px;">
     <!--
     Table displaying selected lines; used for table and SBML export pages
     -->
-    <div class="sectionHead">{% trans "Lines selected for export" %}</div>
+    <div class="sectionHead">{% translate "Lines selected for export" %}</div>
     <table cellpadding="0" cellspacing="0" class="dataTable" id="lineSelectionsTable">
       <tr class="columnLabels">
         <th class="sortheader" style="text-align:left">
-          <div>{% trans "Name" %}</div>
+          <div>{% translate "Name" %}</div>
         </th>
         <th class="sortheader" style="text-align:left" id="hStrain">
-          <div>{% trans "Strain" %}</div>
+          <div>{% translate "Strain" %}</div>
         </th>
         <th class="sortheader" style="text-align:left" id="hMedia">
-          <div>{% trans "Media" %}</div>
+          <div>{% translate "Media" %}</div>
         </th>
         <th class="sortheader" style="text-align:center" id="hExperimenter">
-          <div>{% trans "Experimenter" %}</div>
+          <div>{% translate "Experimenter" %}</div>
         </th>
         <th class="sortheader" style="text-align:left" id="hModified">
-          <div>{% trans "Last Modified" %}</div>
+          <div>{% translate "Last Modified" %}</div>
         </th>
       </tr>
       {% for line in selection.lines %}

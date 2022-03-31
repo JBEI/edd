@@ -21,25 +21,25 @@ The context variables used directly in this template are:
 
 {% block content %}
 
-{% blocktrans trimmed with name=item_names|first count counter=item_count asvar t_items %}
+{% blocktranslate trimmed with name=item_names|first count counter=item_count asvar t_items %}
 the {{ typename }} "{{ name }}"
 {% plural %}
 {{ counter }} {{ typename }} objects, including "{{ name }}"
-{% endblocktrans %}
+{% endblocktranslate %}
 
   <div class="confirm-form">
     <p>
       {% if measurement_count >= 1 %}
-        {% blocktrans trimmed with item=t_items count counter=measurement_count %}
+        {% blocktranslate trimmed with item=t_items count counter=measurement_count %}
           Are you sure you want to delete {{ item }}? This will remove a measurement value.
         {% plural %}
           Are you sure you want to delete {{ item }}? This will remove {{ counter }}
           measurement values.
-        {% endblocktrans %}
+        {% endblocktranslate %}
       {% else %}
-        {% blocktrans trimmed with item=t_items %}
+        {% blocktranslate trimmed with item=t_items %}
           Are you sure you want to delete {{ item }}?
-        {% endblocktrans %}
+        {% endblocktranslate %}
       {% endif %}
     </p>
     <form action="" method="POST">
@@ -48,8 +48,8 @@ the {{ typename }} "{{ name }}"
         {{ delete_select.as_p }}
       {% endif %}
       <button class="btn btn-danger" type="submit" name="action"
-          value="{{ confirm_action }}">{% trans "Confirm Delete" %}</button>
-      <a href="{{ cancel_link }}">{% trans "Cancel" %}</a>
+          value="{{ confirm_action }}">{% translate "Confirm Delete" %}</button>
+      <a href="{{ cancel_link }}">{% translate "Cancel" %}</a>
     </form>
   </div>
 

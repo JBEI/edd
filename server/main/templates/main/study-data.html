@@ -16,7 +16,7 @@
   <a id="settinglink" href="{{ settinglink }}" class="off"></a>
   <div class="btn-toolbar flex-row sectionActions">
     <div
-      aria-label="{% trans 'Display Modes' %}"
+      aria-label="{% translate 'Display Modes' %}"
       class="btn-group"
       id="displayModeButtons"
       role="group"
@@ -29,7 +29,7 @@
         data-viewmode="plot-line"
       >
         <span class="fas fa-chart-line"></span>
-        <span class="collapse-label">{% trans 'Line Graph' %}</span>
+        <span class="collapse-label">{% translate 'Line Graph' %}</span>
       </button>
       <div class="btn-group" role="group">
         <button
@@ -41,18 +41,18 @@
           type="button"
         >
           <span class="fas fa-chart-bar"></span>
-          <span class="collapse-label">{% trans 'Bar Graph' %}</span>
+          <span class="collapse-label">{% translate 'Bar Graph' %}</span>
           <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
-          <li class="dropdown-header">{% trans 'Grouped By' %}</li>
+          <li class="dropdown-header">{% translate 'Grouped By' %}</li>
           <li>
             <a
               class="edd-view-select"
               href="#"
               data-selector="#bar-button"
               data-viewmode="bar-measurement"
-            >{% trans 'Measurement' %}</a>
+            >{% translate 'Measurement' %}</a>
           </li>
           <li>
             <a
@@ -60,7 +60,7 @@
               href="#"
               data-selector="#bar-button"
               data-viewmode="bar-line"
-            >{% trans 'Line' %}</a>
+            >{% translate 'Line' %}</a>
           </li>
           <li>
             <a
@@ -68,7 +68,7 @@
               href="#"
               data-selector="#bar-button"
               data-viewmode="bar-time"
-            >{% trans 'Time' %}</a>
+            >{% translate 'Time' %}</a>
           </li>
         </ul>
       </div>
@@ -82,18 +82,18 @@
           type="button"
         >
           <span class="fas fa-table"></span>
-          <span class="collapse-label">{% trans 'Table' %}</span>
+          <span class="collapse-label">{% translate 'Table' %}</span>
           <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
-          <li class="dropdown-header">{% trans 'For Selecting' %}</li>
+          <li class="dropdown-header">{% translate 'For Selecting' %}</li>
           <li>
             <a
               class="edd-view-select"
               href="#"
               data-selector="#table-button"
               data-viewmode="table-measurement"
-            >{% trans 'Measurements' %}</a>
+            >{% translate 'Measurements' %}</a>
           </li>
           <li>
             <a
@@ -101,7 +101,7 @@
               href="#"
               data-selector="#table-button"
               data-viewmode="table-assay"
-            >{% trans 'Assays' %}</a>
+            >{% translate 'Assays' %}</a>
           </li>
         </ul>
       </div>
@@ -110,19 +110,19 @@
       <nav class="hidden pager-nav">
         <ul class="pagination">
           <li class="disabled pager-prev">
-            <a href="#" aria-label="{% trans 'Previous' %}">
+            <a href="#" aria-label="{% translate 'Previous' %}">
               <span aria-hidden="true">&laquo;</span>
             </a>
           </li>
           <li>
             <span>
               <span class="pager-label text-muted">
-                {% trans 'Measurements @range of @total' %}
+                {% translate 'Measurements @range of @total' %}
               </span>
             </span>
           </li>
           <li class="disabled pager-next">
-            <a href="#" aria-label="{% trans 'Next' %}">
+            <a href="#" aria-label="{% translate 'Next' %}">
               <span aria-hidden="true">&raquo;</span>
             </a>
           </li>
@@ -135,7 +135,7 @@
     <a class="{% if not lines %}off{% endif %} pull-right" href="{{ wizard_url}}">
       <button class="btn btn-primary btn-large" type="button">
         <span class="fas fa-cloud-upload-alt"></span>
-        {% trans 'Import Data' %}
+        {% translate 'Import Data' %}
       </button>
     </a>
     {% endif %}
@@ -143,10 +143,10 @@
 
 <div id="graphDisplayContainer">
   <div class="hidden jumbotron" id="noData">
-    <h2>{% trans "No measurements to display." %}</h2>
+    <h2>{% translate "No measurements to display." %}</h2>
   </div>
   <div class="jumbotron" id="graphLoading">
-    <h2>{% trans "Loading data for display." %}</h2>
+    <h2>{% translate "Loading data for display." %}</h2>
     <div class="progress">
       <div
         aria-valuemax="100"
@@ -163,18 +163,18 @@
   <div class="hidden" id="graphArea"></div>
   <div class="assayActions sectionActions">
     <div class="assayFlex hidden edd-value-truncated alert alert-warning">
-      {% blocktrans trimmed %}
+      {% blocktranslate trimmed %}
       Some values are not displayed in the plot above. Use the filters below to
       select a narrower range of items to display.
-      {% endblocktrans %}
+      {% endblocktranslate %}
     </div>
     <div class="assayFlex">
       <div>
-        {% trans 'Measurements' %}
+        {% translate 'Measurements' %}
         <span class="badge edd-measurement-count"></span>
       </div>
       <div>
-        {% trans 'Values' %}
+        {% translate 'Values' %}
         <span class="badge edd-value-count"></span>
       </div>
     </div>
@@ -182,11 +182,11 @@
       <div class="btn-group dropup">
         <button
           class="btn btn-primary edd-export-button"
-          title="{% trans 'Export data as CSV' %}"
+          title="{% translate 'Export data as CSV' %}"
           type="button"
         >
           <span class="fas fa-cloud-download-alt"></span>
-          {% trans 'Export Data' %}
+          {% translate 'Export Data' %}
         </button>
         <button
           aria-expanded="false"
@@ -196,26 +196,26 @@
           type="button"
         >
           <span class="caret"></span>
-          <span class="sr-only">{% trans 'Toggle Menu' %}</span>
+          <span class="sr-only">{% translate 'Toggle Menu' %}</span>
         </button>
         <ul class="dropdown-menu dropdown-menu-right">
           <li>
             <a class="edd-new-study-button" href="#">
               <span class="fas fa-copy"></span>
-              {% trans 'to New Study (Lines Only)' %}
+              {% translate 'to New Study (Lines Only)' %}
             </a>
           </li>
           <li>
             <a class="edd-sbml-button" href="#">
               <span class="fas fa-paper-plane"></span>
-              {% trans 'SBML Export' %}
+              {% translate 'SBML Export' %}
             </a>
           </li>
           <li role="separator" class="divider"></li>
           <li>
             <a class="edd-worklist-button" href="#">
               <span class="fas fa-clipboard-list"></span>
-              {% trans 'Generate Worklist' %}
+              {% translate 'Generate Worklist' %}
             </a>
           </li>
         </ul>
@@ -233,29 +233,29 @@
       <button
         class="btn btn-primary edd-edit-button"
         disabled="true"
-        title="{% trans 'Edit selected assays' %}"
+        title="{% translate 'Edit selected assays' %}"
       >
         <span class="fas fa-pencil-alt"></span>
-        {% trans 'Edit' %}
+        {% translate 'Edit' %}
       </button>
       <button
         class="btn btn-primary edd-add-button"
         disabled="true"
-        title="{% trans 'Add a measurement to selected assays' %}"
+        title="{% translate 'Add a measurement to selected assays' %}"
       >
         <span class="fas fa-plus"></span>
-        {% trans 'Add' %}
+        {% translate 'Add' %}
       </button>
     </div>
     {% endif %}
     <div class="assayFlex btn-toolbar">
       <button
         class="btn btn-primary edd-export-button"
-        title="{% trans 'Export data as CSV' %}"
+        title="{% translate 'Export data as CSV' %}"
         type="button"
       >
         <span class="fas fa-cloud-download-alt"></span>
-        {% trans 'Export Data' %}
+        {% translate 'Export Data' %}
       </button>
     </div>
   </div>
@@ -263,7 +263,7 @@
 
 <div id="mainFilterSection" class="filteringSection"></div>
 
-<div id="addMeasurement" class="off" title="{% trans 'Add Measurements To Selected Assays' %}">
+<div id="addMeasurement" class="off" title="{% translate 'Add Measurements To Selected Assays' %}">
   <form action="" method="POST">
     {% csrf_token %}
     <div class="off hidden-assay-inputs"></div>
@@ -272,30 +272,30 @@
     </div>
     <div class="modal-footer">
       <button type="submit" name="action" class="btn btn-primary" value="measurement">
-        {% trans 'Add Measurement' %}
+        {% translate 'Add Measurement' %}
       </button>
     </div>
   </form>
 </div>
 
 <div id="assayMain" class="off">
-  <span class="off" id="new_assay_title">{% trans "Add New Assay" %}</span>
-  <span class="off" id="edit_assay_title">{% trans "Edit Assay" %}</span>
-  <span class="off" id="bulk_assay_title">{% trans "Bulk Edit Assays" %}</span>
+  <span class="off" id="new_assay_title">{% translate "Add New Assay" %}</span>
+  <span class="off" id="edit_assay_title">{% translate "Edit Assay" %}</span>
+  <span class="off" id="bulk_assay_title">{% translate "Bulk Edit Assays" %}</span>
   <form action="" method="POST">
     {% csrf_token %}
     <div class="modal-body">
       <fieldset>
-        <legend>{% trans "Basic Assay Information" %}</legend>
-        <p class="bulk-note off">{% trans "Only enabled fields will be modified." %}</p>
+        <legend>{% translate "Basic Assay Information" %}</legend>
+        <p class="bulk-note off">{% translate "Only enabled fields will be modified." %}</p>
         {{ new_assay.as_p }}
         <span class="off bulk-ignore btn btn-default btn-xs">
           <i class="fas fa-minus-circle"></i>
-          {% trans "Don't Change" %}
+          {% translate "Don't Change" %}
         </span>
       </fieldset>
       <fieldset>
-        <legend>{% trans "Assay Metadata" %}</legend>
+        <legend>{% translate "Assay Metadata" %}</legend>
         {% with meta_class="autocomp_atype" meta_type="AssayFormMetadataType" %}
         {% include "main/include/metadata-template.html" %}
         {% endwith %}
@@ -303,7 +303,7 @@
     </div>
     <div class="modal-footer">
       <button type="submit" name="action" class="btn btn-primary" value="assay">
-        {% trans 'Save' %}
+        {% translate 'Save' %}
       </button>
     </div>
   </form>
