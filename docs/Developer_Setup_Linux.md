@@ -8,7 +8,7 @@ Debian-maintained packages will generally lag behind the official
 Docker-maintained packages.
 
 Test that Docker and Docker Compose are installed and running correctly by
-executing `docker run --rm hello-world` and `docker-compose`, respectively. The
+executing `docker run --rm hello-world` and `docker compose`, respectively. The
 former will print a welcome message similar to this:
 
 ```
@@ -34,7 +34,7 @@ For more examples and ideas, visit:
  https://docs.docker.com/get-started/
 ```
 
-The latter should print usage information about the `docker-compose` command.
+The latter should print usage information about the `docker compose` command.
 
 Install [pre-commit][3], either directly with `pip install pre-commit` in the
 system Python or a development-specific virtualenv, or use the

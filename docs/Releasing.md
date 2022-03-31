@@ -75,5 +75,5 @@ of Postgres 9.6 would get tagged `jbei/postgres:9.6-20190701`.
 Push images to Docker Hub with `docker push [IMAGENAME]`. On the deploy host,
 Pull images from Docker Hub with `docker pull [IMAGENAME]`. Checkout or pull
 updated code/configs from `git`. For smallest downtime, use
-`docker-compose up -d` to detect containers that need to be re-created, and
+`docker compose up -d` to detect containers that need to be re-created, and
 automatically stop, remove, and re-create them.

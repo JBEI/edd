@@ -60,11 +60,11 @@ docker: command not found
 ```
 
 That means Docker was not successfully installed from Homebrew. Try getting the
-Docker for Mac installer directly from the Docker project. The related
-`docker-compose` utility manages launching multiple services in multiple
-containers, based on a configuration file. Running the `docker-compose` command
-should display some help text describing the options for using the tool. If you
-do not see this help, try re-installing Docker for Mac.
+Docker for Mac installer directly from the Docker project. The `docker compose`
+sub-command manages launching multiple services in multiple containers, based
+on a configuration file. Running the `docker compose` command should display
+some help text describing the options for using the tool. If you do not see
+this help, try re-installing Docker for Mac.
 
 Resources available for Docker containers are set in the Docker menu
 Preferences, under the Advanced tab. It is recommended to allocate at least 2

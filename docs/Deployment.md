@@ -219,7 +219,7 @@ docker compose up -d
 # 1. Make sure the swarm manager is set up
 docker swarm init
 # 2. Aggregate configuration files
-docker-compose config > stack.yml
+docker compose config > stack.yml
 # 3. Launch the stack (replace [NAME] with desired stack name)
 docker stack deploy -c stack.yml [NAME]
 ```
@@ -228,7 +228,7 @@ To shut down EDD:
 
 ```bash
 # For single-node deployment
-docker-compose down
+docker compose down
 ```
 
 ```bash
@@ -245,3 +245,4 @@ docker stack down [NAME]
 [5]: http://django-allauth.readthedocs.org/en/latest/index.html
 [6]: https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
 [7]: http://ice.jbei.org/
+[8]: Configuration.md#edd-django-configuration-files

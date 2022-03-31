@@ -45,7 +45,7 @@ development, you will most likely want to run the command as:
 
 While optional, this step is highly recommended, if only to enable features
 like emailing yourself when errors occur, or making use of Django `DEBUG`
-features and the Django Debug Toolbar. Rename the file `settings/example` to
+features and the Django Debug Toolbar. Copy the file `settings/example` to
 `settings/__init__.py`, and make edits there.
 
 Some additional changes to aid in development can be made by changing the
@@ -64,16 +64,16 @@ prior to launching EDD.
 
 ### Pull EDD's images
 
-Running `docker-compose up` will automatically pull any missing Docker images
+Running `docker compose up` will automatically pull any missing Docker images
 to the host prior to launching; however, it is sometimes useful to run this
 step manually. Building or pulling specific images, and tagging appropriately,
 allows more control over the images used to launch EDD.
 
 ### Launch EDD
 
-You can run EDD either on a single Docker node with `docker-compose up -d`, or
+You can run EDD either on a single Docker node with `docker compose up -d`, or
 use a Docker Swarm with `docker stack deploy -c [CONFIG] [STACK]`. Create a
-config file by running `docker-compose config` and saving the output.
+config file by running `docker compose config` and saving the output.
 
 ### Install ICE
 
@@ -103,7 +103,7 @@ deployed to a running EDD without a full build.
 
 #### Launch EDD
 
-This will typically be `docker-compose up -d`, or `docker stack deploy`. The
+This will typically be `docker compose up -d`, or `docker stack deploy`. The
 compose file used to launch should have an override to load code in from the
 host to a volume mounted at `/code`. This should already be in place when using
 the `--deploy=dev` flag to `bin/init-config`.
@@ -112,7 +112,7 @@ the `--deploy=dev` flag to `bin/init-config`.
 
 Use the `bin/local_typescript_shell.sh` script to launch a container for the
 EDD TypeScript environment. Inside the TypeScript container shell, execute
-`npm run local` to do a one-time local build, or `npm run watch` to monitor
+`yarn local` to do a one-time local build, or `yarn watch` to monitor
 changes and run incremental builds on save.
 
 #### Refresh static files in EDD

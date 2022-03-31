@@ -10,19 +10,28 @@ running in the development environment.
 
 Tests _must_ run with an `edd-core` image that is built with `TARGET=dev`.
 This is the default when manually building, but is _not_ the default for
-images pushed to Docker Hub. Run tests with:
+images pushed to Docker Hub. When the entire EDD stack is up and running,
+execute the tests with this command:
 
 ```bash
-docker-compose exec http pytest
+docker compose exec http run_tests.sh
 ```
+
+The `run_tests.sh` script is included in the `PATH` of the container running
+the `http` service. The command is instructing the container for that service
+to start a process for running the test suite and collecting the results.
 
 ### Test email configuration
 
-Use the Django management command `sendtestemail` ([docs][1]).
+Use the Django management command `sendtestemail` ([docs][1]) with this:
 
 ```bash
-docker-compose exec http /code/manage.py sendtestemail you@example.com
+docker compose exec http /code/manage.py sendtestemail you@example.com
 ```
+
+Similar to running the test suite, this command instructs the container for the
+`http` service to start a process. Here, we're using Django's management
+framework to use functionality provided by Django.
 
 ### Create an unprivileged test account
 
@@ -31,7 +40,7 @@ Use the Django management command `edd_create_user`, which is based on the
 an unprivledged user, and auto-verifies that user's email address.
 
 ```bash
-docker-compose exec http /code/manage.py edd_create_user
+docker compose exec http /code/manage.py edd_create_user
 ```
 
 ### Dump and Restore database contents
@@ -70,13 +79,13 @@ Use the Django management command `edd_index`. Pass in the `--force` flag to
 run a full re-index even if it appears each index contains the correct data.
 
 ```bash
-docker-compose exec http /code/manage.py edd_index
+docker compose exec http /code/manage.py edd_index
 ```
 
 ## Upgrading EDD
 
 The simplest way to update EDD is to pull the newest image, then run
-`docker-compose up -d`. This will re-create containers using the new image.
+`docker compose up -d`. This will re-create containers using the new image.
 
 ---
 

@@ -46,7 +46,7 @@ docker volume ls -q | xargs docker volume rm
 ### Pull or Build updated images
 
 See the currently installed Docker Images with `docker image ls`. Run
-`docker-compose pull` to check Docker Hub for updated versions of images.
+`docker compose pull` to check Docker Hub for updated versions of images.
 Clean up older/unused images with `docker image rm {IMAGE-ID}` and remove
 all unused images with:
 
@@ -57,4 +57,4 @@ docker images -qf 'dangling=true' | xargs docker rmi
 ### View logs
 
 Check the log output for containers with `docker logs {CONTAINER-ID}`,
-`docker-compose logs {SERVICE-NAME}`, or `docker service logs {SERVICE-NAME}`.
+`docker compose logs {SERVICE-NAME}`, or `docker service logs {SERVICE-NAME}`.
