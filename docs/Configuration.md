@@ -40,7 +40,6 @@ detailed description of some of the options.
     configured per the documentation provided by the maintainer of the used image, or a different
     image can be used. Links to the documentation for EDD service images are provided here
     for reference:
-    -   [postgres][9]
     -   [redis][10]
     -   [solr][11]
     -   [rabbitmq][12]
@@ -96,9 +95,8 @@ You may want to use a external services, instead of using the containers
 bundled in EDD's generated `docker-compose.override.yml`. If so, you'll want to
 follow this general outline:
 
--   For databases, manually run similar commands to those in
-    `bin/postgres/000_init.sql`, to create databases and roles.
--   Run `bin/init-config` with the connection string to the service.
+-   Remove the service from `docker-compose.override.yml`
+-   Update any connection strings to refer to the external URL
 
 ---
 
@@ -110,7 +108,6 @@ follow this general outline:
 [6]: https://github.com/settings/applications/new
 [7]: https://console.developers.google.com/
 [8]: https://www.linkedin.com/secure/developer?newapp=
-[9]: https://hub.docker.com/_/postgres/
 [10]: https://hub.docker.com/_/redis/
 [11]: https://hub.docker.com/_/solr/
 [12]: https://hub.docker.com/_/rabbitmq/

@@ -45,12 +45,24 @@ to the file `dump.sql` (`-f`).
 pg_dump -h postgres.example.org -d edd -U jane -f dump.sql
 ```
 
-To restore this dump in a testing database, use the `edd-postgres` Docker
-image. Configure the container with a new, empty volume loaded at
-`/var/lib/postgresql/data`, and mount the `dump.sql` file to one at
-`/docker-entrypoint-initdb.d/200-data.sql`. When the container launches, it
-will initialize a new, empty database for EDD, and restore data from the
-dump file before making the database available for use.
+!!! note "Postgres as a Container"
+
+    If running with a Postgres container in your EDD stack, instead of an
+    external database server, this dump file can be used to initialize the
+    database. This should *only* be used for development.
+
+    ```yaml
+    postgres:
+      environment:
+        POSTGRES_DB: edd
+        POSTGRES_USER: edduser
+        POSTGRES_PASSWORD: ___
+      image: library/postgres:11
+      networks:
+      - backnet
+      volumes:
+      - /path/to/dump.sql:/docker-entrypoint-initdb.d/000_dump.sql
+    ```
 
 ### Rebuild Solr indices
 
