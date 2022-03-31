@@ -33,10 +33,8 @@ module.exports = {
             path.resolve("node_modules/@fortawesome/fontawesome-free/css/all.min.css"),
             path.resolve(__dirname, "./src/Common.ts"),
         ],
-        "Cytometry": path.resolve(__dirname, "./src/Cytometry.ts"),
         "ExperimentDescHelp": path.resolve(__dirname, "./src/Experiment-Desc-Help.ts"),
         "Export": path.resolve(__dirname, "./src/Export.ts"),
-        "GCMS_Workbench": path.resolve(__dirname, "./src/GCMS_Workbench.ts"),
         "Import": path.resolve(__dirname, "./src/Import.ts"),
         "index": path.resolve(__dirname, "./src/index.ts"),
         "LoadWizard": [
@@ -48,7 +46,6 @@ module.exports = {
             path.resolve(__dirname, "./src/LoadWizard.tsx"),
         ],
         "Login": path.resolve(__dirname, "./src/Login.ts"),
-        "Skyline_Convert": path.resolve(__dirname, "./src/Skyline_Convert.ts"),
         "StudyData": path.resolve(__dirname, "./src/Study-Data.ts"),
         "StudyLines": path.resolve(__dirname, "./src/Study-Lines.ts"),
         "StudyLinesAddCombos": path.resolve(

@@ -3,7 +3,8 @@ import csv
 from collections import namedtuple
 
 from edd.utilities import guess_extension
-from tools.parsers import biolector, excel, hplc, skyline
+
+from .parsers.table import biolector, excel, hplc, skyline
 
 ParsedInput = namedtuple("ParsedInput", ["file_type", "parsed_data"])
 

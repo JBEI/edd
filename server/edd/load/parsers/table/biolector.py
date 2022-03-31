@@ -10,7 +10,7 @@ from xml.dom import pulldom
 from xml.sax import handler
 from xml.sax.expatreader import ExpatParser as _ExpatParser
 
-from ..util import RawImportRecord
+from .util import RawImportRecord
 
 logger = logging.getLogger(__name__)
 
