@@ -3,11 +3,11 @@
 ## Pre-requisites
 
 Have [Docker][1] and [Docker Compose][2] installed on the target host. EDD is
-tested with Docker version 18.09.2 and Docker Compose version 1.23.2; these
-instructions are not guaranteed to work for any older versions of Docker or
-Docker Compose. Also have at least the `bin` and `docker` directories, along
-with `docker-compose.yml` and `docker-compose.override.yml-example` copied to
-the target host.
+tested generally with the latest stable Docker version; these instructions are
+not guaranteed to work for any older versions of Docker or Docker Compose.
+Also have at least the `bin` and `docker` directories, along with
+`docker-compose.yml` and `docker-compose.override.yml-example` copied to the
+target host.
 
 ## Initial configuration
 
@@ -32,9 +32,15 @@ Before starting a deployment, the Docker images used by the various EDD
 services must be present on the host computer. This is accomplished either by
 pulling already-built images from a Docker Registry, or building the images
 from the Dockerfiles included in the project. To pull the images, use
-`docker-compose pull`. Customizing builds is beyond the scope of this document,
+`docker compose pull`. Customizing builds is beyond the scope of this document,
 consult the individual README files included with each Dockerfile if a custom
 build is required.
+
+!!! note "Publicly Available images"
+
+    The images available to the public at the `docker.io` registry, or
+    `hub.docker.com`, are not guaranteed to be current with the latest
+    version in `git`. If developing with EDD, always build the images.
 
 ## TLS and domain configuration
 
@@ -84,10 +90,10 @@ Several parts of EDD's configuration is contained within the running
 application's database, instead of loaded from files at startup. A login
 account to the EDD application, with access to the administration interface, is
 the easiest way to edit this configuration. To create an administrator account,
-run this command inside the `http` service, after EDD has finished startup:
+use this command, after EDD has finished startup:
 
 ```bash
-python manage.py createsuperuser
+docker compose exec http /code/manage.py createsuperuser
 ```
 
 The command will prompt for a username, email address, and password. Logging in
@@ -101,26 +107,24 @@ administration interface when clicked.
 Inside the administration interface, a few items should be modified prior to
 serious use of the application.
 
-1. Set the site name and domain in **Sites**. The default confirmation email
-   will use `example.com` as the name of the EDD site, because that is the
-   default value set in the Sites admin. Click through to **Sites**, and then
-   through to **example.com** to edit the name and domain to match
-   your deployment.
-2. Set **Brandings** to use. This admin section sets the logo, favicon, and
-   custom stylesheets used in EDD. Click through to **Add Branding** to upload
+1. Set the site name and domain in **Sites** via the Django Admin. The default
+   confirmation email will use `example.com` as the name of the EDD site,
+   because that is the default value. Access the Admin at
+   `${EDD_URL}/admin/sites/site/`, and then click through the **example.com**
+   item to edit the name and domain to match your deployment.
+2. Set **Brandings** to use. The admin section at
+   `${EDD_URL}/admin/branding/branding/` sets the logo, favicon, and custom
+   stylesheets used in EDD. Click through to **Add Branding** to upload
    these custom files and associate them with the default site set in the
    previous step.
-3. Create **Flat pages**. These are simple text pages to display in EDD. Here
-   is where you can add pages containing information like Privacy Policies,
-   Terms of Service, etc.
-4. Add **Social applications**. This section is where you can configure logins
+3. Add **Social applications**. This section is where you can configure logins
    using OAuth from other services, such as Google, LinkedIn, etc. This will
-   also require changes to `local.py` to add the Django apps for each login
+   also require a settings override to to add the Django apps for each login
    provider. See the [django-allauth documentation][5] for more details.
 
 ## Custom Python configuration
 
-The following configuration options are specific to EDD and may be overridden in a `local.py`.
+The following configuration options are specific to EDD and [may be overridden][8].
 
 -   `EDD_ALLOW_SIGNUP` -- boolean flag; if True, self-registration of accounts
     is enabled.
@@ -200,38 +204,14 @@ The following configuration options are specific to EDD and may be overridden in
     measurement IDs must conform to the pattern of UniProt identifiers.
     Otherwise, arbitrary text may label a protein.
 
-### Configuring EDD's prototype import tool
-
-EDD includes a prototype import tool being field tested as an eventual
-replacement for the existing import tool. By default the prototype is turned
-off in production, but it may be useful to enable it in some circumstances. The
-prototype will be phased into production use, so it's possible that at points
-both tools may be useful until the transition is complete.
-
-#### Enabling the prototype import tool
-
-To enable the prototype, you have to configure it since it's disabled by
-default. To include the new import app, add the following code to the
-`settings` module:
-
-```python
-EDD_USE_PROTOTYPE_IMPORT = True
-```
-
-#### Tuning prototype performance
-
-To configure performance for the prototype import, see settings that start with
-`EDD_IMPORT`. Those that affect the prototype are marked as such, and be aware
-that a few impact both the legacy and the prototype.
-
 ## Starting EDD
 
-Once configured, EDD is launched with either `docker-compose` for a single-node deployment, or
+Once configured, EDD is launched with either `docker compose` for a single-node deployment, or
 `docker stack deploy` for a Swarm deployment:
 
 ```bash
 # For single-node deployment, launch in detached mode
-docker-compose up -d
+docker compose up -d
 ```
 
 ```bash

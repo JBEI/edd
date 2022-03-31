@@ -49,10 +49,10 @@ detailed description of some of the options.
 
 As a Django application, EDD loads its configuration with Python code. EDD's
 settings are designed to load in default values, while allowing for overrides
-with a `local.py` settings file. An example of this file can be found at
-`server/edd/settings/local.py-example`. Custom settings are loaded with a
-`volume` definition targeting `/code/edd/settings` in each of the `http`,
-`worker`, and `websocket` services.
+with a local settings module. An example of this file can be found at
+`settings/example`. Load the file into a container at `/etc/edd/__init__.py`
+via volumes (`docker compose`) or a config (`docker stack`) to use customized
+settings in the application.
 
 Most of the available configuration parameters are defined by Django in its [documentation][3], or
 by Celery in its [configuration documentation][4]. The settings for non-core Django applications
@@ -72,22 +72,30 @@ The defaults used by EDD are defined in the following files found under `server/
 -   `auth.py`: Defines authentication-specific settings.
 
 Settings unique to EDD will generally be prefixed with `EDD_`. Commentary for each of these,
-including possible values, should be included in the `local.py-example` file. See "Custom
+including possible values, should be included in the `settings/example` file. See "Custom
 Python Configuration" under [Deployment][18] for specific examples.
 
 ### Configuring Social Logins <a name="Social"/>
 
--   For broad overview, refer to the [django-allauth documentation][5].
--   To use a new provider:
-    -   Add the provider application to `INSTALLED_APPS`
-    -   Put logos in `./main/static/main/images/` and update styles
-        in `./main/static/main/login.css`
--   From the admin site, add a new Social application, using Client ID and Secret Key from provider
-    -   [Github registration][6]
-    -   [Google registration][7]
-    -   [LinkedIn registration][8]
--   Each provider may require additional details about the application, allowed domains and/or
-    URLs, etc.
+For a broad overview of 3rd-party or "Social" logins, refer to the
+[django-allauth documentation][5]. Each OAuth provider has their own unique
+setup and configuration process.
+
+To add a new provider, ensure that the `django-allauth` provider application
+for that OAuth provider gets added to the `INSTALLED_APPS` setting, so that
+Django can use it. See `settings/example` for an example of _updating_ the
+`INSTALLED_APPS` setting, without _replacing_ the previous list. Include any
+logos in the static asset storage backend, and update the styles in EDD's
+`edd.branding` application at `${EDD_URL}/admin/branding/branding/`.
+
+Configure a provider via the Django Admin site, by adding a new configuration
+or editing an existing one at `${EDD_URL}/admin/socialaccount/socialapp/`. Each
+provider needs a "Client ID" and "Secret Key", and individual providers may
+require additional details. See each provider for further details.
+
+-   [Github registration][6]
+-   [Google registration][7]
+-   [LinkedIn registration][8]
 
 ### Using External Services
 
