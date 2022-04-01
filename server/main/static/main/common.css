@@ -1440,6 +1440,19 @@ summary.pageDivider {
     transition: 0.1s ease-in;
 }
 
-h1.edd-nav-title {
+.edd-nav-title {
     padding: 0.2em;
+}
+
+.centered-form {
+    margin: 100px auto;
+    padding: 20px 30px;
+    width: 510px;
+}
+.centered-form label {
+    margin-bottom: 5px;
+}
+
+.centered-form p {
+    margin: 0 0 1rem 0;
 }

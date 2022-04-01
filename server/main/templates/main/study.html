@@ -8,11 +8,6 @@
 {% endblock head_title %}
 
 
-{% block body_title %}
-  {{ study.name }}
-{% endblock body_title %}
-
-
 {% block content %}
 <a id="accesslink" href="{% url 'main:access' slug=study.slug %}" class="off"></a>
 <div class="studyNav">
