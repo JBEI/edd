@@ -5,21 +5,32 @@
 {% block head_title %}{% translate "Signup" %} &mdash; {{ block.super }}{% endblock %}
 
 {% block content %}
-    <form class="signup" id="signup_form login_form" method="post"
+    <form class="signup centered-form" id="signup_form" method="post"
             action="{% url 'account_signup' %}">
         {% csrf_token %}
-        <fieldset>
-            <legend>{% translate "Sign Up" %}</legend>
-            <p>
-                {% blocktranslate %}
-                Already have an account? Then please <a href="{{ login_url }}">sign in</a>.
-                {% endblocktranslate %}
-            </p>
-            {{ form.as_p }}
-            {% if redirect_field_value %}
-            <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
-            {% endif %}
-            <button type="submit">{% translate "Sign Up" %} &raquo;</button>
-        </fieldset>
+        <h1>{% translate "Sign Up" %}</h1>
+        <p>
+            {% blocktranslate %}
+            Already have an account? Then please <a href="{{ login_url }}">sign in</a>.
+            {% endblocktranslate %}
+        </p>
+
+        {% for field in form.visible_fields %}
+            <div class="form-group{% if field.errors %} has-error{% endif %}">
+                {{ field.label_tag }}
+                {{ field }}
+                <div id="id_{{field.name}}_help" class="help-block">
+                    {{ f.errors }}
+                    {% if field.help_text %}
+                        <p>{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+
+        {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+        {% endif %}
+        <button type="submit" class="btn btn-primary">{% translate "Sign Up" %} <span role="presentation">&raquo;</span></button>
     </form>
 {% endblock content %}

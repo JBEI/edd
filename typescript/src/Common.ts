@@ -12,6 +12,7 @@ import * as Notification from "../modules/Notification";
 import {
     handleChangeRequiredInput,
     handleInvalidRequiredInput,
+    initializeInputsWithErrors,
 } from "../modules/Forms";
 
 import "../modules/Styles";
@@ -85,6 +86,8 @@ function prepareIt(): void {
     $(document).on("blur input", "input[required]", handleChangeRequiredInput);
     // invalid event must be directly attached to elements
     $("input[required]").on("invalid", handleInvalidRequiredInput);
+    // Set correct aria-invalid value for fields with server-set errors
+    initializeInputsWithErrors($(".has-error input"));
 }
 
 // use JQuery ready event shortcut to call prepareIt when page is ready

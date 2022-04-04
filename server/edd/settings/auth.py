@@ -10,8 +10,9 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_FORMS = {
+    "signup": "edd.account.SignupForm",
     # use our override of password reset form behavior
-    "reset_password": "edd.account.ResetPasswordForm"
+    "reset_password": "edd.account.ResetPasswordForm",
 }
 ACCOUNT_USERNAME_REQUIRED = False
 SOCIALACCOUNT_ADAPTER = "edd.account.EDDSocialAccountAdapter"

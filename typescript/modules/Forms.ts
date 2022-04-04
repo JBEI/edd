@@ -623,12 +623,21 @@ export class FormMetadataManager {
     }
 }
 
+export function initializeInputsWithErrors(inputs: JQuery): void {
+    inputs.each((index, input) => {
+        input.setAttribute("aria-invalid", "true");
+    });
+}
+
 export function handleChangeRequiredInput(event: JQueryEventObject): void {
     const input = event.target as HTMLInputElement;
+    input.setAttribute("aria-invalid", "false");
     input.setCustomValidity("");
     input.checkValidity();
 }
 
+// Override the default HTML validation messages so that the field name
+// and additional context is announced to users of assistive technology.
 export function handleInvalidRequiredInput(event: JQueryEventObject): void {
     const $input = $(event.target);
     const input = event.target as HTMLInputElement;
@@ -646,6 +655,6 @@ export function handleInvalidRequiredInput(event: JQueryEventObject): void {
             // fall back to assumed English with label
             input.setCustomValidity(`${labelText} required.`);
         }
-        input.reportValidity();
+        input.setAttribute("aria-invalid", "true");
     }
 }

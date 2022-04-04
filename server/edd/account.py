@@ -2,8 +2,10 @@ import logging
 
 from allauth import account, exceptions, socialaccount
 from allauth.account.forms import ResetPasswordForm as BaseResetPasswordForm
+from allauth.account.forms import SignupForm as BaseSignupForm
 from django.conf import settings
 from django.contrib import auth, messages, sites
+from django.contrib.auth.password_validation import password_validators_help_text_html
 from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -181,3 +183,17 @@ class ResetPasswordForm(BaseResetPasswordForm):
             self.users = account.utils.filter_users_by_email(email)
         # base class .save() call generates reset token and sends email to self.users
         return super().save(request, **kwargs)
+
+
+class SignupForm(BaseSignupForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["password1"].help_text = password_validators_help_text_html()
+        self.fields["password1"].widget.attrs["aria-describedby"] = "id_password1_help"
+        self.fields["password2"].label = _("Re-enter password")
+        for visible in self.visible_fields():
+            # class required to be styled by Bootstrap
+            visible.field.widget.attrs["class"] = "form-control"
+            # prevent fields from being announced as invalid when form is first displayed
+            visible.field.widget.attrs["aria-invalid"] = "false"
+            del visible.field.widget.attrs["placeholder"]
