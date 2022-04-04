@@ -254,6 +254,10 @@ assay_option = table.TableOptions(models.Assay)
 measure_option = table.TableOptions(models.Measurement)
 
 
+class AccessibleCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
+    template_name = "edd/export/accessible_checkbox_select.html"
+
+
 class ExportOptionForm(forms.Form):
     """
     Form used for changing options on exports.
@@ -281,35 +285,35 @@ class ExportOptionForm(forms.Form):
         coerce=study_option.coerce,
         label=_("Study fields to include"),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=AccessibleCheckboxSelectMultiple,
     )
     line_meta = forms.TypedMultipleChoiceField(
         choices=line_option.choices,
         coerce=line_option.coerce,
         label=_("Line fields to include"),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=AccessibleCheckboxSelectMultiple,
     )
     protocol_meta = forms.TypedMultipleChoiceField(
         choices=protocol_option.choices,
         coerce=protocol_option.coerce,
         label=_("Protocol fields to include"),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=AccessibleCheckboxSelectMultiple,
     )
     assay_meta = forms.TypedMultipleChoiceField(
         choices=assay_option.choices,
         coerce=assay_option.coerce,
         label=_("Assay fields to include"),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=AccessibleCheckboxSelectMultiple,
     )
     measure_meta = forms.TypedMultipleChoiceField(
         choices=measure_option.choices,
         coerce=measure_option.coerce,
         label=_("Measurement fields to include"),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=AccessibleCheckboxSelectMultiple,
     )
 
     def __init__(self, *args, **kwargs):

@@ -1,0 +1,19 @@
+{% with id=widget.attrs.id %}
+    <div{% if id %} id="{{ id }}"{% endif %}class="checkbox {{ widget.attrs.class }}">
+        {% for group, options, index in widget.optgroups %}
+            {% for option in options %}
+            <div>
+                <label for="{{option.attrs.id}}">
+                    {% include "django/forms/widgets/checkbox.html" with widget=option %}
+                    {{option.label}}
+                </label>
+            </div>
+            {% endfor %}
+        {% endfor %}
+        <div class="select-controls">
+            <button class="btn btn-link select-all" aria-describedby="{{id}}_legend">Select All</button>
+            <button class="btn btn-link deselect-all" aria-describedby="{{id}}_legend">Deselect All</button>
+            <div class="announcements sr-only" aria-live="assertive"></div>
+        </div>
+    </div>
+{% endwith %}

@@ -1099,6 +1099,27 @@ form.comments textarea {
     float: left;
     padding-right: 1em;
 }
+.exportOptions fieldset {
+    padding: 0.5em;
+    margin: 1rem 0 2rem;
+    border: none;
+    border-bottom: solid 1px gray;
+}
+.exportOptions legend {
+    font-weight: bold;
+    margin-left: -5px;
+}
+.exportOptions .select-controls {
+    position: absolute;
+    top: -2.8em;
+    right: 0;
+    text-align: right;
+}
+.exportOptions h2 {
+    font-size: 1em;
+    font-weight: bold;
+    margin: 0;
+}
 .exportDisplay textarea {
     width: 100%;
 }

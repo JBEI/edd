@@ -2,12 +2,10 @@
 {% load static %}
 {% load i18n %}
 
-
 {% block js_css %}
   {{ block.super }}
   <script type="text/javascript" src="{% static 'dist/Export.js' %}"></script>
 {% endblock js_css %}
-
 
 {% block head_title %}
   {% blocktranslate with name=primary_study.name count count=selection.studies|length %}
@@ -17,17 +15,6 @@
   {% endblocktranslate %}
 {% endblock head_title %}
 
-
-{% block body_title %}
-  {% url 'main:detail' slug=primary_study.slug as study_url %}
-  {% blocktranslate with name=primary_study.name url=study_url count count=selection.studies|length %}
-  Data Export for <a href="{{ url }}">{{ name }}</a>
-  {% plural %}
-  Data Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
-  {% endblocktranslate %}
-{% endblock body_title %}
-
-
 {% block content %}
 <!-- Line info section -->
 {% include "edd/export/linetable.html" %}
@@ -36,10 +23,50 @@
 <form method="post" id="exportForm" action="{% url 'export:export' %}">
   {% csrf_token %}
   <div class="pageSection">
-    <div class="sectionHead">{% translate 'Choose the export layout.' %}</div>
+    <div class="sectionHead">
+      <h1>{% translate 'Choose the export layout.' %}</h1>
+    </div>
+    <p class="lead">
+      {% url 'main:detail' slug=primary_study.slug as study_url %}
+      {% blocktranslate with name=primary_study.name url=study_url count count=selection.studies|length %}
+      Data Export for <a href="{{ url }}">{{ name }}</a>
+      {% plural %}
+      Data Export for {{ count }} Studies, including <a href="{{ url }}">{{ name }}</a>
+      {% endblocktranslate %}
+    </p>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
-      {{ option_form.as_p }}
+
+      {% for field in option_form %}
+        {% if field.field.widget.input_type == 'checkbox' and field.field.widget.allow_multiple_selected %}
+          <div class="checkbox">
+            <fieldset>
+              <legend id="{{field.name}}_legend">
+                <h2>{{ field.label }}</h2>
+              </legend>
+              {{ field.errors }}
+              {{ field }}
+            </fieldset>
+
+          </div>
+        {% elif field.field.widget.input_type == 'checkbox' %}
+          <div class="form-group checkbox">
+            <label for="{{field.id_for_label}}">
+              {{ field }}
+              {{ field.label }}
+              {{ field.errors }}
+            </label>
+          </div>
+        {% else %}
+          <div class="form-group">
+            <label for="{{field.id_for_label}}">{{field.label}}
+              {{ field.errors }}
+              {{ field }}
+            </label>
+          </div>
+        {% endif %}
+      {% endfor %}
+
       <button
         class="btn btn-primary btn-lg"
         name="action"
