@@ -24,7 +24,8 @@
   {% block js_css %}
   {% endblock js_css%}
 </head>
-<body style="background-color:{% env_background_color %};">
+{% comment %} <body style="background-color:{% env_background_color %};"> {% endcomment %}
+  <body style="background-color:white">
   {% block sr_header_alert %}
   {% endblock %}
   <a class="skip-to-content-link" href="#content">Skip to main content</a>

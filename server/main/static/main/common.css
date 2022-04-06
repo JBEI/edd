@@ -1342,24 +1342,22 @@ body > .navbar {
     margin: 0px 15px 0px 15px;
 }
 .studyNav .nav > li > a {
-    color: lightgray;
+    color: #31708f;
     position: relative;
     display: block;
     padding: 10px 15px;
-    border-bottom: 2px solid lightgray;
+    border-bottom: 1px solid #31708f;
     border-radius: 0px;
 }
 .nav {
     list-style: none;
     padding-left: 0;
 }
-.studyNav .navbar .nav > .active > a {
-    background: none;
-}
 .studyNav .nav > li > a:hover,
+.studyNav .navbar .nav > .active > a,
 .nav > li > a:focus {
-    text-decoration: none;
     background-color: rgba(0, 0, 0, 0.1);
+    text-decoration: none;
     border-bottom: 2px solid grey;
     border-radius: 0px;
     color: black;
@@ -1389,6 +1387,10 @@ body > .navbar {
     border-bottom: 2px solid grey;
     border-radius: 0px;
 }
+/* .studyNav .nav-pills > li.active > a,
+.studyNav .nav-pills > li.active > a:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+} */
 
 .pageDivider {
     position: relative;
