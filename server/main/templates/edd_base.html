@@ -51,11 +51,11 @@
       <div class="collapse navbar-collapse">
         <ul class="nav navbar-nav navbar-left">
           <li>
-            {% block body_title %}
-              <{% if overrideH1 %}span{% else %}h1{% endif %} class="navbar-text edd-nav-title">
-                {% translate 'Experiment Data Depot' context 'Top of page title' %}
-              </{% if overrideH1 %}span{% else %}h1{% endif %}>
-            {% endblock body_title %}
+            <h1 class="navbar-text edd-nav-title">
+              {% block body_title %}
+              {% translate 'Experiment Data Depot' context 'Top of page title' %}
+              {% endblock body_title %}
+            </h1>
           </li>
           <li>
             <p class="navbar-text">{% env_label %}</p>
