@@ -114,3 +114,8 @@ def login_welcome(context):
 @register.simple_tag()
 def show_password_button():
     return getattr(settings, "EDD_ALLOW_SHOW_PASSWORD", False)
+
+
+@register.simple_tag()
+def get_contact_email():
+    return getattr(settings, "CONTACT_EMAIL", None)

@@ -67,6 +67,7 @@ EDD_MAIN_SOLR = {"default": env.search_url(default="solr://solr:8983/solr/")}
 # Email Configuration
 SERVER_EMAIL = env("EDD_EMAIL", default="root@localhost")
 DEFAULT_FROM_EMAIL = env("EDD_EMAIL", default="root@localhost")
+CONTACT_EMAIL = env("EDD_EMAIL", default="root@localhost")
 EMAIL_SUBJECT_PREFIX = "[EDD] "
 EMAIL_TIMEOUT = 60  # in seconds
 EMAIL_HOST = "smtp"
