@@ -1356,8 +1356,8 @@ body > .navbar {
 .studyNav .nav > li > a:hover,
 .studyNav .navbar .nav > .active > a,
 .nav > li > a:focus {
-    background-color: rgba(0, 0, 0, 0.1);
     text-decoration: none;
+    background-color: rgba(0, 0, 0, 0.1);
     border-bottom: 2px solid grey;
     border-radius: 0px;
     color: black;
@@ -1387,10 +1387,10 @@ body > .navbar {
     border-bottom: 2px solid grey;
     border-radius: 0px;
 }
-/* .studyNav .nav-pills > li.active > a,
+.studyNav .nav-pills > li.active > a,
 .studyNav .nav-pills > li.active > a:hover {
     background-color: rgba(0, 0, 0, 0.1);
-} */
+}
 
 .pageDivider {
     position: relative;
