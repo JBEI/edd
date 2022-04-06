@@ -4,12 +4,15 @@
 
 {% block head_title %}{% translate "Signup" %} &mdash; {{ block.super }}{% endblock %}
 
+{% block body_title %}{% translate "Signup" %}{% endblock body_title %}
+
+{% block main_class %}account{% endblock %}
+
 {% block content %}
     <form class="signup" id="signup_form login_form" method="post"
             action="{% url 'account_signup' %}">
         {% csrf_token %}
         <fieldset>
-            <legend>{% translate "Sign Up" %}</legend>
             <p>
                 {% blocktranslate %}
                 Already have an account? Then please <a href="{{ login_url }}">sign in</a>.

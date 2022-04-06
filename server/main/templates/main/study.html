@@ -7,9 +7,20 @@
   {{ study.name }} &ndash; {{ block.super }}
 {% endblock head_title %}
 
+{% block nav_title %}
+  {% translate study.name %}
+{% endblock nav_title %}
+
+{% comment %}
+  removes the default h1 behavior
+{% endcomment %}
+{% block default_h1 %}
+{% endblock default_h1 %}
+
+{% block main_class %}study{% endblock main_class %}
 
 {% block body_title %}
-  {{ study.name }}
+  {% translate study.name %}
 {% endblock body_title %}
 
 

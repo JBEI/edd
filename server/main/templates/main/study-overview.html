@@ -3,7 +3,6 @@
 {% load static %}
 {% load i18n %}
 
-
 {% block js_css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/study-overview.css' %}" />
@@ -30,19 +29,21 @@
     <div class="sectionActions">
       <div class="flex-row">
         {% if writable %}
-        <div class="editable-field inactive editableStudyName flex-item" id="editable-study-name">
-          {{ study.name }}
-          {{ edit_study.name }}
-        </div>
+          <h1>
+            <div class="editable-field inactive editableStudyName flex-item" id="editable-study-name">
+              {% translate study.name %}
+              {{ edit_study.name }}
+            </div><span>&nbsp;&mdash;&nbsp;{% translate "Overview" %}</span>
+          </h1>
         {% url "main:load:wizard" slug=study.slug as wizard_url %}
         <a class="{% if not lines %}off{% endif %} btn btn-primary btn-large" href="{{ wizard_url}}">
             <span class="fas fa-cloud-upload-alt"></span>
             {% translate 'Import Data' %}
         </a>
         {% else %}
-        <div class="flex-item">
-          {{ study.name }}
-        </div>
+        <h1 class="flex-item">
+          {{ study.name }}&nbsp;&mdash;&nbsp;{% translate "Overview" %}
+        </h1>
         {% endif %}
       </div>
       <div class="flex-row">

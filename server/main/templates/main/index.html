@@ -8,6 +8,10 @@
   <script type="text/javascript" src="{% static 'dist/index.js' %}"></script>
 {% endblock js_css %}
 
+{% block body_title %}
+  {% translate 'Studies Overview' %}
+{% endblock body_title %}
+
 
 {% block content %}
   {% if can_create %}

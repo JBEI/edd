@@ -787,7 +787,6 @@ div.editable-field {
     vertical-align: top;
 }
 div.editable-field.inactive {
-    padding-right: 27px;
     padding-bottom: 2px;
     padding-left: 4px;
     padding-top: 2px;
@@ -795,9 +794,14 @@ div.editable-field.inactive {
     transition: box-shadow 150ms ease-in 0ms;
     box-shadow: 0 0 0 0 transparent;
 }
+
+#editable-study-name.inactive,
+#editable-study-name.inactive input {
+    flex-grow: 0;
+}
 div.editable-field input,
 div.editable-field textarea {
-    width: 99%;
+    flex-grow: 1;
 }
 div.editable-field.inactive input,
 div.editable-field.inactive textarea {
@@ -929,10 +933,6 @@ td.editable-field span.icon.icon-accept {
 td.editable-field span.icon.icon-cancel {
     background-position: 4px 3px;
     background-image: url(images/edit-cancel.png);
-}
-
-.editableStudyName {
-    font-size: 150%;
 }
 
 a.close {
@@ -1455,4 +1455,10 @@ summary.pageDivider {
 
 h1.edd-nav-title {
     padding: 0.2em;
+}
+
+.sectionActions h1 {
+    display: flex;
+    align-items: center;
+    margin: 0;
 }

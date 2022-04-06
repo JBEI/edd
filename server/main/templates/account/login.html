@@ -6,11 +6,16 @@
 {% load static %}
 
 {% block head_title %}
-  {{ block.super }}
   {% if form.non_field_errors|length %}
-    {% translate '- Login Error' %}
+    {{ block.super }} &mdash; {% translate "Login Error" context "page title" %}
+  {% else %}
+    {{ block.super }} &mdash; {% translate "Login" context "page title" %}
   {% endif %}
 {% endblock head_title %}
+
+{% block body_title %}
+  {% translate 'Login' %}
+{% endblock body_title %}
 
 {% block js_css %}
   {{ block.super }}

@@ -6,9 +6,9 @@
 {% translate "Sign Out" %} &mdash; {{ block.super }}
 {% endblock %}
 
-{% block body_title %}
-  {% translate 'Sign Out' %}
-{% endblock body_title %}
+{% block body_title %}{% translate 'Sign Out' %}{% endblock body_title %}
+
+{% block main_class %}account{% endblock %}
 
 {% block js_css %}
   {{ block.super }}
