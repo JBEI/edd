@@ -7,16 +7,17 @@ TODO deleting a file may be a little too easy; should we require confirmation?
 -->
 {% endcomment %}
 <table class="table table-condensed table-striped" id="attach-table">
+  <caption class="sr-only">{% translate 'Attachments' %}</caption>
   {% if attachments %}
   <thead>
     <tr>
-      <th>{% translate 'Filename' %}</th>
-      <th>{% translate 'Description' %}</th>
-      <th class="text-right">{% translate 'Size' %}</th>
-      <th class="text-center">{% translate 'Added By' %}</th>
-      <th>{% translate 'Date Added' %}</th>
+      <th scope="col">{% translate 'Filename' %}</th>
+      <th scope="col">{% translate 'Description' %}</th>
+      <th scope="col" class="text-right">{% translate 'Size' %}</th>
+      <th scope="col" class="text-center">{% translate 'Added By' %}</th>
+      <th scope="col">{% translate 'Date Added' %}</th>
       {% if writable %}
-      <th class="text-right">{% translate 'Delete' %}</th>
+      <th scope="col" class="text-right">{% translate 'Delete' %}</th>
       {% endif %}
     </tr>
   </thead>
@@ -25,11 +26,11 @@ TODO deleting a file may be a little too easy; should we require confirmation?
     {% for a in attachments %}
     {% with slug=study.slug urlname=a.filename|urlencode %}
     {% url 'main:attachment' slug=slug file_id=a.id file_name=urlname as filelink %}
-    <tr>
-      <td class="nowrap">
-        <img class="attach-icon" src="{% static 'main/images/' %}{{ a.icon }}"/>
+    <tr role="row">
+      <td class="nowrap">{% spaceless %}
+        <img class="attach-icon" alt="attach-icon" aria-hidden="true" src="{% static 'main/images/' %}{{ a.icon }}"/>
         <a href="{{ filelink }}">{{ a.filename }}</a>
-      </td>
+      {% endspaceless %}</td>
       <td>{{ a.description }}</td>
       <td class="text-right">{{ a.file_size|filesizeformat }}</td>
       <td class="text-center">{{ a.user_initials }}</td>

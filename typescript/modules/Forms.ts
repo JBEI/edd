@@ -638,13 +638,13 @@ export function handleInvalidRequiredInput(event: JQueryEventObject): void {
     } else if (input.validity.valueMissing || input.validity.patternMismatch) {
         const elementValidity = $input.data("validationText");
         const id = $input.attr("id");
-        const labelText = $(`label[for=${id}]`).text();
+        const labelText = $(`label[for=${id}]`).text() || $input.attr("aria-label");
         if (elementValidity) {
             // prefer text added to element with i18n
             input.setCustomValidity(elementValidity);
         } else if (labelText) {
             // fall back to assumed English with label
-            input.setCustomValidity(`${labelText} required.`);
+            input.setCustomValidity(`The "${labelText}" field is required.`);
         }
         input.reportValidity();
     }

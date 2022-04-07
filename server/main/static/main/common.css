@@ -71,7 +71,7 @@ p {
 }
 /* Links */
 a {
-    color: #4c81c0;
+    color: #4378b7;
     text-decoration: none;
 }
 a:hover,
@@ -1084,6 +1084,9 @@ input[type="checkbox"].form-control {
 form.comments textarea {
     width: 50%;
 }
+form.comments .form-group textarea {
+    margin-bottom: 1em;
+}
 
 .exportOptions > p {
     clear: both;
@@ -1157,7 +1160,7 @@ div.overviewDropZone {
     background-color: #eeeeee;
     border: 1px solid #e0e0e0;
     text-align: center;
-    color: gray;
+    color: #6c6c6c;
     padding-bottom: 16px;
 }
 div.linesZone {
@@ -1455,4 +1458,8 @@ summary.pageDivider {
 
 h1.edd-nav-title {
     padding: 0.2em;
+}
+
+.attach-icon {
+    margin-right: 0.25em;
 }

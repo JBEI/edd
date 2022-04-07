@@ -8,7 +8,7 @@
 
 #experimentDescDropZone > .dz-message a,
 #describeDirectionsDiv a {
-    color: grey;
+    color: #6c6c6c;
     text-decoration: underline;
 }
 
@@ -91,7 +91,7 @@ div.overviewDropZone {
 }
 
 #describeDirectionsDiv {
-    color: grey;
+    color: #767676;
     width: 200px;
 }
 
@@ -101,4 +101,9 @@ div.overviewDropZone {
 
 table.permissions {
     width: 640px;
+}
+
+.btn-danger {
+    background-color: #ce4844;
+    border-color: #ce4844;
 }

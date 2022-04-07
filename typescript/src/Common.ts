@@ -82,9 +82,9 @@ function prepareIt(): void {
     });
 
     // adding handlers for required input validation
-    $(document).on("blur input", "input[required]", handleChangeRequiredInput);
+    $(document).on("blur input", "*[required]", handleChangeRequiredInput);
     // invalid event must be directly attached to elements
-    $("input[required]").on("invalid", handleInvalidRequiredInput);
+    $("*[required]").on("invalid", handleInvalidRequiredInput);
 }
 
 // use JQuery ready event shortcut to call prepareIt when page is ready

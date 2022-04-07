@@ -435,6 +435,7 @@ class CreateStudyForm(forms.ModelForm):
         widgets = {
             "name": forms.widgets.TextInput(
                 attrs={
+                    "aria-label": _("Study Name"),
                     "aria-invalid": "false",
                     "class": "form-control",
                     "data-validation-text": _("Study Name is required."),
@@ -444,7 +445,11 @@ class CreateStudyForm(forms.ModelForm):
                 },
             ),
             "description": forms.widgets.Textarea(
-                attrs={"cols": 49, "class": "form-control"}
+                attrs={
+                    "aria-label": _("Study Description"),
+                    "cols": 49,
+                    "class": "form-control",
+                }
             ),
             "contact": UserAutocompleteWidget(),
         }
@@ -531,6 +536,7 @@ class CreateAttachmentForm(forms.ModelForm):
         labels = {"file": _(""), "description": _("Description")}
         help_texts = {"description": _(""), "file": _("")}
         widgets = {"description": forms.widgets.TextInput()}
+        attrs = {"aria-label": _("Add Attachment")}
 
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
@@ -553,8 +559,17 @@ class CreateCommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ("body",)
-        labels = {"body": _("")}
         help_texts = {"body": _("")}
+        widgets = {
+            "body": forms.Textarea(
+                attrs={
+                    "rows": 10,
+                    "cols": 40,
+                    "class": "form-control",
+                    "aria-label": _("Body"),
+                }
+            ),
+        }
 
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels

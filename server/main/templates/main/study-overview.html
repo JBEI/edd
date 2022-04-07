@@ -273,8 +273,8 @@
     <div class="sectionActions">
       <form method="POST" class="comments edd-form">
         {% csrf_token %}
-        {{ new_comment.as_p }}
-        <p>
+        <div class="form-group">
+          {{ new_comment.body }}
           <button
             class="btn btn-primary"
             name="action"
@@ -283,7 +283,7 @@
           >
             {% translate 'Add Comment' %}
           </button>
-        </p>
+        </div>
       </form>
     </div>
   </div>
@@ -335,7 +335,7 @@
           <input type="radio" id="permission_user" name="class" value="User" hidden/>
           <span>{% translate 'User' %}</span>
         </label>
-        <select id="user_permission_options" name="type">
+        <select id="user_permission_options" name="type" aria-label="{% translate 'User Permission Options' %}">
           <option value="{{ permission_none }}">{% translate 'None' %}</option>
           <option value="{{ permission_read }}">{% translate 'Read' %}</option>
           <option value="{{ permission_write }}">{% translate 'Write' %}</option>
@@ -347,7 +347,7 @@
           <input type="radio" id="permission_group" name="class" value="Group" hidden/>
           <span>{% translate 'Group' %}</span>
         </label>
-        <select id="group_permission_options" name="type">
+        <select id="group_permission_options" name="type" aria-label="{% translate 'Group Permission' %}">
           <option value="{{ permission_none }}">{% translate 'None' %}</option>
           <option value="{{ permission_read }}">{% translate 'Read' %}</option>
           <option value="{{ permission_write }}">{% translate 'Write' %}</option>
@@ -360,7 +360,7 @@
         <label for="permission_public">
           <span>{% translate 'Everyone' %}</span>
         </label>
-        <select name="type">
+        <select name="type" aria-label="{% translate 'Everyone Permission'>
           <option value="{{ permission_none }}">{% translate 'None' %}</option>
           <option value="{{ permission_read }}">{% translate 'Read' %}</option>
           <option value="{{ permission_write }}">{% translate 'Write' %}</option>

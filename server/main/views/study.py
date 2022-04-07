@@ -325,6 +325,7 @@ class StudyOverviewView(StudyDetailBaseView):
         form = edd_forms.CreateCommentForm(request.POST, edd_object=self.get_object())
         if form.is_valid():
             form.save()
+            messages.success(request, _("Comment saved."))
             return True
         context["new_comment"] = form
         return False
