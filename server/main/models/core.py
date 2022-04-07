@@ -453,7 +453,7 @@ class Study(SlugMixin, EDDObject):
             "attachment_count": self.get_attachment_count(),
             "comment_count": self.get_comment_count(),
             "metabolite": [m.to_solr_value() for m in self.get_metabolite_types_used()],
-            "protocol": [p.to_solr_value() for p in self.get_protocols_used()],
+            "protocol": [f"{p.id}@{p.name}" for p in self.get_protocols_used()],
             "part": [s.to_solr_value() for s in self.get_strains_used()],
             "aclr": [str(p) for p in self.get_combined_permission() if p.is_read()],
             "aclw": [str(p) for p in self.get_combined_permission() if p.is_write()],
