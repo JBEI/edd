@@ -332,6 +332,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Measurement Types """
 
     actions = ["merge_with_action"]
+    search_fields = ("type_name", "alt_names")
 
     def get_fields(self, request, obj=None):
         return [("type_name", "short_name"), "alt_names", "type_source", "study_list"]
@@ -772,7 +773,8 @@ class WorklistTemplateAdmin(EDDObjectAdmin):
 
 
 class MeasurementUnitAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("unit_name", "display", "alternate_names", "type_group")
+    search_fields = ("unit_name", "alternate_names")
 
 
 admin.site.register(models.Assay, AssayAdmin)

@@ -6,6 +6,7 @@ from .generic import GenericCsvParser, GenericExcelParser
 from .skyline import SkylineCsvParser, SkylineExcelParser
 
 __all__ = [
+    "AmbrExcelParser",
     "build_src_summary",
     "GenericCsvParser",
     "GenericExcelParser",
@@ -13,5 +14,4 @@ __all__ = [
     "ParseResult",
     "SkylineCsvParser",
     "SkylineExcelParser",
-    "AmbrExcelParser",
 ]

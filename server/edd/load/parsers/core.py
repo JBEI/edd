@@ -643,28 +643,23 @@ class ExcelParserMixin:
 class MultiSheetExcelParserMixin:
     def parse(self, file):
         """
-        Parses the input as a Pandas dataframe and then
-        converts it into an Excel workbook.
+        Parses a stream of rows across multiple Excel worksheets.
 
         :param file: a file-like object
         :return: the ParseResult read from file, otherwise None
         :raises OSError: if the file can't be opened
         :raises EDDImportError: if the file format or content is bad
         """
+        return self._parse_rows(self._generate_rows(file))
 
+    def _generate_rows(self, file):
+        # make the "header" row
+        yield ("Line Name", "Measurement Type", "Value", "Time", "Units")
+        # load the excel file
         wb = load_workbook(file, read_only=True, data_only=True)
-        self.parsed_sheet_rows.append(
-            ("Line Name", "Measurement Type", "Value", "Time", "Units")
-        )
-
-        # passing the rows in the worksheet for verification
-        # and processing in database
-        for index in range(len(wb.worksheets)):
-            sheet_name = wb.sheetnames[index]
-            sheet = wb.worksheets[index]
-            self._parse_sheet_rows(sheet_name, sheet)
-
-        return self._parse_rows(self.parsed_sheet_rows)
+        # generate rows from each sheet
+        for sheet in wb.worksheets:
+            yield from self._parse_sheet_rows(sheet)
 
     def _raw_cell_value(self, cell):
         """

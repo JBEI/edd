@@ -4,10 +4,7 @@ import logging
 
 from django import forms
 from django.contrib import admin
-from django.contrib.admin.widgets import AutocompleteSelect
 from django.utils.translation import gettext_lazy as _
-
-from main import models as edd_models
 
 from . import models
 
@@ -38,13 +35,13 @@ class LayoutAdmin(admin.ModelAdmin):
 class ProtocolCategoryInline(admin.TabularInline):
     """Inline submodel for import category contents."""
 
-    model = models.Category.protocols.through
     autocomplete_fields = ["protocol"]
+    model = models.Category.protocols.through
 
 
 class CategoryLayoutInline(admin.TabularInline):
-    model = models.Category.layouts.through
     autocomplete_fields = ["layout"]
+    model = models.Category.layouts.through
 
 
 class CategoryAdmin(admin.ModelAdmin):
@@ -55,14 +52,14 @@ class CategoryAdmin(admin.ModelAdmin):
         "sort_key",
         "type_group",
     )
-    radio_fields = {"type_group": admin.HORIZONTAL}
+    inlines = (ProtocolCategoryInline, CategoryLayoutInline)
     list_display = (
         "name",
         "sort_key",
         "type_group",
     )
     list_filter = ("type_group",)
-    inlines = (ProtocolCategoryInline, CategoryLayoutInline)
+    radio_fields = {"type_group": admin.HORIZONTAL}
 
     def get_readonly_fields(self, request, obj=None):
         if obj and obj.pk is not None:
@@ -70,40 +67,18 @@ class CategoryAdmin(admin.ModelAdmin):
         return []
 
 
-class DefaultUnitAdminForm(forms.ModelForm):
-
-    measurement_type = forms.ModelChoiceField(
-        queryset=edd_models.MeasurementType.objects.filter(),
-        widget=AutocompleteSelect(
-            models.DefaultUnit._meta.get_field("measurement_type"), admin.site,
-        ),
-    )
-
-    class Meta:
-        model = models.DefaultUnit
-        fields = ("measurement_type", "unit", "protocol", "parser")
-        labels = {
-            "measurement_type": _("Measurement Type"),
-        }
-
-
 class DefaultUnitAdmin(admin.ModelAdmin):
-    form = DefaultUnitAdminForm
+    autocomplete_fields = ("measurement_type", "unit", "protocol")
+    fields = (("measurement_type", "unit", "protocol", "parser"),)
+    list_display = ("measurement_type", "unit", "protocol", "parser")
     list_fields = ("unit", "protocol", "parser")
-
-    def get_fields(self, request, obj=None):
-        return [("measurement_type", "unit", "protocol", "parser")]
-
-    def get_list_display(self, request):
-        return ["measurement_type", "unit", "protocol", "parser"]
 
 
 class MeasurementNameTransformAdmin(admin.ModelAdmin):
-    def get_fields(self, request, obj=None):
-        return [("input_type_name", "edd_type_name", "parser")]
-
-    def get_list_display(self, request):
-        return ["input_type_name", "edd_type_name", "parser"]
+    autocomplete_fields = ("edd_type_name",)
+    fields = (("input_type_name", "edd_type_name", "parser"),)
+    list_display = ("input_type_name", "edd_type_name", "parser")
+    list_fields = ("input_type_name", "parser")
 
 
 admin.site.register(models.Category, CategoryAdmin)
