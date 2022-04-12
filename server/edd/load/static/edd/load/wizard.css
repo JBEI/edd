@@ -2,7 +2,7 @@
     margin-bottom: 80px;
 }
 #wizard aside {
-    color: grey;
+    color: #585858;
     font-size: smaller;
 }
 #wizard aside > p {
@@ -40,6 +40,9 @@
     text-align: center;
     padding-bottom: 16px;
     margin-bottom: 10px;
+}
+ol.progtrckr li.progtrckr-todo {
+    color: #585858;
 }
 ol.progtrckr li.progtrckr-doing {
     font-weight: bold;
