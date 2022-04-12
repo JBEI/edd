@@ -2,8 +2,9 @@ import logging
 from uuid import UUID
 
 import numpy as np
+from django.db.models import Q
 
-from edd.load.models import DefaultUnit, MeasurementNameTransform
+from edd.load.models import DefaultUnit
 from main.models import MeasurementType
 
 from .core import MultiSheetExcelParserMixin
@@ -47,40 +48,22 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
         mtype_name = mes_data[0]
 
         try:
-            # get EDD name for current measurement if mapping exists
-            mes_transform_qs = MeasurementNameTransform.objects.all().filter(
-                input_type_name=mtype_name, parser="ambr"
-            )
-            if mes_transform_qs:
-                mtype_name = mes_transform_qs[0].edd_type_name.type_name
-        except Exception as ex:
-            logger.debug(
-                f"Error trying to retrieve measurement type mapping \
-                between ambr type and expected edd type name for {mtype_name}"
-            )
-            logger.exception(ex)
+            mes_type_obj = MeasurementType.objects.filter(
+                Q(type_name=mtype_name)
+                | Q(
+                    measurementnametransform__input_type_name=mtype_name,
+                    measurementnametransform__parser="ambr",
+                )
+            ).first()
+        except MeasurementType.DoesNotExist:
+            logger.error("Measurement Type for could not be found")
 
         try:
-            # get default unit record for current measurement type
-            mes_type_qs = MeasurementType.objects.all().filter(type_name=mtype_name)
-        except Exception as ex:
-            logger.debug(
-                f"Error trying to retrieve measurement type \
-            for {mtype_name}"
+            du_obj = DefaultUnit.objects.get(
+                measurement_type=mes_type_obj, parser="ambr"
             )
-            logger.exception(ex)
-
-        try:
-            du_qs = DefaultUnit.objects.all().filter(
-                measurement_type=mes_type_qs[0], parser="ambr"
-            )
-            du_obj = du_qs[0]
-        except Exception as ex:
-            logger.debug(
-                f"Error trying to retrieve default unit \
-            for {mtype_name}"
-            )
-            logger.exception(ex)
+        except DefaultUnit.DoesNotExist:
+            logger.error("Default Unit could not be found")
 
         # appending mapped measurements to parsed worksheet
         for i in range(1, len(mes_data)):

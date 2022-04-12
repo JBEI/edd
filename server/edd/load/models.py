@@ -159,7 +159,9 @@ class DefaultUnit(models.Model):
         db_table = "default_unit"
 
     measurement_type = models.ForeignKey(
-        edd_models.MeasurementType, on_delete=models.deletion.CASCADE
+        edd_models.MeasurementType,
+        on_delete=models.deletion.CASCADE,
+        verbose_name=_("Measurement Type"),
     )
     unit = models.ForeignKey(
         edd_models.MeasurementUnit, on_delete=models.deletion.CASCADE
@@ -187,7 +189,9 @@ class MeasurementNameTransform(models.Model):
     )
 
     edd_type_name = models.ForeignKey(
-        edd_models.MeasurementType, on_delete=models.deletion.CASCADE
+        edd_models.MeasurementType,
+        on_delete=models.deletion.CASCADE,
+        verbose_name=_("EDD Type Name"),
     )
     parser = VarCharField(blank=True, null=True)
 

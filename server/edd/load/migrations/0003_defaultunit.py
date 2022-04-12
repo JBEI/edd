@@ -205,6 +205,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         to="main.measurementtype",
+                        verbose_name="EDD Type Name",
                     ),
                 ),
             ],
@@ -228,6 +229,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         to="main.measurementtype",
+                        verbose_name="Measurement Type",
                     ),
                 ),
                 (
