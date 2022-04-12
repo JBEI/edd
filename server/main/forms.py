@@ -428,7 +428,7 @@ class CreateStudyForm(forms.ModelForm):
         model = Study
         fields = ["name", "description", "contact"]
         labels = {
-            "name": _("Study Name"),
+            "name": _("Study Name (required)"),
             "description": _("Description"),
             "contact": _("Contact"),
         }

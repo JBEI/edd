@@ -1009,7 +1009,6 @@ ol.comment-list > li {
 .edd-form > p > .edd-label {
     display: inline-block;
     vertical-align: top;
-    width: 8em;
 }
 .edd-form > p > label {
     line-height: 20px; /* bare text looks too offset compared to text boxes, so tweak line-height */
@@ -1019,7 +1018,7 @@ ol.comment-list > li {
     margin-left: 1em;
 }
 .helptext {
-    color: gray;
+    color: #767676;
     display: block;
     font-size: 11px;
 }

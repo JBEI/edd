@@ -75,6 +75,9 @@ class StudyCreateView(generic.edit.CreateView):
         return kwargs
 
     def get_success_url(self):
+        messages.success(
+            self.request, _('Created Study "{study}".').format(study=self.object.name)
+        )
         return reverse("main:overview", kwargs={"slug": self.object.slug})
 
 

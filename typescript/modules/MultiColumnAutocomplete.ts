@@ -99,7 +99,9 @@ export class NonValueItem {
             const result = $("<li>").data("ui-autocomplete-item", item);
             if (item instanceof NonValueItem) {
                 this._appendMessage(result, item.label);
+                this._setAriaLabel(result, item.label);
             } else {
+                const labelValues = [];
                 $.each(this.options.columns, (index, column) => {
                     let value;
                     if (column.valueField) {
@@ -114,11 +116,19 @@ export class NonValueItem {
                     if (value instanceof Array) {
                         value = value[0] || "";
                     }
+                    if (value.trim()) {
+                        labelValues.push(`${column.valueField}: ${value}`);
+                    }
                     this._appendCell(result, column, value);
                 });
+                this._setAriaLabel(result, labelValues.join(", "));
             }
             result.appendTo(ul);
             return result;
+        },
+        "_setAriaLabel": function (row, label) {
+            row.attr("aria-label", label);
+            return row;
         },
     });
 })(jQuery);
