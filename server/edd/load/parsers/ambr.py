@@ -33,11 +33,39 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
             # with data for the next measurement type
             yield from self._map_data(sheet.title, times, values)
 
+<<<<<<< HEAD
     def _map_data(self, name, times, values):
         # first row are the "headers", grab the type from values
         type_object = self._lookup_type(values[0])
         unit = self._lookup_unit(type_object)
         for y, x in zip(values, times):
+=======
+    def map_data(self, name, data):
+
+        time_data, mes_data = data
+        mtype_name = mes_data[0]
+
+        try:
+            mes_type_obj = MeasurementType.objects.filter(
+                Q(type_name=mtype_name)
+                | Q(
+                    measurementnametransform__input_type_name=mtype_name,
+                    measurementnametransform__parser="ambr",
+                )
+            ).first()
+        except MeasurementType.DoesNotExist:
+            logger.error("Measurement Type for could not be found")
+
+        try:
+            du_obj = DefaultUnit.objects.get(
+                measurement_type=mes_type_obj, parser="ambr"
+            )
+        except DefaultUnit.DoesNotExist:
+            logger.error("Default Unit could not be found")
+
+        # appending mapped measurements to parsed worksheet
+        for i in range(1, len(mes_data)):
+>>>>>>> 36bfb229 (Fixing error importing large EDD file)
             # dropping records with NaN values
             if self._is_valid(y) and self._is_valid(x):
                 yield (

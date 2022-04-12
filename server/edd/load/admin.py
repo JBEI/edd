@@ -67,11 +67,40 @@ class DefaultUnitAdmin(admin.ModelAdmin):
     list_fields = ("unit", "protocol", "parser")
 
 
+class MeasurementNameTransformAdminForm(forms.ModelForm):
+
+    edd_type_name = forms.ModelChoiceField(
+        queryset=edd_models.MeasurementType.objects.filter(),
+        widget=AutocompleteSelect(
+            models.MeasurementNameTransform._meta.get_field("edd_type_name"),
+            admin.site,
+        ),
+    )
+
+    class Meta:
+        model = models.MeasurementNameTransform
+        fields = ("input_type_name", "edd_type_name", "parser")
+        labels = {
+            "edd_type_name": _("EDD Measurement Type"),
+        }
+
+
 class MeasurementNameTransformAdmin(admin.ModelAdmin):
+<<<<<<< HEAD
     autocomplete_fields = ("edd_type_name",)
     fields = (("input_type_name", "edd_type_name", "parser"),)
     list_display = ("input_type_name", "edd_type_name", "parser")
     list_fields = ("input_type_name", "parser")
+=======
+    form = MeasurementNameTransformAdminForm
+    list_fields = ("input_type_name", "parser")
+
+    def get_fields(self, request, obj=None):
+        return [("input_type_name", "edd_type_name", "parser")]
+
+    def get_list_display(self, request):
+        return ["input_type_name", "edd_type_name", "parser"]
+>>>>>>> 36bfb229 (Fixing error importing large EDD file)
 
 
 admin.site.register(models.Category, CategoryAdmin)
