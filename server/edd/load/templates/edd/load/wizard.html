@@ -8,12 +8,14 @@
   <link rel="stylesheet" type="text/css" href="{% static 'edd/load/wizard.css' %}" />
 {% endblock js_css %}
 
+{% block content %}
 {% block body_title %}
+
+<h1>
    {% url 'main:detail' slug=study.slug as study_url %}
    Load Data to <a href="{{ study_url }}">{{ study.name }}</a>
-{% endblock body_title %}
+</h1>
 
-{% block content %}
 <form id="create_load" action="{% url 'rest:study_load-list' study_pk=study.pk %}">
   {% csrf_token %}
 </form>
