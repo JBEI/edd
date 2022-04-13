@@ -24,15 +24,7 @@
 >
   {% csrf_token %}
   {% if writable %}
-  <div class="alert alert-info alert-dismissible" role="alert">
-    <button
-      aria-label="{% translate 'Close' %}"
-      class="close"
-      data-dismiss="alert"
-      type="button"
-    >
-      <span aria-hidden="true">&times;</span>
-    </button>
+  <div class="alert alert-info alert-dismissible description-alert" role="alert">
     <p>
       {% blocktranslate trimmed %}
       Drag-and-drop an Experiment Description file on the table below to add more lines.
@@ -53,6 +45,14 @@
         {% translate 'Help' %}
       </a>
     </p>
+    <button
+      aria-label="{% translate "Close 'description file help' alert" %}"
+      class="close"
+      data-dismiss="alert"
+      type="button"
+    >
+      <span aria-hidden="true">&times;</span>
+    </button>
   </div>
   {% endif %}
   <div class="flex-row sectionActions">
@@ -123,7 +123,7 @@
     <div>
       {% if writable %}
       <div class="btn-group dropup">
-        <button class="btn btn-primary needs-lines-selected" id="editButton" type="button">
+        <button class="btn btn-primary needs-lines-selected" id="editButton" type="button" aria-hidden>
           <span class="fas fa-pencil-alt"></span>
           {% translate 'Edit' %}
           <span class="badge selected-line-count"></span>
@@ -131,6 +131,7 @@
         <button
           aria-expanded="false"
           aria-haspopup="true"
+          aria-label="{% translate "Toggle 'Edit' dropdown" %}"
           class="btn btn-primary dropdown-toggle"
           data-toggle="dropdown"
           type="button"
@@ -167,13 +168,14 @@
         </ul>
       </div>
       <div class="btn-group dropup">
-        <button class="btn btn-primary addNewLineButton" type="button">
+        <button class="btn btn-primary addNewLineButton" type="button" aria-hidden>
           <span class="fas fa-plus"></span>
           {% translate 'Add Line' %}
         </button>
         <button
           aria-expanded="false"
           aria-haspopup="true"
+          aria-label="{% translate "Toggle 'Add Line' dropdown" %}"
           class="btn btn-primary dropdown-toggle"
           data-toggle="dropdown"
           type="button"

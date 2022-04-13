@@ -1456,3 +1456,14 @@ summary.pageDivider {
 h1.edd-nav-title {
     padding: 0.2em;
 }
+
+.description-alert {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.description-alert p {
+    padding: 0;
+    margin: 0;
+}
