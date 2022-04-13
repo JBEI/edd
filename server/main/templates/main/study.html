@@ -2,20 +2,17 @@
 {% load i18n %}
 {% load static %}
 
-
 {% block head_title %}
   {{ study.name }} &ndash; {{ block.super }}
 {% endblock head_title %}
-
 
 {% block body_title %}
   {{ study.name }}
 {% endblock body_title %}
 
-
 {% block content %}
 <a id="accesslink" href="{% url 'main:access' slug=study.slug %}" class="off"></a>
-<div class="studyNav">
+<nav class="studyNav" aria-label="study">
   <ul class="nav nav-pills">
     <li class="{% if showingoverview %}active{% endif %}">
       <a href="{% url 'main:overview' slug=study.slug %}">{% translate 'Overview' %}</a>
@@ -30,7 +27,12 @@
       <a href="{% url 'main:detail' slug=study.slug %}">{% translate 'Data' %}</a>
     </li>
     {% endif %}
+    {% if showingimport %}
+    <li class="active">
+      <a href="{% url 'main:load:wizard' slug=study.slug %}">{% translate 'Import' %}</a>
+    </li>
+    {% endif %}
   </ul>
-</div>
+</nav>
 
 {% endblock content %}

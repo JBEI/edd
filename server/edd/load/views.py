@@ -149,6 +149,12 @@ class ImportView(StudyObjectMixin, generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        instance = self.get_object()
+        context["showingimport"] = True
+        context["assays"] = (
+            edd_models.Assay.objects.filter(line__study=instance, active=True).exists(),
+        )
+        context["lines"] = (instance.line_set.filter(active=True).exists(),)
         # enforce permissions check...
         self.check_write_permission(self.request)
         return context

@@ -9,7 +9,7 @@
 {% endblock js_css %}
 
 {% block content %}
-{% block body_title %}
+{{ block.super }}
 
 <h1>
    {% url 'main:detail' slug=study.slug as study_url %}
