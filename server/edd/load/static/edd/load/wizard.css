@@ -30,8 +30,15 @@
 #wizard .summary-display {
     margin: 10px 0 20px 0;
 }
-#wizard .summary-display > span {
-    margin-right: 20px;
+#wizard .summary-display dt,
+#wizard .summary-display dd {
+    display: inline;
+}
+#wizard .summary-display dt {
+    margin-right: 0.3em;
+}
+#wizard .summary-display dd {
+    margin-right: 1em;
 }
 #wizard .btn-right {
     float: right;

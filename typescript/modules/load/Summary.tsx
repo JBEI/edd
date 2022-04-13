@@ -91,31 +91,37 @@ export interface StatusProps extends StatusStrings {
 export class Status extends React.Component<StatusProps, unknown> {
     render(): JSX.Element {
         const category = this.props.category && (
-            <span>
-                <u>{this.props.categoryLabel}</u>: {this.props.category}
-            </span>
+            <>
+                <dt>{this.props.categoryLabel}:</dt>
+                <dd>{this.props.category}</dd>
+            </>
         );
         const protocol = this.props.protocol && (
-            <span>
-                <u>{this.props.protocolLabel}</u>: {this.props.protocol}
-            </span>
+            <>
+                <dt>{this.props.protocolLabel}:</dt>
+                <dd>{this.props.protocol}</dd>
+            </>
         );
         const layout = this.props.layout && (
-            <span>
-                <u>{this.props.layoutLabel}</u>: {this.props.layout}
-            </span>
+            <>
+                <dt>{this.props.layoutLabel}:</dt>
+                <dd>{this.props.layout}</dd>
+            </>
         );
         const file = this.props.file && (
-            <span>
-                <u>{this.props.fileLabel}</u>: {this.props.file}
-            </span>
+            <>
+                <dt>{this.props.fileLabel}:</dt>
+                <dd>{this.props.file}</dd>
+            </>
         );
         return (
             <div className="summary-display">
-                {category}
-                {protocol}
-                {layout}
-                {file}
+                <dl aria-label="import summary">
+                    {category}
+                    {protocol}
+                    {layout}
+                    {file}
+                </dl>
             </div>
         );
     }
