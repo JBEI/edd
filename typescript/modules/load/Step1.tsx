@@ -81,6 +81,7 @@ export class Step extends React.Component<Props, unknown> {
                 placeholder={placeholder}
                 selected={this.props.step1.category}
                 onSelect={(selected) => this.categorySelect(selected)}
+                describedby="categoryDescription"
             />
         );
     }
@@ -101,14 +102,18 @@ export class Step extends React.Component<Props, unknown> {
             const original = $(element);
             const legend_text = original.children("legend").text();
             const aside_html = original.children("aside").html();
+            const aside_id = original.children("aside").attr("id");
             const input = inputs[i](original);
             // return the rendered template with our extras
             return (
-                <fieldset>
+                <fieldset role="radiogroup" aria-required="true">
                     <legend>
-                        <h3>{legend_text}</h3>
+                        <h2>{legend_text}</h2>
                     </legend>
-                    <aside dangerouslySetInnerHTML={{ "__html": aside_html }} />
+                    <aside
+                        id={aside_id}
+                        dangerouslySetInnerHTML={{ "__html": aside_html }}
+                    />
                     {input}
                 </fieldset>
             );
@@ -140,6 +145,7 @@ export class Step extends React.Component<Props, unknown> {
                 placeholder={placeholder}
                 selected={this.props.step1.layout}
                 onSelect={(selected) => this.layoutSelect(selected)}
+                describedby="layoutDescription"
             />
         );
     }
@@ -199,6 +205,7 @@ export class Step extends React.Component<Props, unknown> {
                 placeholder={placeholder}
                 selected={this.props.step1.protocol}
                 onSelect={(selected) => this.protocolSelect(selected)}
+                describedby="protocolDescription"
             />
         );
     }

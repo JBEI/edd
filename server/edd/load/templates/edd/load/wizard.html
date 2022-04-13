@@ -31,7 +31,7 @@
     <a class="_data off" href="{% url 'rest:load_categories-list' %}"></a>
     <fieldset class="_category">
       <legend>{% translate "What category of data do you have?" %}</legend>
-      <aside>
+      <aside id="categoryDescription">
         <p>
           {% blocktranslate %}
           The choice of category influences which protocols and layouts are
@@ -50,7 +50,7 @@
     </fieldset>
     <fieldset class="_protocol">
       <legend>{% translate "What lab protocol did you use?" %}</legend>
-      <aside>
+      <aside id="protocolDescription">
         <p>
           {% blocktranslate %}
           Each protocol should uniquely describe both the sample prep you
@@ -72,7 +72,7 @@
     </fieldset>
     <fieldset class="_layout">
       <legend>{% translate "What layout is your data in?" %}</legend>
-      <aside>
+      <aside id="layoutDescription">
         <p>
           {% blocktranslate %}
           EDD supports a limited number of pre-defined layouts, and also

@@ -2,7 +2,6 @@
 
 // input components used in the data loading wizard
 
-import classNames from "classnames";
 import * as React from "react";
 
 import * as Summary from "./Summary";
@@ -12,6 +11,7 @@ interface MBSProps {
     placeholder: string;
     selected: Summary.Choice;
     onSelect: (choice) => void;
+    describedby?: string;
 }
 
 export class MultiButtonSelect extends React.Component<MBSProps, unknown> {
@@ -27,17 +27,30 @@ export class MultiButtonSelect extends React.Component<MBSProps, unknown> {
         const options = this.props.options || [];
         const buttons = options.map((o) => {
             const active = this.props.selected && this.props.selected.pk === o.pk;
-            const classes = classNames("btn", "btn-default", { "active": active });
             return (
-                <button className={classes} onClick={() => this.props.onSelect(o)}>
-                    {o.name}
-                </button>
+                <div className="radio">
+                    <label>
+                        <input
+                            type="radio"
+                            onClick={() => this.props.onSelect(o)}
+                            checked={active}
+                            aria-describedby={this.props.describedby}
+                        />
+                        {o.name}
+                    </label>
+                </div>
             );
         });
-        // output either buttons from options, or the placeholder
+        // output either radio buttons from options, or the placeholder
+        // using aria-disabled preserves a user's ability to discover and focus the control
+        // while communicating the information that they need to complete a previous step
         const contents = options.length
             ? buttons
-            : [<span className="placeholder">{this.props.placeholder}</span>];
+            : [
+                  <button className="placeholder" aria-disabled="true">
+                      {this.props.placeholder}
+                  </button>,
+              ];
         return <div className="multiSelect">{...contents}</div>;
     }
 }
