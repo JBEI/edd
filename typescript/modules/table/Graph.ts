@@ -415,6 +415,16 @@ export class Graph {
         return this.is_truncated;
     }
 
+    getDashArray(color: string): string {
+        // generates an almost-unique dash array based on the color
+        return parseInt(color.split("#")[1], 16)
+            .toString(4)
+            .split("")
+            .slice(0, 5)
+            .map((dash) => 6 * parseInt(dash))
+            .join(" ");
+    }
+
     /**
      * Renders a line plot from the given filtered items, grouped by a replicate key.
      * The replicate key should be one of Keys.byAssay, Keys.byLine, or Keys.byReplicate.
@@ -694,12 +704,14 @@ export class Graph {
             // get color from the first item; they should all be the same
             const first_item = values[0].item;
             const color = first_item.line.color;
+            const dasharray = this.getDashArray(color);
             // add G element for entire curve
             const curve_group = parent
                 .append("g")
                 .attr("class", "curve graphValue")
                 .attr("fill", "none")
                 .attr("stroke", color)
+                .style("stroke-dasharray", dasharray)
                 .on("mousemove", this.tooltipOver(first_item))
                 .on("mouseout", this.tooltipOut());
             // add PATH element for plot path
