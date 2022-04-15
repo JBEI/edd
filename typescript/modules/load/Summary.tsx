@@ -25,7 +25,6 @@ export interface Layout extends Choice {
 }
 
 export interface Protocol extends Choice {
-    description: string;
     uuid: string;
     // default serializer has more fields,
     // but we don't care in this setting

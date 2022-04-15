@@ -32,13 +32,6 @@ class LayoutAdmin(admin.ModelAdmin):
     search_fields = ["name", "description"]
 
 
-class ProtocolCategoryInline(admin.TabularInline):
-    """Inline submodel for import category contents."""
-
-    autocomplete_fields = ["protocol"]
-    model = models.Category.protocols.through
-
-
 class CategoryLayoutInline(admin.TabularInline):
     autocomplete_fields = ["layout"]
     model = models.Category.layouts.through
@@ -52,7 +45,7 @@ class CategoryAdmin(admin.ModelAdmin):
         "sort_key",
         "type_group",
     )
-    inlines = (ProtocolCategoryInline, CategoryLayoutInline)
+    inlines = (CategoryLayoutInline,)
     list_display = (
         "name",
         "sort_key",

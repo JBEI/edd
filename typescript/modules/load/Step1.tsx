@@ -10,6 +10,7 @@ export interface Strings extends StepBase.Strings {
     categoryUrl: string;
     createUrl: string;
     fields: JQuery;
+    protocolUrl: string;
 }
 
 interface Props extends Strings, StepBase.Props {
@@ -27,6 +28,7 @@ export class SubState {
     // user-selected protocol used to generate data being loaded
     protocol: Summary.Protocol = null;
     // selection values available, loaded via AJAX call
+    protocols: Summary.Protocol[] = [];
     selections: Summary.Category[] = [];
     // endpoint used to write data for loading
     uploadUrl: string = null;
@@ -43,6 +45,13 @@ export class Step extends React.Component<Props, unknown> {
             },
             "json",
         );
+        $.ajax({
+            "data": { "page_size": 10 },
+            "type": "GET",
+            "url": this.props.protocolUrl,
+        }).then((payload) => {
+            this.props.onUpdate("step1", { "protocols": payload.results });
+        });
     }
 
     componentWillUnmount(): void {
@@ -191,15 +200,39 @@ export class Step extends React.Component<Props, unknown> {
     }
 
     private protocolInput(original) {
-        const protocols = this.props.step1.category?.protocols || [];
-        const placeholder = original.find("._placeholder").text();
+        const protocols = this.props.step1.protocols || [];
+        const placeholder = original.data("placeholder");
+        const label = original.data("filterLabel");
         return (
-            <Inputs.MultiButtonSelect
-                options={protocols}
-                placeholder={placeholder}
-                selected={this.props.step1.protocol}
-                onSelect={(selected) => this.protocolSelect(selected)}
-            />
+            <React.Fragment>
+                <div className="form-group">
+                    <label htmlFor="protocol_select">{label}</label>
+                    <input
+                        id="protocol_select"
+                        type="search"
+                        onChange={(event) => {
+                            $.ajax({
+                                "data": {
+                                    "name": $(event.target).val(),
+                                    "page_size": 10,
+                                },
+                                "type": "GET",
+                                "url": this.props.protocolUrl,
+                            }).then((payload) => {
+                                this.props.onUpdate("step1", {
+                                    "protocols": payload.results,
+                                });
+                            });
+                        }}
+                    />
+                </div>
+                <Inputs.MultiButtonSelect
+                    options={protocols}
+                    placeholder={placeholder}
+                    selected={this.props.step1.protocol}
+                    onSelect={(selected) => this.protocolSelect(selected)}
+                />
+            </React.Fragment>
         );
     }
 

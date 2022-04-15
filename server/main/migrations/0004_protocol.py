@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="ProtocolIO",
+            name="protocolio",
             fields=[
                 (
                     "id",
@@ -174,4 +174,57 @@ class Migration(migrations.Migration):
             model_name="worklisttemplate", old_name="protocolio", new_name="protocol",
         ),
         migrations.RenameModel(old_name="protocolio", new_name="protocol"),
+        migrations.AlterField(
+            model_name="assay",
+            name="protocol",
+            field=models.ForeignKey(
+                help_text="The Protocol used to create this Assay.",
+                on_delete=PROTECT,
+                to="main.protocol",
+                verbose_name="Protocol",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="line",
+            name="protocols",
+            field=models.ManyToManyField(
+                help_text="Protocol(s) used to Assay this Line.",
+                through="main.assay",
+                to="main.protocol",
+                verbose_name="Protocol(s)",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="protocol",
+            name="destructive",
+            field=models.BooleanField(
+                default=False,
+                help_text="Flag showing if this protocol consumes a sample.",
+                verbose_name="Destructive",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="study",
+            name="protocols",
+            field=models.ManyToManyField(
+                blank=True,
+                db_table="study_protocol",
+                help_text="Protocols planned for use in this Study.",
+                to="main.protocol",
+                verbose_name="Protocols",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="worklisttemplate",
+            name="protocol",
+            field=models.ForeignKey(
+                help_text="Default protocol for this Template.",
+                on_delete=PROTECT,
+                to="main.protocol",
+                verbose_name="Protocol",
+            ),
+        ),
+        # these fields aren't used and are causing Django to generate infinite migrations
+        migrations.RemoveField(model_name="line", name="protocols",),
+        migrations.RemoveField(model_name="study", name="protocols",),
     ]

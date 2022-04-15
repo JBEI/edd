@@ -24,11 +24,12 @@
   <span class="_protocol">{% translate "Protocol" %}</span>
   <span class="_layout">{% translate "Layout" %}</span>
   <span class="_file">{% translate "File" %}</span>
-  <div id="_step1">
+  <div
+    id="_step1"
+    data-category-href="{% url 'rest:load_categories-list' %}"
+    data-protocol-href="{% url 'rest:protocols-list' %}"
+  >
     <span class="_title">{% translate "Identify" %}</span>
-    <!-- options in first three fieldsets are dynamic and inter-related;
-        load from following URL -->
-    <a class="_data off" href="{% url 'rest:load_categories-list' %}"></a>
     <fieldset class="_category">
       <legend>{% translate "What category of data do you have?" %}</legend>
       <aside>
@@ -48,7 +49,11 @@
         {% translate 'Checking available categories …' %}
       </span>
     </fieldset>
-    <fieldset class="_protocol">
+    <fieldset
+      class="_protocol"
+      data-filter-label="{% translate 'Search Protocols' %}"
+      data-placeholder="{% translate 'Choose a Category to continue …' %}"
+    >
       <legend>{% translate "What lab protocol did you use?" %}</legend>
       <aside>
         <p>
@@ -66,9 +71,6 @@
           >{% translate "Click here for more information on protocols." %}</a>
         </p>
       </aside>
-      <span class="_placeholder">
-        {% translate 'Choose a Category to continue …' %}
-      </span>
     </fieldset>
     <fieldset class="_layout">
       <legend>{% translate "What layout is your data in?" %}</legend>

@@ -38,7 +38,7 @@ export class MultiButtonSelect extends React.Component<MBSProps, unknown> {
         const contents = options.length
             ? buttons
             : [<span className="placeholder">{this.props.placeholder}</span>];
-        return <div className="multiSelect">{...contents}</div>;
+        return <div className="multiSelect btn-group">{...contents}</div>;
     }
 }
 

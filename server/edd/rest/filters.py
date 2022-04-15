@@ -533,6 +533,11 @@ class ProtocolFilter(filters.FilterSet):
         help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method="used_in_study",
     )
+    name = django_filters.CharFilter(
+        field_name="name",
+        help_text=_("Runs a regular expression search on item name"),
+        lookup_expr="iregex",
+    )
 
     class Meta:
         fields = []

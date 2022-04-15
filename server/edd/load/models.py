@@ -90,12 +90,6 @@ class Category(models.Model):
         verbose_name=_("File layouts"),
         related_name="load_category",
     )
-    protocols = models.ManyToManyField(
-        edd_models.Protocol,
-        help_text=_("Protocols that appear in this load category."),
-        verbose_name=_("Protocols"),
-        related_name="load_category",
-    )
     name = VarCharField(
         help_text=_("Name of this loading category."), verbose_name=_("Name")
     )

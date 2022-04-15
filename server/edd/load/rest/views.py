@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.reverse import reverse
 
 from edd.utilities import JSONEncoder
-from main.models import Protocol, Study, StudyPermission
+from main.models import Study, StudyPermission
 
 from .. import tasks
 from ..broker import LoadRequest
@@ -89,13 +89,11 @@ class CategoriesViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         layouts_sorted = Layout.objects.order_by("categorylayout__sort_key")
         parsers_sorted = ParserMapping.objects.order_by("mime_type")
-        protocol_sorted = Protocol.objects.filter(active=True).order_by("name")
         prefetch_layout = Prefetch("layouts", queryset=layouts_sorted)
         prefetch_mapping = Prefetch("layouts__parsers", queryset=parsers_sorted)
-        prefetch_protocol = Prefetch("protocols", queryset=protocol_sorted)
         # build the main queryset
         return Category.objects.prefetch_related(
-            prefetch_layout, prefetch_mapping, prefetch_protocol
+            prefetch_layout, prefetch_mapping
         ).order_by("sort_key")
 
 

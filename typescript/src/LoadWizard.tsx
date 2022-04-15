@@ -192,9 +192,10 @@ function readStrings(root: JQuery): Props {
         },
         "step1": {
             "ackButtonLabel": ackButtonLabel,
-            "categoryUrl": step1.children("._data").attr("href"),
+            "categoryUrl": step1.data("categoryHref"),
             "createUrl": $("form#create_load").attr("action"),
             "fields": step1.children("fieldset").clone(),
+            "protocolUrl": step1.data("protocolHref"),
             "title": step1.children("._title").text(),
         },
         "step2": {

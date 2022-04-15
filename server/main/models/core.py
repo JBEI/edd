@@ -395,18 +395,6 @@ class Study(SlugMixin, EDDObject):
         on_delete=models.SET_NULL,
         verbose_name=_("Metabolic Map"),
     )
-    # NOTE: this is NOT a field for a definitive list of Protocols on a Study;
-    #   it is for Protocols which may not have been paired with a Line in an
-    #   Assay. e.g. when creating a blank Study pre-filled with the Protocols
-    #   to be used. Get definitive list by doing union of this field and
-    #   Protocols linked via Assay-Line-Study chain.
-    protocols = models.ManyToManyField(
-        "Protocol",
-        blank=True,
-        db_table="study_protocol",
-        help_text=_("Protocols planned for use in this Study."),
-        verbose_name=_("Protocols"),
-    )
     # create a slug for a more human-readable URL
     slug = models.SlugField(
         help_text=_("Slug text used in links to this Study."),
@@ -843,12 +831,6 @@ class Line(EDDObject):
         on_delete=models.PROTECT,
         related_name="line_experimenter_set",
         verbose_name=_("Experimenter"),
-    )
-    protocols = models.ManyToManyField(
-        Protocol,
-        help_text=_("Protocol(s) used to Assay this Line."),
-        through="Assay",
-        verbose_name=_("Protocol(s)"),
     )
     strains = models.ManyToManyField(
         Strain,
