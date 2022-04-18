@@ -1,0 +1,8 @@
+{
+    "type": "module",
+    "dependencies": {
+        "colors": "^1.4.0",
+        "dotenv": "^16.0.0",
+        "pa11y": "^6.1.1"
+    }
+}
