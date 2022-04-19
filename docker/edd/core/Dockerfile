@@ -1,8 +1,5 @@
 # arguments and defaults used with docker build command
 ARG EDD_VERSION="manual-build"
-ARG NODE_VERSION="latest"
-ARG REPO_SERVER="docker.io"
-ARG SKLEARN_BASE_VERSION="20.03"
 ARG TARGET="dev"
 
 # ---
@@ -23,7 +20,35 @@ CMD ["/bin/zsh"]
 
 # ---
 
-FROM ${REPO_SERVER}/jbei/scikit-learn:${SKLEARN_BASE_VERSION} as prod-preinstall
+FROM library/python:3.10-slim-bullseye as pybase
+
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
+ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
+
+WORKDIR /tmp
+
+RUN set -ex \
+ && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+    curl \
+    git \
+    gosu \
+    mime-support \
+    netcat-openbsd \
+    tini \
+ && pip install \
+    numpy \
+    pipenv \
+    python-libsbml \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* \
+ && rm -rf /root/.cache \
+ && find /usr/local/lib/ -name __pycache__ | xargs rm -rf
+
+# ---
+
+FROM pybase as prod-preinstall
 
 WORKDIR /install
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
@@ -51,7 +76,7 @@ RUN set -ex \
 
 # ---
 
-FROM ${REPO_SERVER}/jbei/scikit-learn:${SKLEARN_BASE_VERSION} as dev-preinstall
+FROM pybase as dev-preinstall
 
 WORKDIR /install
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8

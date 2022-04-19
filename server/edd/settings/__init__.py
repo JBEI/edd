@@ -36,6 +36,22 @@ def validate_settings():
         print(f"Error in validating EDD settings: {e}")
 
 
+def monkeypatch_force_text():
+    """
+    The graphene-django package is slow to update, and is still using a
+    function removed in Django 4.0. This function will monkeypatch the new name
+    to the old name, so graphene-django can hobble along until it updates.
+
+    See: https://github.com/graphql-python/graphene-django/issues/1284#issuecomment-1019998091
+    """
+    import django
+    from django.utils.encoding import force_str
+
+    django.utils.encoding.force_text = force_str
+
+
 # check the settings, then remove the check function from the namespace
 validate_settings()
+monkeypatch_force_text()
 del validate_settings
+del monkeypatch_force_text
