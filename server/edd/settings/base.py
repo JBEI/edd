@@ -102,6 +102,7 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
 # Application definition
 INSTALLED_APPS = (
+    "django.forms",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.sites",
@@ -142,11 +143,12 @@ MIDDLEWARE = (
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 )
+FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         # force check our templates directory first for overrides
-        "DIRS": [root("main", "templates")],
+        "DIRS": [root("templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
