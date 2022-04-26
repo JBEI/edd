@@ -69,7 +69,7 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
             )
             return default.unit
         except DefaultUnit.DoesNotExist:
-            logger.error("Default Unit could not be found")
+            logger.error(f"Default Unit for {type_object.type_name} could not be found")
             raise
 
     def _is_valid(self, value):
