@@ -65,11 +65,15 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
     def _lookup_unit(self, type_object):
         try:
             default = DefaultUnit.objects.get(
-                measurement_type=type_object, parser="ambr",
+                measurement_type=type_object,
+                parser="ambr",
             )
             return default.unit
         except DefaultUnit.DoesNotExist:
-            logger.error("Default Unit could not be found")
+            logger.error(
+                f"Default Unit for (ID: {type_object.pk}) "
+                f"{type_object.type_name} could not be found"
+            )
             raise
 
     def _is_valid(self, value):
