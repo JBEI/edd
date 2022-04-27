@@ -55,9 +55,18 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
                 measurementnametransform__input_type_name=type_name,
                 measurementnametransform__parser="ambr",
             )
-            return MeasurementType.objects.filter(
+
+            mestype_obj = MeasurementType.objects.filter(
                 direct_type_match | translated_match
-            ).first()
+            ).get()
+
+            # check if measurement onject returned is None and log error for
+            #  it if it is None error will be throw once it tries to query
+            # for the defaultunit
+            if mestype_obj is None:
+                logger.error(f"Measurement Type for {type_name} is None")
+
+            return mestype_obj
         except MeasurementType.DoesNotExist:
             logger.error(f"Measurement Type for {type_name} could not be found")
             raise
@@ -65,7 +74,8 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
     def _lookup_unit(self, type_object):
         try:
             default = DefaultUnit.objects.get(
-                measurement_type=type_object, parser="ambr",
+                measurement_type=type_object,
+                parser="ambr",
             )
             return default.unit
         except DefaultUnit.DoesNotExist:
