@@ -3,7 +3,7 @@ from . import factory
 
 
 def test_MetadataEditMixin_process_strings():
-    mem = forms.MetadataEditMixin()
+    mem = forms.mixins.MetadataEditMixin()
     meta = {"1": "some text", "2": "delete"}
 
     updating, removing = mem.process_metadata_inputs(meta)
@@ -15,7 +15,7 @@ def test_MetadataEditMixin_process_strings():
 
 
 def test_MetadataEditMixin_process_non_strings():
-    mem = forms.MetadataEditMixin()
+    mem = forms.mixins.MetadataEditMixin()
     meta = {"1": False, "2": 42, "3": {"complex": "dict"}}
 
     updating, removing = mem.process_metadata_inputs(meta)
@@ -28,7 +28,7 @@ def test_MetadataEditMixin_process_non_strings():
 
 
 def test_MetadataEditMixin_process_removal():
-    mem = forms.MetadataEditMixin()
+    mem = forms.mixins.MetadataEditMixin()
     meta = {"1": "some text", "2": {"delete": True}}
 
     updating, removing = mem.process_metadata_inputs(meta)

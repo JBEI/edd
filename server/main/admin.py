@@ -107,7 +107,7 @@ def migrate_storage():
 
 
 class AssayAdmin(admin.ModelAdmin):
-    """ Definition for admin-edit of Assays """
+    """Definition for admin-edit of Assays"""
 
     fields = ("name", "description")
     list_display = ("name", "study_name", "line_name", "protocol_name")
@@ -134,13 +134,13 @@ class AssayAdmin(admin.ModelAdmin):
 
 
 class MetadataGroupAdmin(admin.ModelAdmin):
-    """ Definition for admin-edit of Metadata Groups """
+    """Definition for admin-edit of Metadata Groups"""
 
     fields = ["group_name"]
 
 
 class MetadataTypeAdmin(admin.ModelAdmin):
-    """ Definition for admin-edit of Metadata Types """
+    """Definition for admin-edit of Metadata Types"""
 
     fields = (
         "type_name",
@@ -185,13 +185,13 @@ class MetadataTypeAdmin(admin.ModelAdmin):
 
 
 class EDDObjectAdmin(admin.ModelAdmin):
-    """ Parent class for EDD Object model admin classes """
+    """Parent class for EDD Object model admin classes"""
 
     search_fields = ["name", "description"]
 
 
 class ProtocolAdmin(admin.ModelAdmin):
-    """ Definition for admin-edit of Protocols """
+    """Definition for admin-edit of Protocols"""
 
     list_display = [
         "name",
@@ -220,7 +220,7 @@ def render_study_links(study_queryset, *, limit=10):
 
 
 class StrainAdmin(EDDObjectAdmin):
-    """ Definition for admin-edit of Strains """
+    """Definition for admin-edit of Strains"""
 
     actions = ["merge_with_action"]
     list_display = (
@@ -235,7 +235,7 @@ class StrainAdmin(EDDObjectAdmin):
     def has_add_permission(self, request):
         """
         Disable adding via admin interface. Strains are automatically added
-        when referenced via the `main.forms.RegistryValidator`.
+        when referenced via the `edd.search.registry.RegistryValidator`.
         """
         return False
 
@@ -329,7 +329,7 @@ class StrainAdmin(EDDObjectAdmin):
 
 
 class MeasurementTypeAdmin(admin.ModelAdmin):
-    """ Definition for admin-edit of Measurement Types """
+    """Definition for admin-edit of Measurement Types"""
 
     actions = ["merge_with_action"]
     search_fields = ("type_name", "alt_names")
@@ -605,7 +605,7 @@ class PhosphorAdmin(MeasurementTypeAdmin):
 
 
 class UserPermissionInline(admin.TabularInline):
-    """ Inline submodel for editing user permissions """
+    """Inline submodel for editing user permissions"""
 
     model = models.UserPermission
     extra = 1
@@ -613,13 +613,14 @@ class UserPermissionInline(admin.TabularInline):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "user":
             kwargs["widget"] = AutocompleteSelect(
-                models.UserPermission._meta.get_field("user"), admin.site,
+                models.UserPermission._meta.get_field("user"),
+                admin.site,
             )
         return db_field.formfield(**kwargs)
 
 
 class GroupPermissionInline(admin.TabularInline):
-    """ Inline submodel for editing group permissions """
+    """Inline submodel for editing group permissions"""
 
     model = models.GroupPermission
     extra = 1
@@ -627,13 +628,14 @@ class GroupPermissionInline(admin.TabularInline):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "group":
             kwargs["widget"] = AutocompleteSelect(
-                models.GroupPermission._meta.get_field("group"), admin.site,
+                models.GroupPermission._meta.get_field("group"),
+                admin.site,
             )
         return db_field.formfield(**kwargs)
 
 
 class StudyAdmin(EDDObjectAdmin):
-    """ Definition for admin-edit of Studies """
+    """Definition for admin-edit of Studies"""
 
     actions = ["solr_index"]
     exclude = [
@@ -673,7 +675,7 @@ class StudyAdmin(EDDObjectAdmin):
 
 
 class SBMLTemplateAdmin(EDDObjectAdmin):
-    """ Definition fro admin-edit of SBML Templates """
+    """Definition fro admin-edit of SBML Templates"""
 
     fields = (
         "name",
@@ -751,7 +753,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
 
 
 class WorklistColumnInline(admin.TabularInline):
-    """ Inline submodel for editing worklist columns. """
+    """Inline submodel for editing worklist columns."""
 
     model = models.WorklistColumn
     fields = ("ordering", "heading", "meta_type", "default_value", "help_text")
@@ -761,7 +763,8 @@ class WorklistColumnInline(admin.TabularInline):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "meta_type":
             kwargs["widget"] = AutocompleteSelect(
-                models.WorklistColumn._meta.get_field("meta_type"), admin.site,
+                models.WorklistColumn._meta.get_field("meta_type"),
+                admin.site,
             )
         return db_field.formfield(**kwargs)
 

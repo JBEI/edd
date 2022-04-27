@@ -2,9 +2,12 @@ import json
 import logging
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from requests.sessions import Session
 
 from jbei.rest.auth import HmacAuth
+from main import models
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,8 @@ class StrainRegistry:
         self._check_session()
         try:
             response = self.session.post(
-                self._rest("folders"), json={"folderName": folder_name},
+                self._rest("folders"),
+                json={"folderName": folder_name},
             )
             response.raise_for_status()
             return Folder(self, response.json())
@@ -90,7 +94,8 @@ class StrainRegistry:
         self._check_session()
         try:
             response = self.session.get(
-                self._rest(f"collections/{collection}/entries"), params=extra,
+                self._rest(f"collections/{collection}/entries"),
+                params=extra,
             )
             response.raise_for_status()
             return [Entry(self, item) for item in response.json()["data"]]
@@ -201,7 +206,10 @@ class AdminRegistry(StrainRegistry):
         self._check_session()
         try:
             # create the upload session
-            response = self.session.put(self._rest("uploads"), json={"type": "strain"},)
+            response = self.session.put(
+                self._rest("uploads"),
+                json={"type": "strain"},
+            )
             response.raise_for_status()
             upload_id = response.json()["id"]
             # add the file
@@ -249,7 +257,8 @@ class AdminRegistry(StrainRegistry):
         self._check_session()
         try:
             response = self.session.get(
-                f"{self.base_url}/rest/users", params={"filter": user.email},
+                f"{self.base_url}/rest/users",
+                params={"filter": user.email},
             )
             response.raise_for_status()
             info = response.json()
@@ -356,9 +365,110 @@ class Folder:
         self.registry._check_session()
         try:
             response = self.registry.session.get(
-                self.registry._rest(f"folders/{self.folder_id}/entries"), params=extra,
+                self.registry._rest(f"folders/{self.folder_id}/entries"),
+                params=extra,
             )
             response.raise_for_status()
             return [Entry(self.registry, item) for item in response.json()["entries"]]
         except Exception as e:
             raise RegistryError("Could not list Folder Entries") from e
+
+
+class RegistryValidator:
+    """
+    Validator for Strain objects tied to ICE registry. If using outside the
+    context of Form validation (e.g. in a Celery task), ensure that the Update
+    object is created before the callable is called.
+
+    See: https://docs.djangoproject.com/en/dev/ref/validators/
+    """
+
+    def __init__(self, existing_strain=None, existing_entry=None):
+        """
+        If an already-existing Strain object in the database is being updated,
+        initialize RegistryValidator with existing_strain. If an entry has
+        already been queried from ICE, initialize with existing_entry.
+        """
+        self.existing_strain = existing_strain
+        self.existing_entry = existing_entry
+
+    def load_part_from_ice(self, registry_id):
+        if self.existing_entry is not None:
+            return self.existing_entry
+        # using the Update to get the correct user for the search
+        update = models.Update.load_update()
+        registry = StrainRegistry()
+        user_email = update.mod_by.email
+        try:
+            with registry.login(update.mod_by):
+                return registry.get_entry(registry_id)
+        except Exception as e:
+            raise ValidationError(
+                _("Failed to load strain %(uuid)s from ICE for user %(user)s"),
+                code="ice failure",
+                params={"user": user_email, "uuid": registry_id},
+            ) from e
+
+    def save_strain(self, entry):
+        try:
+            if entry and self.existing_strain:
+                self.existing_strain.name = entry.name
+                self.existing_strain.registry_id = entry.registry_id
+                self.existing_strain.registry_url = entry.registry_url
+                self.existing_strain.save()
+            elif entry:
+                # not using get_or_create, so exception is raised if registry_id exists
+                models.Strain.objects.create(
+                    name=entry.name,
+                    registry_id=entry.registry_id,
+                    registry_url=entry.registry_url,
+                )
+        except Exception as e:
+            raise ValidationError(
+                _("Failed to save strain from %(entry)s"),
+                code="db failure",
+                params={"entry": entry},
+            ) from e
+
+    def validate(self, value):
+        try:
+            # handle multi-valued inputs by validating each value individually
+            if isinstance(value, (list, tuple)):
+                for v in value:
+                    self.validate(v)
+                return
+            qs = models.Strain.objects.filter(registry_id=value)
+            if self.existing_strain:
+                qs = qs.exclude(pk__in=[self.existing_strain])
+            count = qs.count()
+            if count == 0:
+                self.save_strain(self.load_part_from_ice(value))
+            elif count > 1:
+                raise ValidationError(
+                    _(
+                        "Selected ICE record is already linked to EDD strains: %(strains)s"
+                    ),
+                    code="existing records",
+                    params={"strains": list(qs)},
+                )
+        except ValidationError:
+            raise
+        except Exception as e:
+            raise ValidationError(
+                _("Error querying for an EDD strain with registry_id %(uuid)s"),
+                code="query failure",
+                params={"uuid": value},
+            ) from e
+
+    def __call__(self, value):
+        self.validate(value)
+
+
+__all__ = [
+    AdminRegistry,
+    Entry,
+    Folder,
+    RegistryError,
+    RegistryValidator,
+    StrainRegistry,
+]

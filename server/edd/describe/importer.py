@@ -15,8 +15,7 @@ from django.db import transaction
 from django.urls import reverse
 from requests import codes
 
-from edd.search.registry import RegistryError, StrainRegistry
-from main.forms import RegistryValidator
+from edd.search.registry import RegistryError, RegistryValidator, StrainRegistry
 from main.models import Assay, Line, Strain
 from main.signals import study_described
 
