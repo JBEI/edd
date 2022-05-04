@@ -18,26 +18,25 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
         # for every two columns in the worksheet
         # corresponding to each measurement type in the sheet
         for col_index in range(0, sheet.max_column, 2):
-            times = [row[col_index].value for row in sheet.rows]
-            values = [row[col_index + 1].value for row in sheet.rows]
+            pairs = [
+                (row[col_index].value, row[col_index + 1].value) for row in sheet.rows
+            ]
+            pairs = self._sample(pairs)
+            # using mapper to map data into tuples for EDD import
+            yield from self._map_data(sheet.title, pairs)
 
-            # decimate the data here
-            # check if data has more than 200 points then decimate else do not
-            if len(values) > 200:
-                times = times[0::10]
-                values = values[0::10]
+    def _sample(self, pairs):
+        # if there's more than 200 points, sample only every ten
+        if len(pairs) > 200:
+            return pairs[0::10]
+        return pairs
 
-            # using mapper to map data into the EDD import format
-            # and convert in to a pandas dataframe
-            # set the line name and the dataframe with the two columns
-            # with data for the next measurement type
-            yield from self._map_data(sheet.title, times, values)
-
-    def _map_data(self, name, times, values):
+    def _map_data(self, name, pairs):
         # first row are the "headers", grab the type from values
-        type_object = self._lookup_type(values[0])
+        first_row = pairs[0]
+        type_object = self._lookup_type(first_row[1])
         unit = self._lookup_unit(type_object)
-        for y, x in zip(values, times):
+        for x, y in pairs:
             # dropping records with NaN values
             if self._is_valid(y) and self._is_valid(x):
                 yield (
@@ -50,16 +49,22 @@ class AmbrExcelParser(MultiSheetExcelParserMixin, GenericImportParser):
 
     def _lookup_type(self, type_name):
         try:
-            direct_type_match = Q(type_name=type_name)
-            translated_match = Q(
+            direct_match = Q(type_name=type_name)
+            translated = Q(
                 measurementnametransform__input_type_name=type_name,
                 measurementnametransform__parser="ambr",
             )
-            return MeasurementType.objects.filter(
-                direct_type_match | translated_match
-            ).first()
+            possible = MeasurementType.objects.filter(direct_match | translated)
+            return possible.get()
         except MeasurementType.DoesNotExist:
-            logger.error(f"Measurement Type for {type_name} could not be found")
+            logger.error(f"Measurement Type for `{type_name}` could not be found")
+            raise
+        except MeasurementType.MultipleObjectsReturned:
+            candidates = [f"`{t.type_name}` (ID: {t.id})" for t in possible[:10]]
+            logger.error(
+                f"Measurement Type for `{type_name}` has multiple possible results, "
+                f"including: {', '.join(candidates)}"
+            )
             raise
 
     def _lookup_unit(self, type_object):

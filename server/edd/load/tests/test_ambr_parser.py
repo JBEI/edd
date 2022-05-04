@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from django.core import exceptions as django_exceptions
 
 from .. import parsers
 from . import factory
@@ -8,19 +9,10 @@ from . import factory
 
 @pytest.mark.django_db
 def test_AmbrExcelParser_success():
-    path = "ambr_test_data.xlsx"
     parser = parsers.AmbrExcelParser(uuid4())
 
-    with factory.load_test_file(path) as file:
+    with factory.load_test_file("ambr_test_data.xlsx") as file:
         parsed = parser.parse(file)
-    verify_parse_result(parsed)
-
-
-def verify_parse_result(parsed):
-    # Utility method that compares parsed content from XLSX and CSV format files,
-    # verifying that:
-    #     A) the results are correct, and
-    #     B) that they're consistent regardless of file format.
 
     # verify that expected values were parsed
     assert parsed is not None
@@ -292,3 +284,74 @@ def verify_parse_result(parsed):
     assert mes_parse_record.x_unit_name == "hours"
     assert mes_parse_record.value_format == "0"
     assert mes_parse_record.data == [[0.0133746873611111], [99.4631435142741]]
+
+
+def test_AmbrExcelParser_sampling_under_200():
+    parser = parsers.AmbrExcelParser(uuid4())
+    pairs_list = list(range(199))
+
+    sampled_pairs = parser._sample(pairs_list)
+
+    assert len(sampled_pairs) == 199
+
+
+def test_AmbrExcelParser_sampling_over_200():
+    parser = parsers.AmbrExcelParser(uuid4())
+    long_pairs_list = list(range(250))
+
+    sampled_pairs = parser._sample(long_pairs_list)
+
+    assert len(sampled_pairs) == 25
+
+
+@pytest.mark.django_db
+def test_AmbrExcelParser_lookup_type_with_missing():
+    parser = parsers.AmbrExcelParser(uuid4())
+
+    with pytest.raises(django_exceptions.ObjectDoesNotExist):
+        parser._lookup_type("This is an invalid type name")
+
+
+@pytest.mark.django_db
+def test_AmbrExcelParser_lookup_type_with_multiples():
+    name = "Novel Type"
+    # same name pointing at two different types
+    factory.MeasurementTypeFactory(type_name=name)
+    factory.MeasurementNameTransformFactory(input_type_name=name, parser="ambr")
+    parser = parsers.AmbrExcelParser(uuid4())
+
+    with pytest.raises(django_exceptions.MultipleObjectsReturned):
+        parser._lookup_type(name)
+
+
+@pytest.mark.django_db
+def test_AmbrExcelParser_lookup_unit_with_no_mapping():
+    parser = parsers.AmbrExcelParser(uuid4())
+    some_type = factory.MeasurementTypeFactory()
+
+    with pytest.raises(django_exceptions.ObjectDoesNotExist):
+        parser._lookup_unit(some_type)
+
+
+@pytest.mark.django_db
+def test_AmbrExcelParser_lookup_unit_with_unmapped_type():
+    parser = parsers.AmbrExcelParser(uuid4())
+    unmapped_type = factory.MeasurementTypeFactory()
+
+    with pytest.raises(django_exceptions.ObjectDoesNotExist):
+        parser._lookup_unit(unmapped_type)
+
+
+@pytest.mark.parametrize(
+    "value,valid",
+    [
+        pytest.param(None, False, id="None is invalid"),
+        pytest.param("123", True, id="Integer numeric is valid"),
+        pytest.param("12.3", True, id="Decimal numeric is valid"),
+        pytest.param("text", False, id="Non-numeric text is invalid"),
+        pytest.param("1e2", True, id="Scientific notation is valid"),
+    ],
+)
+def test_AmbrExcelParser_valid_values(value, valid):
+    parser = parsers.AmbrExcelParser(uuid4())
+    assert parser._is_valid(value) == valid
