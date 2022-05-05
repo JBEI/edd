@@ -49,7 +49,10 @@ def create_fake_exportable_study(
             assay = AssayFactory(line=line, protocol=protocol)
             for t in mtypes:
                 measurement = MeasurementFactory(
-                    assay=assay, measurement_type=t, x_units=x_unit, y_units=y_unit,
+                    assay=assay,
+                    measurement_type=t,
+                    x_units=x_unit,
+                    y_units=y_unit,
                 )
                 ValueFactory(
                     measurement=measurement,
@@ -95,11 +98,20 @@ class AssayFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.Assay
 
-    name = factory.Faker("domain_word")
     study = factory.SelfAttribute("line.study")
     line = factory.SubFactory(LineFactory)
     protocol = factory.SubFactory(ProtocolFactory)
     experimenter = factory.SubFactory("main.tests.factory.UserFactory")
+
+    @factory.lazy_attribute_sequence
+    def name(self, n):
+        """
+        Generates guaranteed unique assay name. As the edd.load resolver
+        depends on unique names, having a potential clashing name chosen from
+        Faker will fail some tests randomly.
+        """
+        assay_name = fake.domain_word()
+        return f"{self.line.name}-{assay_name}-{n}"
 
 
 class MeasurementTypeFactory(factory.django.DjangoModelFactory):
