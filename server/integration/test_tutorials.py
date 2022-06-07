@@ -31,8 +31,8 @@ def CREATE_PCAP_LINES(study):
     combos = itertools.product(first, second, third)
     for i, (a, b, c) in enumerate(combos, start=1000):
         factory.LineFactory(study=study, id=i, name=f"{a}-{b}{c}")
-    for i, d in enumerate(third, start=i + 1):
-        factory.LineFactory(study=study, id=i, name=f"BL-M{d}")
+    for j, d in enumerate(third, start=i + 1):
+        factory.LineFactory(study=study, id=j, name=f"BL-M{d}")
 
 
 class ImportDataTestsMixin:
@@ -124,7 +124,7 @@ class ImportDataTestsMixin:
             upload = BytesIO(fp.read())
         upload.name = filename
         response = self.client.post(
-            reverse("main:load_flat:parse"),
+            reverse("load_flat:parse"),
             data={
                 "file": upload,
                 "X_EDD_FILE_TYPE": filetype,

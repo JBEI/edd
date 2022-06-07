@@ -27,7 +27,7 @@ class ViewTests(TestCase):
         )
 
     def test_get_global_HelpView(self):
-        response = self.client.get(reverse("main:describe_flat:help"))
+        response = self.client.get(reverse("describe_flat:help"))
         self.assertEqual(response.status_code, codes.ok)
         self.assertTemplateUsed(response, "edd/describe/help.html")
 
@@ -39,7 +39,7 @@ class ViewTests(TestCase):
         self.assertTemplateUsed(response, "edd/describe/help.html")
 
     def test_get_global_ice_view_redirects_anonymous(self):
-        folder_url = reverse("main:describe_flat:folder")
+        folder_url = reverse("describe_flat:folder")
         response = self.client.get(folder_url, follow=True)
         login_url = reverse("account_login")
         self.assertRedirects(response, f"{login_url}?next={folder_url}")
@@ -98,7 +98,7 @@ class ViewTests(TestCase):
         self.client.force_login(self.user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         # minimal JSON from front-end
-        payload = br"""
+        payload = rb"""
             {
                 "name_elements":{
                     "elements":["replicate_num"]

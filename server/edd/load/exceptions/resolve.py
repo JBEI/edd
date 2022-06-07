@@ -79,7 +79,7 @@ class DuplicateLineError(ResolveError):
 class UnmatchedMtypeError(ResolveError):
     def __init__(self, **kwargs):
         # use absolute URLs so they also function from user emails
-        url = reverse("main:load_flat:wizard_help")
+        url = reverse("load_flat:wizard_help")
         url = get_absolute_url(f"{url}#generic-mtypes")
         docs_link = _(
             "Check that you chose the right category for these measurements. If so, "

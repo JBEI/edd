@@ -62,10 +62,4 @@ urlpatterns = [
     # Individual study-specific pages loaded by slug
     # reverse('main:overview', kwargs={'slug': slug})
     path("s/<slug:slug>/", include(study_url_patterns)),
-    # edd.describe URLs that can work without a study reference
-    # these pages should migrate outside of applicaiton, see EDD-1244
-    path("describe/", include("edd.describe.flat_urls", namespace="describe_flat")),
-    path("search/", include("edd.search.urls", namespace="search")),
-    # Miscellaneous URLs; most/all of these should eventually be delegated to REST API
-    path("load/", include("edd.load.flat_urls", namespace="load_flat")),
 ]

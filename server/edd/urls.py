@@ -35,12 +35,15 @@ urlpatterns = [
     path("ping/", ping, name="ping"),
     path("admin/", admin.site.urls),
     path("", include("main.urls", namespace="main")),
-    path("export/", include("edd.export.urls", namespace="export")),
+    path("", include("edd.campaign.urls", namespace="campaign")),
     # allauth does not support namespacing
     path("accounts/", include("allauth.urls")),
+    path("describe/", include("edd.describe.flat_urls", namespace="describe_flat")),
+    path("export/", include("edd.export.urls", namespace="export")),
+    path("load/", include("edd.load.flat_urls", namespace="load_flat")),
     path("profile/", include("edd.profile.urls", namespace="profile")),
-    path("", include("edd.campaign.urls", namespace="campaign")),
     path("rest/", include(rest_urlpatterns)),
+    path("search/", include("edd.search.urls", namespace="search")),
     # flatpages.urls does not include app_name; cannot include it with namespace
     # path('pages/', include('django.contrib.flatpages.urls', namespace='flatpage'))
     path("pages/<path:url>", flatpage_views.flatpage, name="flatpage"),
@@ -55,7 +58,11 @@ if getattr(settings, "EDD_ENABLE_GRAPHQL", False):
             login_required(GraphQLView.as_view(graphiql=True)),
             name="graphiql",
         ),
-        path("graphql/", login_required(GraphQLView.as_view()), name="graphql",),
+        path(
+            "graphql/",
+            login_required(GraphQLView.as_view()),
+            name="graphql",
+        ),
     ]
 
 if getattr(settings, "DEBUG", False):

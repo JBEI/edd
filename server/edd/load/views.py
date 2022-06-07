@@ -112,7 +112,7 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
             return HttpResponse(f"Table import failed: {e}", status=codes.server_error)
 
 
-# reverse("main:load_flat:parse") => /load/parse/
+# reverse("load_flat:parse") => /load/parse/
 # To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_import_file(request):
     """
@@ -168,7 +168,7 @@ class ImportHelpView(generic.TemplateView):
         unit_scripts = getattr(settings, "EDD_IMPORT_REQUEST_UNITS_SCRIPTS", "")
 
         context["ice_url"] = getattr(settings, "ICE_URL", None)
-        context["ed_help"] = reverse("main:describe_flat:help")
+        context["ed_help"] = reverse("describe_flat:help")
         context["prot_scripts"] = prot_scripts
         context["format_scripts"] = format_scripts
         context["mtype_scripts"] = mtype_scripts

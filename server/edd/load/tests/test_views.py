@@ -530,7 +530,7 @@ class UtilityParseViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.url = reverse("main:load_flat:parse")
+        cls.url = reverse("load_flat:parse")
         cls.user = UserFactory()
         cls.import_mode = "fakemode"
 
@@ -629,13 +629,13 @@ class ImportViewTests(TestCase):
 
 class ImportHelpViewTests(TestCase):
     def test_help_with_anonymous(self):
-        url = reverse("main:load_flat:wizard_help")
+        url = reverse("load_flat:wizard_help")
         response = self.client.get(url)
         login_url = reverse("account_login")
         self.assertRedirects(response, f"{login_url}?next={url}")
 
     def test_help(self):
-        url = reverse("main:load_flat:wizard_help")
+        url = reverse("load_flat:wizard_help")
         self.client.force_login(UserFactory())
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
