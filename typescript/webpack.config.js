@@ -16,9 +16,9 @@ const eslint = new ESLintPlugin({
     // "fix": true,
 });
 const css_extract = new MiniCssExtractPlugin({
-    "allChunks": true,
     "chunkFilename": "[name].css",
-    "filename": "styles.css",
+    "filename": "[name].css",
+    "ignoreOrder": false,
 });
 
 module.exports = {
@@ -63,7 +63,7 @@ module.exports = {
     "optimization": {
         "splitChunks": {
             "cacheGroups": {
-                "vendor": {
+                "defaultVendors": {
                     "chunks": "all",
                     "name": "vendor",
                     "test": /[\\/]node_modules[\\/](?!react*).*/,
@@ -76,10 +76,10 @@ module.exports = {
         "extensions": [".js", ".json", ".jsx", ".css", ".ts", ".tsx", ".vue"],
         "alias": {
             "handsontable": path.resolve(
-                "node_modules/handsontable/dist/handsontable.full.js",
+                "node_modules/handsontable/dist/handsontable.full.min.js",
             ),
             "handsontable.css": path.resolve(
-                "node_modules/handsontable/dist/handsontable.full.css",
+                "node_modules/handsontable/dist/handsontable.full.min.css",
             ),
             "react-stepzilla.css": path.resolve(
                 "node_modules/react-stepzilla/src/css/main.css",
@@ -105,11 +105,9 @@ module.exports = {
             },
             // define loader for fonts, etc
             {
-                "test": /\.(woff|woff2|eot|ttf|svg)$/,
-                "loader": "url-loader",
-                "options": {
-                    "limit": 8192,
-                },
+                "test": /\.(woff|woff2|ttf)$/i,
+                "type": "asset",
+                "dependency": { "not": ["url"] },
             },
         ],
         "noParse": [/handsontable\.full(\.min)?\.js/],

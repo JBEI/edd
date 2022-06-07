@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import classNames from "classnames";
-import Dropzone from "react-dropzone";
+import { default as Dropzone, FileRejection } from "react-dropzone";
 
 import * as StepBase from "./StepBase";
 import * as Step1 from "./Step1";
@@ -148,7 +148,7 @@ export class Step extends React.Component<Props, unknown> {
         return this.props.status !== null;
     }
 
-    private onDrop(accepted: File[], rejected: File[], event) {
+    private onDrop(accepted: File[], rejected: FileRejection[], event) {
         if (accepted.length) {
             this.props.onUpdate("step2", { "file": accepted[0], "parseSent": false });
         }
