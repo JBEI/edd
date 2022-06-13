@@ -273,17 +273,13 @@
     <div class="sectionActions">
       <form method="POST" class="comments edd-form">
         {% csrf_token %}
-        {{ new_comment.as_p }}
-        <p>
-          <button
-            class="btn btn-primary"
-            name="action"
-            type="submit"
-            value="comment"
-          >
+        <div class="form-group">
+          <label for="id_body">New Comment</label>
+          <textarea name="body" cols="40" rows="10" required="" id="id_body" class="form-control"></textarea>
+          <button class="btn btn-primary mt-3" name="action" type="submit" value="comment">
             {% translate 'Add Comment' %}
           </button>
-        </p>
+        </div>
       </form>
     </div>
   </div>

@@ -1081,6 +1081,17 @@ input[type="checkbox"].form-control {
     margin: 0;
     width: 100%;
 }
+form.comments {
+    margin-left: 1em;
+}
+form.comments label {
+    display: block;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+}
+form.comments button {
+    margin-top: 1em;
+}
 form.comments textarea {
     width: 50%;
 }
