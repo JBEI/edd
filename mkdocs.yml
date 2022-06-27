@@ -28,11 +28,16 @@ nav:
       - "Use Cases": Use_Cases.md
       - "User Stories": User_Stories.md
 theme:
+  highlightjs: false
   name: spacelab
   navigation_depth: 4
+extra_css:
+  - /css/pygments.css
 markdown_extensions:
   - admonition:
+  - attr_list:
   - pymdownx.highlight:
+      pygments_lang_class: true
   - pymdownx.inlinehilite:
   - pymdownx.superfences:
   - sane_lists:
