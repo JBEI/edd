@@ -51,8 +51,7 @@ Find information on using EDD under the User Guide menu, including
 The EDD is available under a [BSD 3-Clause License](License.md) and is actively
 developed. Find information on deploying your own EDD Site under the Admin
 Guide menu. Get the full source to EDD from the
-[GitHub repo](https://github.com/JBEI/edd) and Docker images from
-[Docker Hub](https://hub.docker.com/r/jbei/edd-core).
+[GitHub repo](https://github.com/JBEI/edd).
 
 ## Developing EDD
 
@@ -62,12 +61,17 @@ For running EDD in development, check the Development menu. See details on
 the repository, run:
 
 ```shell-session
-[user@host]$ ./bin/init-config offline --deploy=dev
+[user@host]$ ./bin/dev_quickstart.sh
+[user@host]$ ./bin/dev_build.sh
 [user@host]$ docker compose up -d
 ```
 
-This should start a deployment of EDD accessible only on your computer, via the
-URL [edd.lvh.me](http://edd.lvh.me/).
+This set of commands does a few things. First, it generates some configuration
+appropriate for a development version of EDD in the quickstart script; this
+only needs to run once. Next, the build script creates container images with
+all the dependencies for EDD. Finally, the last command launches Docker
+containers for all EDD services. This should start a deployment of EDD
+accessible only on your computer, via the URL [edd.lvh.me](http://edd.lvh.me/).
 
 ---
 
