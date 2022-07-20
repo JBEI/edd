@@ -27,6 +27,7 @@ class UserProfile(models.Model):
         db_table = "profile_user"
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    display_name = VarCharField(blank=True, null=True)
     initials = VarCharField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     institutions = models.ManyToManyField(Institution, through="InstitutionID")

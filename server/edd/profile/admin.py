@@ -4,10 +4,12 @@ import logging
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model, hashers
 from django.contrib.auth.admin import UserAdmin
+from django.forms.widgets import TextInput
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
+from edd.fields import VarCharField
 from edd.search.registry import StrainRegistry
 from edd.search.solr import UserSearch
 
@@ -22,25 +24,46 @@ class InstitutionInline(admin.TabularInline):
 
 
 class UserProfileAdmin(admin.ModelAdmin):
-    actions = ["disable_account_action", "enable_account_action"]
-    fields = ("user", "approved", "initials", "description", "preferences")
+    actions = (
+        "disable_account_action",
+        "enable_account_action",
+        "reset_display_name",
+    )
+    fields = (
+        "user",
+        "display_name",
+        "initials",
+        "approved",
+        "description",
+        "preferences",
+    )
+    formfield_overrides = {
+        VarCharField: {"widget": TextInput},
+    }
     inlines = (InstitutionInline,)
-    list_display = ("user", "approved", "initials")
+    list_display = ("user", "display_name", "initials", "approved")
+    list_filter = ("approved",)
+    search_fields = ("display_name", "initials", "description")
 
+    @admin.action(description=_("Disable selected accounts"))
     def disable_account_action(self, request, queryset):
         queryset.update(approved=False)
 
-    disable_account_action.short_description = _("Disable selected accounts")
-
+    @admin.action(description=_("Enable selected accounts"))
     def enable_account_action(self, request, queryset):
         queryset.update(approved=True)
-
-    enable_account_action.short_description = _("Enable selected accounts")
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
             return self.readonly_fields + ("user",)
         return self.readonly_fields
+
+    @admin.action(description=_("Reset display name to default"))
+    def reset_display_name(self, request, queryset):
+        for profile in queryset:
+            name = profile.user.get_full_name() or profile.user.username
+            profile.display_name = name
+            profile.save(update_fields=["display_name"])
 
 
 class InstitutionAdmin(admin.ModelAdmin):
@@ -64,7 +87,7 @@ class UserHasLocalLoginFilter(admin.SimpleListFilter):
 
 
 class EDDUserAdmin(UserAdmin):
-    """ Definition for admin-edit of user accounts """
+    """Definition for admin-edit of user accounts"""
 
     # actions is a list
     actions = UserAdmin.actions + [
