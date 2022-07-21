@@ -66,6 +66,14 @@ the repository, run:
 [user@host]$ docker compose up -d
 ```
 
+!!! note "`docker compose` and `docker-compose`"
+
+    The Docker Compose project has transitioned from a Python-based package to
+    a plugin to Docker. The older, Python command is `docker-compose`. This
+    documentation assumes use of the newer / better / faster Compose plugin
+    using `docker compose`. This is installed by default on Docker Desktop, and
+    can be [installed on Linux servers][7] without Docker Desktop.
+
 This set of commands does a few things. First, it generates some configuration
 appropriate for a development version of EDD in the quickstart script; this
 only needs to run once. Next, the build script creates container images with
@@ -81,3 +89,4 @@ accessible only on your computer, via the URL [edd.lvh.me](http://edd.lvh.me/).
 [4]: https://www.frontiersin.org/articles/10.3389/fbioe.2021.612893/full
 [5]: img/morrell_2017.png
 [6]: https://pubs.acs.org/doi/abs/10.1021/acssynbio.7b00204
+[7]: https://docs.docker.com/compose/install/compose-plugin/
