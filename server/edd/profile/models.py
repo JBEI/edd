@@ -96,7 +96,11 @@ class User(auth_models.AbstractUser):
         except UserProfile.DoesNotExist:
             first = (self.first_name or "")[:1]
             last = (self.last_name or "")[:1]
-            return UserProfile.objects.create(user=self, initials=f"{first}{last}")
+            return UserProfile.objects.create(
+                user=self,
+                display_name=self.get_full_name() or self.username,
+                initials=f"{first}{last}",
+            )
 
     def to_json(self, depth=0):
         return {
@@ -104,7 +108,7 @@ class User(auth_models.AbstractUser):
             "uid": self.username,
             "email": self.email,
             "initials": self.initials,
-            "name": self.get_full_name(),
+            "name": self.profile.display_name,
             "lastname": self.last_name,
             "firstname": self.first_name,
             "disabled": not self.is_active,
@@ -114,8 +118,7 @@ class User(auth_models.AbstractUser):
         return {
             "id": self.pk,
             "username": self.username,
-            # TODO add full name to profile, to override default first+[SPACE]+last
-            "fullname": self.get_full_name(),
+            "fullname": self.profile.display_name,
             "name": [self.first_name, self.last_name],
             "email": self.email,
             "initials": self.initials,

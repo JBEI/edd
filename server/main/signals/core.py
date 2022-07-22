@@ -142,7 +142,7 @@ def study_name_change_check(sender, instance, raw, using, **kwargs):
 @receiver(pre_save, sender=models.Study)
 def study_contact_extra(sender, instance, raw, using, **kwargs):
     if instance.contact_extra is None and instance.contact:
-        instance.contact_extra = instance.contact.get_full_name()
+        instance.contact_extra = instance.contact.profile.display_name
 
 
 @receiver(post_save, sender=models.Study)

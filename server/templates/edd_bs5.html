@@ -133,7 +133,7 @@
           </li>
           <li class="nav-item">
             <a class="nav-link" href="{% url 'profile:index' %}">
-              {% firstof user.get_full_name user.username %}
+              {% firstof user.profile.display_name user.username %}
             </a>
           </li>
           <li class="nav-item">

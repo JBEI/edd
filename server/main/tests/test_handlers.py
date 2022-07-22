@@ -72,8 +72,9 @@ def test_set_file_info_missing_mime():
     assert a.mime_type == "application/octet-stream"
 
 
+@pytest.mark.django_db
 def test_study_contact_extra_with_user():
-    contact = UserFactory.build()
+    contact = UserFactory()
     study = factory.StudyFactory.build(contact_extra=None, contact=contact)
     assert study.contact_extra is None
     core.study_contact_extra(models.Study, study, raw=False, using="default")

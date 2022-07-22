@@ -13,6 +13,13 @@ class UserFactory(factory.django.DjangoModelFactory):
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
 
+    @factory.post_generation
+    def profile(self, create, extracted, **kwargs):
+        if create:
+            self.save()
+            # force evaluation of profile attribute
+            self.profile
+
 
 class GroupFactory(factory.django.DjangoModelFactory):
     class Meta:

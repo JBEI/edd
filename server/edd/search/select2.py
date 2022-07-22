@@ -356,7 +356,7 @@ class Autocomplete:
                 "html": template.render({"user": user}),
                 "id": user.id,
                 "initials": user.initials,
-                "text": user.get_full_name(),
+                "text": user.profile.display_name,
                 "username": user.username,
             }
             for user in found[start:end]

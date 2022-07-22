@@ -107,7 +107,7 @@ class UserMixin(models.Model):
         return f"u:{self.user_id}"
 
     def get_who_label(self):
-        return self.user.get_full_name()
+        return self.user.profile.display_name
 
     def to_json(self):
         return {

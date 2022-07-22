@@ -63,7 +63,7 @@
             {{ edit_study.contact.errors }}
             <div class="editable-field editable-inline inactive" id="editable-study-contact">
               {% if study.contact %}
-                {% firstof study.contact.get_full_name study.contact.email as label %}
+                {% firstof study.contact.profile.display_name study.contact.email as label %}
                 <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
               {% elif study.contact_extra %}
                 {{ study.contact_extra }}
@@ -75,7 +75,7 @@
           {% else %}
             <div>
               {% if study.contact %}
-                {% firstof study.contact.get_full_name study.contact.email as label %}
+                {% firstof study.contact.profile.display_name study.contact.email as label %}
                 <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
               {% elif study.contact_extra %}
                 {{ study.contact_extra }}

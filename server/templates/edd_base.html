@@ -100,7 +100,7 @@
               </div>
             </li>
             <li>
-              <p class="navbar-text">{% firstof user.get_full_name user.username %}</p>
+              <p class="navbar-text">{% firstof user.profile.display_name user.username %}</p>
             </li>
             <li>
               <a href="{% url 'account_logout' %}">{% translate 'Logout' %}</a>
