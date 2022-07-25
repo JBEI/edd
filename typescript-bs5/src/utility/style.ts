@@ -7,5 +7,6 @@
  */
 
 import "bootstrap/dist/css/bootstrap.min.css";
+import "datatables.net-bs5/css/dataTables.bootstrap5.min.css";
 import "dropzone/dist/min/dropzone.min.css";
 import "handsontable.css";

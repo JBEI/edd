@@ -459,7 +459,10 @@ class StudySearch(SolrSearch):
         # Keeping the old signature to retain backward-compatibility
         if options is None:
             options = {}
-        return super().query(query=query, **options)
+        results = super().query(query=query, **options)
+        # Inject total Study count for datatables
+        results["response"]["numTotal"] = models.Study.objects.count()
+        return results
 
     def get_queryopt(self, query, **kwargs):
         queryopt = super().get_queryopt(query, **kwargs)
@@ -503,7 +506,7 @@ class StudyAdminSearch(StudySearch):
 
 
 class UserSearch(SolrSearch):
-    """ API to manage searching for users via Solr index """
+    """API to manage searching for users via Solr index"""
 
     def __init__(self, core="users", *args, **kwargs):
         super().__init__(core=core, *args, **kwargs)

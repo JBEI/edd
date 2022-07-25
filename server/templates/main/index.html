@@ -1,33 +1,74 @@
-{% extends "edd_base.html" %}
+{% extends "edd_bs5.html" %}
 {% load i18n %}
 {% load static %}
 
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'dist/index.js' %}"></script>
+  <script type="text/javascript" src="{% static 'bs5/index.js' %}"></script>
 {% endblock js_css %}
 
 
 {% block content %}
-  {% if can_create %}
-  <a
-    class="btn btn-primary btn-lg pull-right"
-    id="addStudyButton"
-    title="{% translate 'Add a new Study' %}"
-    href="{% url 'main:create_study' %}"
-  >
-    {% translate 'New Study' context 'button' %}
-  </a>
-  {% endif %}
-  <h2>{% translate 'Recently Viewed Studies:' context 'heading' %}</h2>
-  <div class="lastViewed" style="min-height: 30px;">
-    {% for study in latest_viewed_studies %}
-      <span><a href="{% url 'main:detail' slug=study.slug %}">{{ study.name }}</a></span>
-    {% endfor %}
+  <div class="container-fluid my-3 px-0">
+    <div class="row">
+      <div class="col-auto me-auto">
+        <h2>{% translate 'Recently Viewed Studies' context 'heading' %}</h2>
+      </div>
+      <div class="col-auto">
+        {% if can_create %}
+        <a
+          class="btn btn-primary btn-lg"
+          id="addStudyButton"
+          title="{% translate 'Add a new Study' %}"
+          href="{% url 'main:create_study' %}"
+        >
+          {% translate 'New Study' context 'button' %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        {% for study in latest_viewed_studies %}
+          <a
+            class="btn btn-outline-secondary"
+            href="{% url 'main:detail' slug=study.slug %}"
+          >{{ study.name }}</a>
+        {% endfor %}
+      </div>
+    </div>
   </div>
-
-  <h2>{% translate 'All Studies:' context 'heading' %}</h2>
-  <table id="studiesTable"></table>
+  <h2>{% translate 'All Studies' context 'heading' %}</h2>
+  <table
+    class="table table-hover table-striped"
+    data-i18n-aria-sort-ascending="{% translate ': activate to sort column ascending' %}"
+    data-i18n-aria-sort-descending="{% translate ': activate to sort column descending' %}"
+    data-i18n-empty-table="{% translate 'No Studies available to display.' %}"
+    data-i18n-info="{% translate 'Showing _START_ to _END_ of _TOTAL_ Studies' %}"
+    data-i18n-info-empty="{% translate 'Showing 0 to 0 of 0 Studies' %}"
+    data-i18n-info-filtered="{% translate '(filtered from _MAX_ total Studies)' %}"
+    data-i18n-length-menu="{% translate 'Display _MENU_' %}"
+    data-i18n-loading-records="{% translate 'Loading …' %}"
+    data-i18n-paginate-first="{% translate 'First' context 'pagination' %}"
+    data-i18n-paginate-last="{% translate 'Last' context 'pagination' %}"
+    data-i18n-paginate-next="{% translate 'Next' context 'pagination' %}"
+    data-i18n-paginate-previous="{% translate 'Previous' context 'pagination' %}"
+    data-i18n-processing="{% translate 'Processing …' %}"
+    data-i18n-search="{% translate 'Search' %}"
+    data-i18n-zero-records="{% translate 'No Studies matching search.' %}"
+    id="studiesTable"
+  >
+    <thead>
+      <tr>
+        <th>{% translate "Study Name" context "Study Table Heading" %}</th>
+        <th>{% translate "Description" context "Study Table Heading" %}</th>
+        <th>{% translate "Owner" context "Study Table Heading" %}</th>
+        <th>{% translate "Created" context "Study Table Heading" %}</th>
+        <th>{% translate "Last Modified" context "Study Table Heading" %}</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
 {% endblock content %}
