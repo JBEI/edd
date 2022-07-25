@@ -153,14 +153,9 @@ class ServiceComposer:
         self._prepare_filesystem()
         # create secret value for Django
         django_secret = password(63)
-        # pre-define core services
-        user = env("EDD_USER")
-        mail = env("EDD_EMAIL")
         # each using Django secret and name/mail env params
         for service_name in ("http", "websocket", "worker"):
             service = self.define(service_name)
-            service.write_env("EDD_USER", user)
-            service.write_env("EDD_EMAIL", mail)
             service.write_secret("SECRET_KEY", django_secret)
 
     def _prepare_filesystem(self):
@@ -458,12 +453,6 @@ def interactive(context):
 
     NOTE: This operation mode is not yet complete.
     """
-    name = env("EDD_USER", default=None)
-    if name is None:
-        name = input("Name of EDD Administrator: ")
-    mail = env("EDD_EMAIL", default=None)
-    if mail is None:
-        mail = input("Email of EDD Administrator: ")
     domain = env("EDD_DOMAIN", default=None)
     if domain is None:
         domain = input("Domain running EDD: ")

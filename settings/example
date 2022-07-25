@@ -24,12 +24,6 @@ except ImportError:
 
 root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
 
-# Override the default MANAGERS and ADMINS; each item is 2-tuple of name and email
-MANAGERS = ADMINS = (
-    # default to using environment values
-    (env("EDD_USER"), env("EDD_EMAIL")),
-)
-
 ALLOWED_HOSTS = ["*"]
 # Set the IPs where the Django debug toolbar will be available
 # use localhost IPv4 and IPv6
@@ -41,6 +35,16 @@ INTERNAL_IPS = ["127.0.0.1", "::1"]
 #     'allauth.socialaccount.providers.linkedin_oauth2',
 # )
 
+# Setup ADMINS and MANAGERS for this deployment
+# Each is a 2-tuple of Name and Email
+# ADMINS get emails by default on unhandled exceptions in request/response
+# see: https://docs.djangoproject.com/en/4.0/ref/settings/#admins
+# MANAGERS get emails on broken links when BrokenLinkEmailsMiddleware is enabled
+# see: https://docs.djangoproject.com/en/4.0/ref/settings/#managers
+ADMINS = MANAGERS = [
+    # Example:
+    # ("EDD Managers", "edd-managers@example.net"),
+]
 
 # Uncomment this block to work around offsite LDAP authentication problems
 # NOTE: this backend ignores passwords, and only validates that the user exists.

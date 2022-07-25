@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from openpyxl import Workbook
 
 from edd import TestCase
@@ -104,6 +105,7 @@ class EmailTests(TestCase):
         sent_email = mail.outbox[0]
         assert self.user.email in sent_email.to
 
+    @override_settings(ADMINS=[("Fake", "noreply@example.net")])
     def test_send_import_failure_email_admins(self):
         tasks.send_import_failure_email_admins(
             study_id=self.study.pk,
@@ -121,7 +123,8 @@ class EmailTests(TestCase):
 
     def test_send_wizard_failed_email(self):
         load = LoadRequest(
-            study_uuid=self.study.uuid, options=LoadRequest.options.email_when_complete,
+            study_uuid=self.study.uuid,
+            options=LoadRequest.options.email_when_complete,
         )
         load.store()
         tasks.send_wizard_failed_email(load.request, self.user.pk)
@@ -137,7 +140,8 @@ class EmailTests(TestCase):
 
     def test_send_wizard_paused_email(self):
         load = LoadRequest(
-            study_uuid=self.study.uuid, options=LoadRequest.options.email_when_complete,
+            study_uuid=self.study.uuid,
+            options=LoadRequest.options.email_when_complete,
         )
         load.store()
         tasks.send_wizard_paused_email(load.request, self.user.pk)
@@ -155,7 +159,8 @@ class EmailTests(TestCase):
         added = 13
         updated = 42
         load = LoadRequest(
-            study_uuid=self.study.uuid, options=LoadRequest.options.email_when_complete,
+            study_uuid=self.study.uuid,
+            options=LoadRequest.options.email_when_complete,
         )
         load.store()
         tasks.send_wizard_success_email(load.request, self.user.pk, added, updated)
@@ -189,7 +194,8 @@ class WizardParseTaskTests(TestCase):
 
     def setUp(self):
         self.load = LoadRequest(
-            protocol_uuid=self.protocol.uuid, study_uuid=self.study.uuid,
+            protocol_uuid=self.protocol.uuid,
+            study_uuid=self.study.uuid,
         )
         # storing the LoadRequest in backend will allow transitions
         self.load.store()

@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from django.core import mail
+from django.test import override_settings
 
 from edd import TestCase
 from edd.profile.factory import UserFactory
@@ -72,6 +73,7 @@ class EmailTests(TestCase):
         sent_email = mail.outbox[0]
         assert self.user.email in sent_email.to
 
+    @override_settings(ADMINS=[("Fake", "noreply@example.net")])
     def test_send_describe_failed_email_admin(self):
         tasks.send_describe_failed_email_admin(
             request=uuid4(),

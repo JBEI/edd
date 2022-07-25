@@ -22,20 +22,6 @@ elif [ $# -eq 0 ]; then
     echo "Available commands:"
     "${DOCKER}" run --rm "jbei/edd-config:${EDD_VERSION:-latest}" --complete
 else
-    # try loading EDD_EMAIL from git if missing
-    if [ ! "$EDD_EMAIL" ]; then
-        GIT_EMAIL="$("$GIT" config --get user.email)"
-        if [ "$GIT_EMAIL" ]; then
-            export EDD_EMAIL="$GIT_EMAIL"
-        fi
-    fi
-    # try loading EDD_USER from git if missing
-    if [ ! "$EDD_USER" ]; then
-        GIT_USER="$("$GIT" config --get user.name)"
-        if [ "$GIT_USER" ]; then
-            export EDD_USER="$GIT_USER"
-        fi
-    fi
     # sanity check logs
     if [ -d "${EDD_DIR}/log" ]; then
         OUT_LOG="${EDD_DIR}/log/config.log"
@@ -47,8 +33,6 @@ else
     container_id="$("${DOCKER}" create \
         --env EDD_DIR \
         --env EDD_DOMAIN \
-        --env EDD_EMAIL \
-        --env EDD_USER \
         "jbei/edd-config:${EDD_VERSION:-latest}" \
         "$@")"
     # run it and wait for completion

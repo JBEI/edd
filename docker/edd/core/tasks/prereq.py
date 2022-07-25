@@ -15,8 +15,6 @@ def environment(context):
     util.env("BROKER_URL")
     util.env("CACHE_URL")
     util.env("DATABASE_URL")
-    util.env("EDD_EMAIL")
-    util.env("EDD_USER")
 
 
 @invoke.task

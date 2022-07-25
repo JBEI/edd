@@ -37,14 +37,11 @@ will be configured to launch and proxy requests to the domain `edd.lvh.me`
 Non-development deployments will run using at least some of the options to
 `init-config`. For example, a deployment to https://edd.example.org/ might use:
 
-    export EDD_USER="EDD Team"
-    export EDD_EMAIL="edd-admins@example.org"
     ./bin/init-config offline --deploy='edd.example.org'
 
-Running the above would set up the Nginx container to handle HTTP requests for
-edd.example.org and auto-request a TLS certificate using the [Let's
-Encrypt][18] service, and configure an administrator named 'EDD Team' with the
-email 'edd-admins@example.org'.
+Running the above would set up the Nginx container to handle HTTP requests
+for edd.example.org and auto-request a TLS certificate using the [Let's
+Encrypt][18] service.
 
 ## Docker Abstractions
 

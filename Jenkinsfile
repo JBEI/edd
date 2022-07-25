@@ -89,8 +89,6 @@ try {
             // the local paths are within the agent container
             // NOT in the Docker host
             def init_script = $/#!/bin/bash -xe
-                export EDD_USER="Jenkins"
-                export EDD_EMAIL="${committer_email}"
                 export EDD_VERSION="${image_version}"
                 mkdir -p log
                 sudo -E bash -x bin/init-config offline --deploy=dev
