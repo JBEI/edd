@@ -1,18 +1,17 @@
 {% extends "account/base.html" %}
-
 {% load i18n %}
 
-{% block head_title %}{% translate "Sign Up Closed" %} &mdash; {{ block.super }}{% endblock %}
+{% block head_title %}
+{% translate "Sign Up Closed" %} &mdash; {{ block.super }}
+{% endblock %}
 
 {% block content %}
-    <div class="login_form">
-        <fieldset>
-            <legend>{% translate "Sign Up Closed" %}</legend>
-            <p>
-                {% blocktranslate %}
-                We are sorry, but the sign up is currently closed.
-                {% endblocktranslate %}
-            </p>
-        </fieldset>
-    </div>
+  <div class="centered-form">
+    <h1>{% translate "Sign Up Closed" %}</h1>
+    <p>
+      {% blocktranslate %}
+      We are sorry, but the sign up is currently closed.
+      {% endblocktranslate %}
+    </p>
+  </div>
 {% endblock content %}

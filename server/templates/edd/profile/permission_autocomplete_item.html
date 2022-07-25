@@ -1,0 +1,17 @@
+{% load i18n %}
+<div class="edd-permauto-item">
+  {% if item.type == "everyone" %}
+    <i class="fas fa-earth-americas"></i>
+    <span class="edd-permauto-name">{% translate "Any User" %}</span>
+  {% elif item.type == "group" %}
+    <i class="fas fa-users"></i>
+    <span class="edd-permauto-name">{{ item.text }}</span>
+  {% elif item.type == "user" %}
+    <i class="fas fa-user"></i>
+    <span class="edd-permauto-name">{{ item.text }}</span>
+    <span class="edd-permauto-alt text-muted">{{ item.backup }}</span>
+  {% else %}
+    <i class="fas fa-triangle-exclamation"></i>
+    <span class="edd-permauto-name">{% translate "Unknown Record" %}</span>
+  {% endif %}
+</div>

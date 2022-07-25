@@ -1,25 +1,18 @@
 {% extends "account/base.html" %}
-
 {% load i18n %}
-{% load static %}
 
-{% block head_title %}{% translate "Verify Your E-mail Address" %} &mdash; {{ block.super }}{% endblock %}
-
-{% block body_title %}
-    {% translate "Verification Sent" %}
-{% endblock body_title %}
-
-{% block js_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
-{% endblock js_css %}
+{% block head_title %}
+{% translate "Verify Your E-mail Address" %} &mdash; {{ block.super }}
+{% endblock %}
 
 {% block content %}
-    <div class="login_form">
-        <p>
-            {% blocktranslate %}
-            We have sent an e-mail to you for verification. Follow the link provided to finalize
-            the signup process. Please contact us if you do not receive it within a few minutes.
-            {% endblocktranslate %}
-        </p>
-    </div>
+  <div class="centered-form">
+    <h1>{% translate "Verification Sent" %}</h1>
+    <p>
+      {% blocktranslate %}
+      We have sent an e-mail to you for verification. Follow the link provided to finalize
+      the signup process. Please contact us if you do not receive it within a few minutes.
+      {% endblocktranslate %}
+    </p>
+  </div>
 {% endblock content %}

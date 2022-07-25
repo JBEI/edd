@@ -1,0 +1,68 @@
+/* details/summary elements */
+summary.pageDivider > span {
+    cursor: pointer;
+}
+summary:focus span {
+    color: #337ab7;
+    text-decoration: underline;
+}
+summary:hover span {
+    color: #286090;
+    text-decoration: underline;
+}
+summary:focus::marker {
+    color: #337ab7;
+}
+summary:hover::marker {
+    color: #286090;
+}
+
+/* navigation bar across top of each page */
+body > .navbar {
+    margin-bottom: inherit;
+}
+.navbar-brand {
+    padding: 0 !important;
+}
+.navbar-brand > img.eddLogo,
+.navbar-brand > img.companyLogo {
+    display: inline-block;
+    height: 2.8em;
+    width: auto;
+}
+.navbar-default .navbar-text,
+.navbar-default .navbar-nav > li > a {
+    color: #727272;
+}
+.navbar .navbar-collapse {
+    text-align: center;
+}
+#notification-list {
+    width: 30em;
+}
+#notification-list ul {
+    list-style: none outside;
+}
+
+/* skiplink for keyboard users */
+.skip-to-content-link {
+    position: absolute;
+    left: 0;
+    top: -4rem;
+    transition: top 1s ease-out;
+    padding: 1rem;
+    background: white;
+    font-size: 1.2rem;
+    z-index: 2000;
+    display: inline-block;
+}
+.skip-to-content-link:focus {
+    top: 0;
+    transition: 0.1s ease-in;
+}
+
+/* centered forms */
+.centered-form {
+    margin: 3rem auto;
+    max-width: 540px;
+}

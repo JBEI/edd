@@ -1,14 +1,11 @@
 {% extends "account/base.html" %}
-
 {% load i18n %}
 
 {% block head_title %}{% translate "Account Inactive" %} &mdash; {{ block.super }}{% endblock %}
 
 {% block content %}
-    <div class="login_form">
-        <fieldset>
-            <legend>{% translate "Account Inactive" %}</legend>
-            <p>{% translate "This account is inactive." %}</p>
-        </fieldset>
-    </div>
+  <div class="centered-form">
+    <h1>{% translate "Account Inactive" %}</h1>
+    <p>{% translate "This account is inactive." %}</p>
+  </div>
 {% endblock content %}

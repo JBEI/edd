@@ -1,6 +1,3 @@
-/**
- * Created by tlopez on 6/13/17.
- */
 /* eslint @typescript-eslint/no-var-requires: off */
 // NOTE: to get a path relative to package.json, use path.resolve("node_modules")
 //  to get a path relative to webpack.config.js, use path.resolve(__dirname, "rel/path")
@@ -23,41 +20,17 @@ const css_extract = new MiniCssExtractPlugin({
 
 module.exports = {
     "entry": {
-        "Admin": path.resolve(__dirname, "./src/Admin.ts"),
-        "Campaign": path.resolve(__dirname, "./src/Campaign.ts"),
-        "CampaignIndex": path.resolve(__dirname, "./src/Campaign-Index.ts"),
-        "Common": [
-            path.resolve("node_modules/bootstrap/dist/js/bootstrap"),
-            path.resolve("node_modules/bootstrap/dist/css/bootstrap.min.css"),
+        "common": [
             path.resolve("node_modules/@fortawesome/fontawesome-free/js/all.min.js"),
             path.resolve("node_modules/@fortawesome/fontawesome-free/css/all.min.css"),
-            path.resolve(__dirname, "./src/Common.ts"),
+            path.resolve(__dirname, "./src/common.ts"),
         ],
-        "ExperimentDescHelp": path.resolve(__dirname, "./src/Experiment-Desc-Help.ts"),
-        "Export": path.resolve(__dirname, "./src/Export.ts"),
-        "Import": path.resolve(__dirname, "./src/Import.ts"),
-        "index": path.resolve(__dirname, "./src/index.ts"),
-        "LoadWizard": [
-            "react",
-            "react-dom",
-            "react-dropzone",
-            "react-stepzilla",
-            "react-stepzilla.css",
-            path.resolve(__dirname, "./src/LoadWizard.tsx"),
-        ],
-        "StudyData": path.resolve(__dirname, "./src/Study-Data.ts"),
-        "StudyLines": path.resolve(__dirname, "./src/Study-Lines.ts"),
-        "StudyLinesAddCombos": path.resolve(
-            __dirname,
-            "./src/Study-Lines-Add-Combos.ts",
-        ),
-        "StudyOverview": path.resolve(__dirname, "./src/Study-Overview.ts"),
-        "WizardHelp": path.resolve(__dirname, "./src/WizardHelp.ts"),
+        "login": path.resolve(__dirname, "./src/login.ts"),
     },
     "output": {
         "filename": "[name].js",
         "path": path.resolve("dist"),
-        "publicPath": "/static/dist/",
+        "publicPath": "/static/bs5/",
     },
     "optimization": {
         "splitChunks": {
@@ -71,7 +44,7 @@ module.exports = {
         },
     },
     "resolve": {
-        "modules": [path.resolve("node_modules"), path.resolve(__dirname, "modules")],
+        "modules": [path.resolve("node_modules")],
         "extensions": [".js", ".json", ".jsx", ".css", ".ts", ".tsx", ".vue"],
         "alias": {
             "handsontable": path.resolve(

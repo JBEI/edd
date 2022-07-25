@@ -5,10 +5,12 @@ from unittest.mock import patch
 
 import pytest
 from django.test import override_settings
+from django.urls import reverse
 from faker import Faker
+from requests import codes
 
 from edd import TestCase
-from edd.profile.factory import UserFactory
+from edd.profile import factory as profile_factory
 from main import models
 from main.tests import factory
 
@@ -146,7 +148,7 @@ def test_StudySearch_acl_none():
 
 def test_StudySearch_acl_admin():
     # superusers should get no restrictions
-    admin = UserFactory.build(is_superuser=True)
+    admin = profile_factory.UserFactory.build(is_superuser=True)
     search = solr.StudySearch(ident=admin)
     read, write = search.build_acl_filter()
     assert read == ""
@@ -160,7 +162,7 @@ class SolrTests(TestCase):
     def setUpClass(cls):
         # doing this as classmethod to avoid doing multiple collection creations
         super().setUpClass()
-        cls.admin = UserFactory.build(is_superuser=True)
+        cls.admin = profile_factory.UserFactory.build(is_superuser=True)
         cls.collection = solr.StudySearch(ident=cls.admin)
         # create a new collection, instead of sending to main collection
         cls.collection.create_collection()
@@ -180,7 +182,7 @@ class SolrTests(TestCase):
         )
 
     def test_acl(self):
-        user = UserFactory()
+        user = profile_factory.UserFactory()
         # patch the normal user to the collection ident
         self.collection.ident = user
         # verify the ACLs
@@ -226,7 +228,7 @@ def test_solr_removed_type_forwards():
 
 
 def test_solr_removed_user_without_key():
-    user = UserFactory.build()
+    user = profile_factory.UserFactory.build()
     with patch("main.signals.user_removed") as signal:
         # no forward if cache_deleting_key is not called first
         signals.removed_type(type(user), user, using="default")
@@ -234,9 +236,177 @@ def test_solr_removed_user_without_key():
 
 
 def test_solr_removed_user_forwards():
-    user = UserFactory.build()
+    user = profile_factory.UserFactory.build()
     with patch("main.signals.user_removed") as signal:
         # forward happens when cache_deleting_key is called
         signals.cache_deleting_key(type(user), user)
         signals.removed_user(type(user), user, using="default")
         signal.send.assert_called_once()
+
+
+class Select2Tests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = profile_factory.UserFactory()
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_bad_model_via_path(self):
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "BADMODEL"}),
+        )
+        assert response.status_code == codes.bad_request
+
+    def test_bad_model_via_query(self):
+        response = self.client.get(
+            reverse("search:autocomplete"),
+            data={"model": "BADMODEL"},
+        )
+        assert response.status_code == codes.bad_request
+
+    def test_autocomplete_own_user(self):
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "User"}),
+            data={"term": self.user.username},
+        )
+        assert response.status_code == codes.ok
+        self.assertTemplateUsed("edd/profile/user_autocomplete_item.html")
+        results = response.json()["results"]
+        assert any(item["id"] == self.user.id for item in results)
+
+    def test_autocomplete_own_user_for_permissions(self):
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Permission"}),
+            data={"term": self.user.username},
+        )
+        assert response.status_code == codes.ok
+        self.assertTemplateUsed("edd/profile/permission_autocomplete_item.html")
+        results = response.json()["results"]
+        assert any(self.user.username in item["html"] for item in results)
+
+    def test_autocomplete_compartment(self):
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Compartment"}),
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        # should always return the "N/A" compartment
+        assert any(item["id"] == "0" for item in results)
+
+    def test_autocomplete_gene(self):
+        gene = factory.GeneFactory()
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Gene"}),
+            data={"term": gene.type_name},
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        assert any(item["id"] == gene.id for item in results)
+
+    def test_autocomplete_group(self):
+        group = profile_factory.GroupFactory()
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Group"}),
+            data={"term": group.name},
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        assert any(item["id"] == group.id for item in results)
+
+    def test_autocomplete_metabolite(self):
+        metabolite = factory.MetaboliteFactory()
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Metabolite"}),
+            data={"term": metabolite.type_name},
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        assert any(item["id"] == metabolite.id for item in results)
+
+    def test_autocomplete_metabolite_via_smiles(self):
+        term = "CCCCO"
+        metabolite = factory.MetaboliteFactory(smiles=term)
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Metabolite"}),
+            data={"term": term},
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        assert any(item["id"] == metabolite.id for item in results)
+
+    def test_autocomplete_assay_metadata(self):
+        meta = factory.MetadataTypeFactory(for_context=models.MetadataType.ASSAY)
+        basic_response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "MetadataType"}),
+            data={"term": meta.type_name},
+        )
+        typed_responses = [
+            self.client.get(
+                reverse("search:acmodel", kwargs={"model": "MetadataType"}),
+                data={"term": meta.type_name, "type": search_type},
+            )
+            for search_type in ("Assay", "AssayForm", "AssayLine")
+        ]
+        assert basic_response.status_code == codes.ok
+        assert all(r.status_code == codes.ok for r in typed_responses)
+        results = basic_response.json()["results"]
+        assert any(item["id"] == meta.id for item in results)
+        assert all(
+            any(item["id"] == meta.id for item in r.json()["results"])
+            for r in typed_responses
+        )
+
+    def test_autocomplete_line_metadata(self):
+        meta = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
+        basic_response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "MetadataType"}),
+            data={"term": meta.type_name},
+        )
+        typed_responses = [
+            self.client.get(
+                reverse("search:acmodel", kwargs={"model": "MetadataType"}),
+                data={"term": meta.type_name, "type": search_type},
+            )
+            for search_type in ("Line", "LineForm", "AssayLine")
+        ]
+        assert basic_response.status_code == codes.ok
+        assert all(r.status_code == codes.ok for r in typed_responses)
+        results = basic_response.json()["results"]
+        assert any(item["id"] == meta.id for item in results)
+        assert all(
+            any(item["id"] == meta.id for item in r.json()["results"])
+            for r in typed_responses
+        )
+
+    def test_autocomplete_protein(self):
+        protein = factory.ProteinFactory()
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Protein"}),
+            data={"term": protein.type_name},
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        assert any(item["id"] == protein.id for item in results)
+
+    def test_autocomplete_protocol(self):
+        protocol = factory.ProtocolFactory()
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Protocol"}),
+            data={"term": protocol.name},
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        assert any(item["id"] == protocol.id for item in results)
+
+    def test_autocomplete_unit(self):
+        unit = factory.UnitFactory()
+        response = self.client.get(
+            reverse("search:acmodel", kwargs={"model": "Unit"}),
+            data={"term": unit.unit_name},
+        )
+        assert response.status_code == codes.ok
+        results = response.json()["results"]
+        assert any(item["id"] == unit.id for item in results)

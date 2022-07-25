@@ -8,11 +8,12 @@ import re
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.urls import reverse
+from django.views import View
 from requests import codes
 
 from edd import utilities
 
-from . import autocomplete
+from . import autocomplete, select2
 from .solr import StudySearch
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # /study/search/
 def study_search(request):
-    """ View function handles incoming requests to search solr """
+    """View function handles incoming requests to search solr"""
     # TODO: uncovered code
     solr = StudySearch(ident=request.user)
     query = request.GET.get("q", "active:true")
@@ -80,3 +81,19 @@ def model_search(request, model_name):
     except ValidationError as v:
         return JsonResponse(str(v), status=codes.bad_request)
     # END uncovered
+
+
+# /auto/<model>/ OR /auto/?model=<model>
+class AutocompleteView(View):
+    """
+    Implementation of a model-independent server-side autocomplete backend for
+    the select2 library.
+    """
+
+    def get(self, request, *args, **kwargs):
+        try:
+            model = self.kwargs.get("model", None) or request.GET.get("model", None)
+            auto = select2.Autocomplete(model)
+            return JsonResponse(auto.search(request))
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=codes.bad_request)

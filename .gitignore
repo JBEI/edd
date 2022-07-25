@@ -28,9 +28,11 @@ settings/*
 **/log
 
 # ignore typescript generated files in mounted code folders
+**/main/static/bs5
 **/main/static/dist
 typescript/modules/**/*.d.ts
 typescript/src/**/*.d.ts
+typescript-bs5/src/**/*.d.ts
 
 # ignore mkdocs generated files
 site

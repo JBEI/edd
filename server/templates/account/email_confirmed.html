@@ -1,21 +1,19 @@
 {% extends "account/base.html" %}
+{% load account i18n %}
 
-{% load i18n %}
-{% load account %}
-
-{% block head_title %}{% translate "Confirm E-mail Address" %} &mdash; {{ block.super }}{% endblock %}
+{% block head_title %}
+{% translate "Confirm E-mail Address" %} &mdash; {{ block.super }}
+{% endblock %}
 
 {% block content %}
-    <div class="login_form">
-        <fieldset>
-            <legend>{% translate "Confirm E-mail Address" %}</legend>
-            {% user_display confirmation.email_address.user as user_display %}
-            <p>
-                {% blocktranslate with confirmation.email_address.email as email %}
-                You have confirmed that <a href="mailto:{{email}}">{{ email }}</a> is an e-mail
-                address for user {{ user_display }}.
-                {% endblocktranslate %}
-            </p>
-        </fieldset>
-    </div>
+  <div class="centered-form">
+    <h1>{% translate "Confirm E-mail Address" %}</h1>
+    {% user_display confirmation.email_address.user as user_display %}
+    <p>
+      {% blocktranslate with confirmation.email_address.email as email %}
+      You have confirmed that <a href="mailto:{{email}}">{{ email }}</a> is an e-mail
+      address for user {{ user_display }}.
+      {% endblocktranslate %}
+    </p>
+  </div>
 {% endblock content %}

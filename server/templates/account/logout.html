@@ -1,6 +1,5 @@
-{% extends "edd_base.html" %}
-{% load i18n %}
-{% load static %}
+{% extends "account/base.html" %}
+{% load i18n static %}
 
 {% block head_title %}
 {% translate "Sign Out" %} &mdash; {{ block.super }}
@@ -10,19 +9,25 @@
   {% translate 'Sign Out' %}
 {% endblock body_title %}
 
-{% block js_css %}
-  {{ block.super }}
-  <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
-{% endblock js_css %}
-
 
 {% block content %}
-  <form class="login_form" method="post" action="{% url 'account_logout' %}">
+  <form
+    action="{% url 'account_logout' %}"
+    class="centered-form"
+    method="POST"
+  >
     {% csrf_token %}
     <p>{% translate 'Are you sure you want to sign out?' %}</p>
     {% if redirect_field_value %}
-      <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+      <input
+        name="{{ redirect_field_name }}"
+        type="hidden"
+        value="{{ redirect_field_value }}"
+      />
     {% endif %}
-    <button type="submit">{% translate 'Sign Out' %}</button>
+    <button
+      class="btn btn-lg btn-primary"
+      type="submit"
+    >{% translate 'Sign Out' %}</button>
   </form>
 {% endblock content %}

@@ -20,6 +20,22 @@ CMD ["/bin/zsh"]
 
 # ---
 
+FROM node:lts-alpine as edd-node-bs5
+
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
+
+COPY ./docker/edd/core/package.bs5.json /run/package.json
+
+WORKDIR /run/
+
+RUN apk add --no-cache zsh \
+ && yarn install --non-interactive --ignore-optional \
+ && yarn cache clean
+
+CMD ["/bin/zsh"]
+
+# ---
+
 FROM library/python:3.10-slim-bullseye as pybase
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
@@ -115,6 +131,16 @@ RUN ls -al && yarn build
 
 # ---
 
+FROM edd-node-bs5 as typescript-bs5
+
+WORKDIR /run/
+COPY ./typescript-bs5 ./.prettierrc.js /run/
+
+# build & test the TypeScript code
+RUN ls -al && yarn build
+
+# ---
+
 FROM ${TARGET}-preinstall as configure
 
 WORKDIR /tmp/
@@ -159,6 +185,7 @@ COPY --from=staticfiles /usr/local/edd /usr/local/edd
 # Copy in static assets
 COPY --from=staticfiles /usr/local/edd-static /usr/local/edd-static
 COPY --from=typescript /run/dist /usr/local/edd-static/dist
+COPY --from=typescript-bs5 /run/dist /usr/local/edd-static/bs5
 # Copy in commit hash from configure image
 COPY --from=configure /tmp/edd.hash /edd.hash
 

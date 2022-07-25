@@ -1,5 +1,6 @@
 import json
 import logging
+from functools import partial
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -123,26 +124,26 @@ class StrainRegistry:
 
     def search(self, term):
         self._check_session()
-
-        def search_api(start):
-            response = self.session.post(
-                self._rest("search"),
-                data=json.dumps(
-                    {
-                        "parameters": {"start": start, "sortField": "RELEVANCE"},
-                        "queryString": term,
-                    }
-                ),
-                headers={"Content-Type": "application/json; charset=utf8"},
-            )
-            response.raise_for_status()
-            raw_results = response.json()["results"]
-            return [Entry(self, item["entryInfo"]) for item in raw_results]
-
         try:
-            yield from self._yield_paged_records(search_api)
+            yield from self._yield_paged_records(partial(self.search_page, term))
         except Exception as e:
             raise RegistryError(f"Could not search Registry for {term}") from e
+
+    def search_page(self, term, start):
+        self._check_session()
+        response = self.session.post(
+            self._rest("search"),
+            data=json.dumps(
+                {
+                    "parameters": {"start": start, "sortField": "RELEVANCE"},
+                    "queryString": term,
+                }
+            ),
+            headers={"Content-Type": "application/json; charset=utf8"},
+        )
+        response.raise_for_status()
+        raw_results = response.json()["results"]
+        return [Entry(self, item["entryInfo"]) for item in raw_results]
 
     @property
     def base_url(self):
