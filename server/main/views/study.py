@@ -32,7 +32,7 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
     model = edd_models.Study
 
     def get_object(self, queryset=None):
-        """ Overrides the base method to curry if there is no filtering queryset. """
+        """Overrides the base method to curry if there is no filtering queryset."""
         # already looked up object and no filter needed, return previous object
         if hasattr(self, "_detail_object") and queryset is None:
             return self._detail_object
@@ -98,7 +98,7 @@ class StudyIndexView(StudyCreateView):
 
 
 class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
-    """ Study details page, displays line/assay data. """
+    """Study details page, displays line/assay data."""
 
     template_name = "main/study-overview.html"
 
@@ -172,7 +172,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
         return True
 
     def handle_unknown(self, request, context, *args, **kwargs):
-        """ Default fallback action handler, displays an error message. """
+        """Default fallback action handler, displays an error message."""
         messages.error(
             request,
             _("Unknown action, or you do not have permission to modify this study."),
@@ -259,7 +259,8 @@ class StudyAttachmentView(generic.DetailView):
 
     def get(self, request, *args, **kwargs):
         model = self.object = self.get_object()
-        response = HttpResponse(model.file.read(), content_type=model.mime_type)
+        with model.file.open():
+            response = HttpResponse(model.file.read(), content_type=model.mime_type)
         response["Content-Disposition"] = f'attachment; filename="{model.filename}"'
         return response
 
@@ -271,6 +272,9 @@ class StudyAttachmentView(generic.DetailView):
         study = studyview.get_object()
         if "delete" == action:
             name = instance.filename
+            # remove from storage
+            instance.file.delete(False)
+            # remove the database record
             instance.delete()
             messages.success(request, _("Deleted attachment {name}.").format(name=name))
             return HttpResponseRedirect(
@@ -343,7 +347,7 @@ class StudyOverviewView(StudyDetailBaseView):
 
 
 class StudyLinesView(StudyDetailBaseView):
-    """ Study details displays line data. """
+    """Study details displays line data."""
 
     template_name = "main/study-lines.html"
 
@@ -425,7 +429,7 @@ class StudyLinesView(StudyDetailBaseView):
         return self.handle_enable_disable(request, True, **kwargs)
 
     def handle_delete_line(self, request, context, *args, **kwargs):
-        """ Sends to a view to confirm deletion. """
+        """Sends to a view to confirm deletion."""
         self.check_write_permission(request)
         return StudyDeleteView.as_view()
 
@@ -558,7 +562,7 @@ class StudyLinesView(StudyDetailBaseView):
 
 
 class StudyDetailView(StudyDetailBaseView):
-    """ Study details page, displays graph/assay data. """
+    """Study details page, displays graph/assay data."""
 
     template_name = "main/study-data.html"
 
@@ -583,7 +587,8 @@ class StudyDetailView(StudyDetailBaseView):
             showingdata=True,
             # pass along link to get/set personal setting on last view for study
             settinglink=reverse(
-                "profile:settings_key", kwargs={"key": f"measurement-{study.id}"},
+                "profile:settings_key",
+                kwargs={"key": f"measurement-{study.id}"},
             ),
             writable=self.get_object().user_can_write(self.request.user),
         )
@@ -743,12 +748,12 @@ class StudyDetailView(StudyDetailBaseView):
 
 
 class StudyDeleteView(StudyLinesView):
-    """ Confirmation view for deleting objects from a Study. """
+    """Confirmation view for deleting objects from a Study."""
 
     template_name = "main/confirm_delete.html"
 
     def get_actions(self):
-        """ Return a dict mapping action names to functions performing the action. """
+        """Return a dict mapping action names to functions performing the action."""
         action_lookup = collections.defaultdict(lambda: self.handle_unknown)
         action_lookup.update(
             disable=self.handle_line_delete,
