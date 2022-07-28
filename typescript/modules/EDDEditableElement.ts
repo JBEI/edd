@@ -433,9 +433,9 @@ export class EditableElement {
         return false;
     }
 
-    // Handle special keys like enter and escape.
+    // Handle special keys like escape.
     // We're doing it this way because we only ever want one
-    // EditableElement responding to an ESC or an Enter at a time,
+    // EditableElement responding to an ESC at a time,
     // and this is actually less messy than attaching a generic
     // event handler to the document and then ferreting out the
     // intended object from the DOM.
@@ -447,17 +447,10 @@ export class EditableElement {
                 this.cancelEditing();
             }
         });
-        $(this.inputElement).on("keydown", (event: JQuery.KeyDownEvent) => {
-            if (event.which === 13) {
-                this.beginEditCommit();
-                return false;
-            }
-        });
     }
 
     protected removeKeyHandler(): void {
         $(document).off("keydown");
-        $(this.inputElement).off("keydown");
     }
 
     private appendTo(el: Element): EditableElement {
