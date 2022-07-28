@@ -1,9 +1,3 @@
-import tinymce from "tinymce/tinymce";
-
-import "tinymce/icons/default";
-import "tinymce/plugins/link";
-import "tinymce/themes/silver";
-
 import * as EDDAuto from "./EDDAutocomplete";
 import * as Utl from "./Utl";
 
@@ -256,14 +250,6 @@ export class EditableElement {
         this.clearElementForEditing();
         this.element.appendChild(this.inputElement);
         $(this.inputElement).show();
-        if (typeof tinymce !== "undefined" && this.inputElement.type === "textarea") {
-            tinymce.init({
-                "content_css": false,
-                "plugins": "link",
-                "selector": ".active textarea",
-                "skin": false,
-            });
-        }
 
         // Remember what we're editing in case they cancel or move to another element
         EditableElement._prevEditableElement = this;
@@ -388,9 +374,6 @@ export class EditableElement {
     // Subclass this if your need a different submit behavior after the UI is set up.
     protected commit(): void {
         const payload = {};
-        if (typeof tinymce !== "undefined") {
-            tinymce.triggerSave();
-        }
         payload[this.fieldName()] = this.getEditedValue();
         $.ajax({
             "url": this.formURL(),
@@ -436,9 +419,6 @@ export class EditableElement {
 
     private clickToCancelHandler(): boolean {
         if (this.inputElement.type === "textarea") {
-            if (typeof tinymce !== "undefined") {
-                tinymce.remove();
-            }
             const value: any = this.inputElement.value;
             this.cancelEditing();
             if (value) {

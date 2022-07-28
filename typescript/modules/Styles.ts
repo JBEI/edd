@@ -5,5 +5,3 @@
 import "dropzone/dist/min/dropzone.min.css";
 import "handsontable.css";
 import "jquery-ui/themes/base/all.css";
-import "tinymce/skins/ui/oxide/content.min.css";
-import "tinymce/skins/ui/oxide/skin.min.css";
