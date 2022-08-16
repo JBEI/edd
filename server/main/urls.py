@@ -10,20 +10,52 @@ app_name = "main"
 #   the two URL paths for study below. Because this list is included twice, there should be no
 #   URL with the name kwarg here, as that will result in conflicts looking up URLs by name.
 study_url_patterns = [
-    path("", login_required(views.StudyDetailView.as_view()), name="detail"),
     path(
-        "overview/", login_required(views.StudyOverviewView.as_view()), name="overview"
+        "",
+        login_required(views.StudyDetailView.as_view()),
+        name="detail",
     ),
-    path("description/", login_required(views.StudyLinesView.as_view()), name="lines"),
-    path("describe/", include("edd.describe.urls", namespace="describe")),
-    path("load/", include("edd.load.urls", namespace="load")),
+    path(
+        "overview/",
+        login_required(views.StudyOverviewView.as_view()),
+        name="overview",
+    ),
+    path(
+        "description/",
+        login_required(views.StudyLinesView.as_view()),
+        name="lines",
+    ),
+    path(
+        "describe/",
+        include("edd.describe.urls", namespace="describe"),
+    ),
+    path(
+        "load/",
+        include("edd.load.urls", namespace="load"),
+    ),
     # kept verbose name of description for link backward-compatibility
-    path("experiment-description/", login_required(views.StudyLinesView.as_view())),
+    # no longer generating URLs like this, so no `name` kwarg
+    path(
+        "experiment-description/",
+        login_required(views.StudyLinesView.as_view()),
+    ),
     # deprecating these *data/ URLs in favor of access/ and REST API links
-    path("assaydata/", login_required(views.study_assay_table_data), name="assaydata"),
-    path("edddata/", login_required(views.study_edddata), name="edddata"),
+    path(
+        "assaydata/",
+        login_required(views.study_assay_table_data),
+        name="assaydata",
+    ),
+    path(
+        "edddata/",
+        login_required(views.study_edddata),
+        name="edddata",
+    ),
     # end deprecated section, access/ definition here
-    path("access/", login_required(views.study_access), name="access"),
+    path(
+        "access/",
+        login_required(views.study_access),
+        name="access",
+    ),
     path(
         "permissions/",
         login_required(views.StudyPermissionJSONView.as_view()),
@@ -52,14 +84,26 @@ study_url_patterns = [
 
 urlpatterns = [
     # "homepage" URLs
-    path("", login_required(views.StudyIndexView.as_view()), name="index"),
     path(
-        "study/", login_required(views.StudyCreateView.as_view()), name="create_study"
+        "",
+        login_required(views.StudyIndexView.as_view()),
+        name="index",
+    ),
+    path(
+        "study/",
+        login_required(views.StudyCreateView.as_view()),
+        name="create_study",
     ),
     # Individual study-specific pages loaded by primary key
     # reverse('main:edd-pk:overview', kwargs={'pk': pk})
-    path("study/<int:pk>/", include((study_url_patterns, "edd-pk"))),
+    path(
+        "study/<int:pk>/",
+        include((study_url_patterns, "edd-pk")),
+    ),
     # Individual study-specific pages loaded by slug
     # reverse('main:overview', kwargs={'slug': slug})
-    path("s/<slug:slug>/", include(study_url_patterns)),
+    path(
+        "s/<slug:slug>/",
+        include(study_url_patterns),
+    ),
 ]
