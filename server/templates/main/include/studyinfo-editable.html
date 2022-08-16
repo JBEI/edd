@@ -1,0 +1,35 @@
+{% load i18n %}
+<form
+  action="{% url 'main:modify_study' slug=study.slug %}"
+  {% if edit_study.errors %}class="was-validated"{% endif %}
+  id="edd-studyinfo-form"
+  method="POST"
+  data-action-inline="{% url 'main:modify_study_ajax' slug=study.slug %}"
+>
+  {% csrf_token %}
+  {{ edit_study }}
+  <button
+    class="btn btn-primary"
+    id="edd-studyinfo-update"
+    type="submit"
+  >
+    <i class="fas fa-check"></i>
+    {% translate "Update Study" %}
+  </button>
+  <button
+    class="btn btn-primary d-none"
+    id="edd-studyinfo-saving"
+    type="button"
+  >
+    <span aria-hidden="true" class="spinner-border spinner-border-sm" role="status"></span>
+    {% translate "Saving Study" %}
+  </button>
+  <button
+    class="btn btn-outline-secondary"
+    id="edd-studyinfo-cancel"
+    type="reset"
+  >
+    <i class="fas fa-xmark"></i>
+    {% translate "Cancel" %}
+  </button>
+</form>

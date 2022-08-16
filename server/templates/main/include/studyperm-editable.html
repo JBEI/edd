@@ -1,0 +1,35 @@
+{% load i18n %}
+<form
+  action="{% url 'main:permission' slug=study.slug %}"
+  {% if permission_form.errors %}class="was-validated"{% endif %}
+  id="edd-studyperm-form"
+  method="POST"
+  data-action-inline="{% url 'main:permission_ajax' slug=study.slug %}"
+>
+  {% csrf_token %}
+  {{ permission_form }}
+  <button
+    class="btn btn-primary"
+    id="edd-studyperm-update"
+    type="submit"
+  >
+    <i class="fas fa-unlock"></i>
+    {% translate "Set Access" %}
+  </button>
+  <button
+    class="btn btn-primary d-none"
+    id="edd-studyperm-saving"
+    type="button"
+  >
+    <span aria-hidden="true" class="spinner-border spinner-border-sm" role="status"></span>
+    {% translate "Updating Access" %}
+  </button>
+  <button
+    class="btn btn-outline-secondary"
+    id="edd-studyperm-cancel"
+    type="reset"
+  >
+    <i class="fas fa-xmark"></i>
+    {% translate "Cancel" %}
+  </button>
+</form>

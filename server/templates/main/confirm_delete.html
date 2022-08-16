@@ -3,20 +3,16 @@
 {% load i18n %}
 
 {% comment %}
-This file works as a generic deletion confirm page. As it extends main/study.html, it makes use of
-  all the context variables used in that file:
-    - messages: the Django messages framework message list
-    - study: a Django model for Study, a main.models.Study object
-    - user: a Django User object for the current user
-
-The context variables used directly in this template are:
-    - cancel_link: a string for the reverse() URL to cancel the delete and return to previous page
-    - confirm_action: a token used to validate the items to delete
-    - delete_select: a Django Form holding fields defining the objects to delete
-    - item_names: a list of names for items to be deleted (may not be complete)
-    - item_count: a count of items to be deleted
-    - measurement_count: an integer of the number of measurements that would be deleted
-    - typename: a translated string for the kind of object to be deleted
+This file works as a generic deletion confirm page. The context variables used
+directly in this template are:
+  - cancel_link: a string for the reverse() URL to cancel the delete and return
+    to previous page
+  - form: a Django Form holding fields defining the objects to delete
+  - item_names: a list of names for items to be deleted (may not be complete)
+  - item_count: a count of items to be deleted
+  - measurement_count: an integer of the number of measurements that would
+    be deleted
+  - typename: a translated string for the kind of object to be deleted
 {% endcomment %}
 
 {% block content %}
@@ -27,30 +23,31 @@ the {{ typename }} "{{ name }}"
 {{ counter }} {{ typename }} objects, including "{{ name }}"
 {% endblocktranslate %}
 
-  <div class="confirm-form">
-    <p>
-      {% if measurement_count >= 1 %}
-        {% blocktranslate trimmed with item=t_items count counter=measurement_count %}
-          Are you sure you want to delete {{ item }}? This will remove a measurement value.
-        {% plural %}
-          Are you sure you want to delete {{ item }}? This will remove {{ counter }}
-          measurement values.
-        {% endblocktranslate %}
-      {% else %}
-        {% blocktranslate trimmed with item=t_items %}
-          Are you sure you want to delete {{ item }}?
-        {% endblocktranslate %}
-      {% endif %}
-    </p>
-    <form action="" method="POST">
-      {% csrf_token %}
-      {% if delete_select %}
-        {{ delete_select.as_p }}
-      {% endif %}
-      <button class="btn btn-danger" type="submit" name="action"
-          value="{{ confirm_action }}">{% translate "Confirm Delete" %}</button>
-      <a href="{{ cancel_link }}">{% translate "Cancel" %}</a>
-    </form>
-  </div>
+<h2>{% translate "Confirm Deletion" %}</h2>
+<p>
+  {% if measurement_count >= 1 %}
+    {% blocktranslate trimmed with item=t_items count counter=measurement_count %}
+      Are you sure you want to delete {{ item }}? This will remove a measurement value.
+    {% plural %}
+      Are you sure you want to delete {{ item }}? This will remove {{ counter }}
+      measurement values.
+    {% endblocktranslate %}
+  {% else %}
+    {% blocktranslate trimmed with item=t_items %}
+      Are you sure you want to delete {{ item }}?
+    {% endblocktranslate %}
+  {% endif %}
+</p>
+<form action="" method="POST">
+  {% csrf_token %}
+  {{ form }}
+  <button
+    class="btn btn-danger"
+    name="confirm"
+    type="submit"
+    value="true"
+  >{% translate "Yes, Delete" %}</button>
+  <a href="{{ cancel_link }}">{% translate "Cancel" %}</a>
+</form>
 
 {% endblock content %}

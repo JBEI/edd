@@ -1,0 +1,43 @@
+{% extends "edd_bs5.html" %}
+{% load i18n %}
+{% load static %}
+
+
+{% block head_title %}
+  {{ study.name }} &ndash; {{ block.super }}
+{% endblock head_title %}
+
+
+{% block body_title %}
+  {{ study.name }}
+{% endblock body_title %}
+
+
+{% block content %}
+<a id="accesslink" href="{% url 'main:access' slug=study.slug %}" class="d-none"></a>
+<ul class="nav nav-tabs justify-content-center my-2">
+  <li class="nav-item">
+    <a
+      class="nav-link {% if showingoverview %}active{% endif %}"
+      href="{% url 'main:overview' slug=study.slug %}"
+    >{% translate 'Overview' %}</a>
+  </li>
+  {% if has_lines %}
+  <li class="nav-item">
+    <a
+      class="nav-link {% if showinglines %}active{% endif %}"
+      href="{% url 'main:lines' slug=study.slug %}"
+    >{% translate 'Description' %}</a>
+  </li>
+  {% endif %}
+  {% if has_assays %}
+  <li class="nav-item">
+    <a
+      class="nav-link {% if showingdata %}active{% endif %}"
+      href="{% url 'main:detail' slug=study.slug %}"
+    >{% translate 'Data' %}</a>
+  </li>
+  {% endif %}
+</ul>
+
+{% endblock content %}

@@ -1,38 +1,34 @@
-import json
 from io import BytesIO
 from unittest.mock import patch
 
-from django.contrib.auth import models as auth_models
-from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
 from django.http.request import HttpRequest
 from django.urls import reverse
-from django.utils.encoding import force_str
 from faker import Faker
 from requests import codes
 
 from edd import TestCase
-from edd.profile.factory import GroupFactory, UserFactory
+from edd.profile.factory import UserFactory
 
 from .. import models, redis
 from . import factory
 
 faker = Faker()
+EXCEL_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def upload_attachment(
     client,
     study,
-    filename,
-    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    filename="ImportData_FBA_HPLC.xlsx",
+    content_type=EXCEL_CONTENT_TYPE,
 ):
-    url = reverse("main:overview", kwargs={"slug": study.slug})
+    url = reverse("main:attach_ajax", kwargs={"slug": study.slug})
     with factory.load_test_file(filename) as fp:
         upload = BytesIO(fp.read())
     upload.name = filename
     upload.content_type = content_type
     payload = {
-        "action": "attach",
         "description": faker.catch_phrase(),
         "file": upload,
     }
@@ -116,18 +112,30 @@ class StudyViewTestCase(TestCase):
         cls.user = UserFactory()
         cls.target_study = factory.StudyFactory()
         cls.target_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.WRITE, user=cls.user
+            user=cls.user,
+            defaults={"permission_type": models.StudyPermission.WRITE},
         )
+        cls.study_kwargs = {"slug": cls.target_study.slug}
 
     def setUp(self):
         super().setUp()
         self.client.force_login(self.user)
 
+    def _setup_admin(self):
+        self.user.is_superuser = True
+        self.user.save()
+
+    def _setup_permission(self, permission=models.StudyPermission.READ):
+        self.target_study.userpermission_set.update_or_create(
+            user=self.user,
+            defaults={"permission_type": permission},
+        )
+
 
 class StudyAttachmentViewTests(StudyViewTestCase):
     def setUp(self):
         super().setUp()
-        upload_attachment(self.client, self.target_study, "ImportData_FBA_HPLC.xlsx")
+        upload_attachment(self.client, self.target_study)
         self.attachment = self.target_study.attachments.first()
         kwargs = {
             "slug": self.target_study.slug,
@@ -141,19 +149,13 @@ class StudyAttachmentViewTests(StudyViewTestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, codes.ok)
 
-    def test_post_to_confirm_delete(self):
+    def test_post_to_delete(self):
         # delete an attachment confirmation page
         response = self.client.post(self.url)
-        self.assertTemplateUsed(response, "main/confirm_delete.html")
-        self.assertContains(response, self.attachment.filename)
-        self.assertEqual(self.target_study.attachments.count(), 1)
-
-    def test_post_after_confirmation(self):
-        # delete execute
-        response = self.client.post(self.url, data={"action": "delete"})
         self.assertEqual(self.target_study.attachments.count(), 0)
         self.assertRedirects(
-            response, reverse("main:overview", kwargs={"slug": self.target_study.slug}),
+            response,
+            reverse("main:overview", kwargs={"slug": self.target_study.slug}),
         )
 
 
@@ -164,7 +166,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
     def setUpTestData(cls):
         super().setUpTestData()
         cls.query = models.Study.objects.filter(slug=cls.target_study.slug)
-        cls.url = reverse("main:overview", kwargs={"slug": cls.target_study.slug})
+        cls.url = reverse("main:overview", kwargs=cls.study_kwargs)
 
     def test_overview_get(self):
         response = self.client.get(self.url)
@@ -179,25 +181,18 @@ class StudyOverviewViewTests(StudyViewTestCase):
     def test_overview_get_inactive_as_admin(self):
         self.target_study.active = False
         self.target_study.save()
-        self.user.is_superuser = True
-        self.user.save()
+        self._setup_admin()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, codes.ok)
 
     def test_overview_get_without_permissions(self):
-        # create user with no permissions
-        user = UserFactory()
-        self.client.force_login(user)
+        self._setup_permission(models.StudyPermission.NONE)
         # Not Found for a study without permissions
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, codes.not_found)
 
     def test_overview_get_admin_sees_all(self):
-        # create an admin user
-        admin_user = UserFactory()
-        admin_user.is_superuser = True
-        admin_user.save()
-        self.client.force_login(admin_user)
+        self._setup_admin()
         # admin user can see the study
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, codes.ok)
@@ -208,13 +203,11 @@ class StudyOverviewViewTests(StudyViewTestCase):
         description = faker.paragraph()
         # edit study info as default test user
         response = self.client.post(
-            self.url,
+            reverse("main:modify_study_ajax", kwargs=self.study_kwargs),
             data={
-                "action": "update",
                 "study-name": name,
                 "study-description": description,
-                "study-contact_0": new_user.username,
-                "study-contact_1": new_user.id,
+                "study-contact": new_user.id,
             },
             follow=True,
         )
@@ -225,100 +218,158 @@ class StudyOverviewViewTests(StudyViewTestCase):
         self.assertEqual(reloaded.contact, new_user)
 
     def test_overview_update_without_permissions(self):
-        # verify that new_user without permissions cannot modify study
+        # verify that user with read permissions cannot modify study
+        self._setup_permission()
         new_user = UserFactory()
-        target_url = self.url
-        self.target_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.READ, user=new_user
-        )
-        self.client.force_login(new_user)
         response = self.client.post(
-            target_url,
+            reverse("main:modify_study_ajax", kwargs=self.study_kwargs),
             data={
-                "action": "update",
                 "study-name": faker.catch_phrase(),
                 "study-description": faker.paragraph(),
-                "study-contact_0": new_user.username,
-                "study-contact_1": new_user.id,
+                "study-contact": new_user.id,
             },
             follow=True,
         )
-        self.assertContains(
-            response, "You do not have permission", status_code=codes.forbidden
-        )
+        assert response.status_code == codes.forbidden
         reloaded = models.Study.objects.get(slug=self.target_study.slug)
         self.assertEqual(reloaded.name, self.target_study.name)
         self.assertEqual(reloaded.description, self.target_study.description)
         self.assertEqual(reloaded.contact, self.target_study.contact)
 
-    def test_overview_attach_post(self):
-        # adding an attachment
-        filename = "ImportData_FBA_HPLC.xlsx"
-        response = upload_attachment(self.client, self.target_study, filename)
-        self.assertContains(response, filename)
+    def test_overview_set_permissions(self):
+        response = self.client.post(
+            reverse("main:permission", kwargs=self.study_kwargs),
+            data={"perm": models.StudyPermission.READ, "who": '{"type":"everyone"}'},
+            follow=True,
+        )
         self.assertRedirects(response, self.url)
-        self.assertEqual(self.target_study.attachments.count(), 1)
+        assert response.status_code == codes.ok
+        assert self.target_study.everyonepermission_set.count() == 1
 
-    def test_overview_attach_post_invalid_form(self):
-        # handle validation errors adding attachment
+    def test_overview_set_permissions_ajax(self):
+        response = self.client.post(
+            reverse("main:permission_ajax", kwargs=self.study_kwargs),
+            data={"perm": models.StudyPermission.READ, "who": '{"type":"everyone"}'},
+            follow=True,
+        )
+        self.assertTemplateUsed(response, "main/include/studyperm-readonly.html")
+        assert response.status_code == codes.ok
+        assert self.target_study.everyonepermission_set.count() == 1
+
+    def test_overview_set_permissions_without_write(self):
+        self._setup_permission()
+        response = self.client.post(
+            reverse("main:permission_ajax", kwargs=self.study_kwargs),
+            data={"perm": models.StudyPermission.READ, "who": '{"type":"everyone"}'},
+            follow=True,
+        )
+        assert response.status_code == codes.forbidden
+        assert self.target_study.everyonepermission_set.count() == 0
+
+    def test_overview_set_permissions_as_admin(self):
+        self._setup_admin()
+        response = self.client.post(
+            reverse("main:permission", kwargs=self.study_kwargs),
+            data={"perm": models.StudyPermission.READ, "who": '{"type":"everyone"}'},
+            follow=True,
+        )
+        self.assertRedirects(response, self.url)
+        assert response.status_code == codes.ok
+        assert self.target_study.everyonepermission_set.count() == 1
+
+    def test_overview_attach_post(self):
+        # adding an attachment without AJAX swapping
         filename = "ImportData_FBA_HPLC.xlsx"
-        # views/study.py does `from .. import forms as edd_forms`,
-        # so must mock that name
-        with patch("main.views.study.edd_forms.CreateAttachmentForm") as MockForm:
-            form = MockForm.return_value
-            form.is_valid.return_value = False
-            response = upload_attachment(self.client, self.target_study, filename)
-        # invalid form means request status is bad
-        self.assertEqual(response.status_code, codes.bad_request)
-        # unchanged number of attachments
-        self.assertEqual(self.target_study.attachments.count(), 0)
+        url = reverse("main:attach", kwargs=self.study_kwargs)
+        with factory.load_test_file(filename) as fp:
+            upload = BytesIO(fp.read())
+        upload.name = filename
+        upload.content_type = EXCEL_CONTENT_TYPE
+        payload = {
+            "description": faker.catch_phrase(),
+            "file": upload,
+        }
+        response = self.client.post(url, data=payload, follow=True)
+        self.assertRedirects(response, self.url)
+        self.assertContains(response, filename)
+        assert response.status_code == codes.ok
+        assert self.target_study.attachments.count() == 1
+
+    def test_overview_attach_post_ajax(self):
+        # adding an attachment with AJAX swapping
+        filename = "ImportData_FBA_HPLC.xlsx"
+        url = reverse("main:attach_ajax", kwargs=self.study_kwargs)
+        with factory.load_test_file(filename) as fp:
+            upload = BytesIO(fp.read())
+        upload.name = filename
+        upload.content_type = EXCEL_CONTENT_TYPE
+        payload = {
+            "description": faker.catch_phrase(),
+            "file": upload,
+        }
+        response = self.client.post(url, data=payload, follow=True)
+        self.assertContains(response, filename)
+        self.assertTemplateUsed(response, "main/include/attachments.html")
+        assert response.status_code == codes.ok
+        assert self.target_study.attachments.count() == 1
+
+    def test_overview_attach_without_a_file(self):
+        url = reverse("main:attach_ajax", kwargs=self.study_kwargs)
+        payload = {"description": faker.catch_phrase()}
+        response = self.client.post(url, data=payload, follow=True)
+        assert response.status_code == codes.bad_request
+        assert self.target_study.attachments.count() == 0
 
     def test_overview_comment_post(self):
-        # adding a comment
+        # adding a comment without AJAX swapping
         body = faker.sentence()
-        payload = {
-            "action": "comment",
-            "body": body,
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
+        payload = {"body": body}
+        response = self.client.post(
+            reverse("main:comment", kwargs=self.study_kwargs),
+            data=payload,
+            follow=True,
+        )
+        self.assertRedirects(response, self.url)
         self.assertContains(response, body)
-        self.assertEqual(self.target_study.comments.count(), 1)
+        assert self.target_study.comments.count() == 1
 
-    def test_overview_comment_post_invalid_form(self):
-        # adding a comment
+    def test_overview_comment_post_ajax(self):
+        # adding a comment with AJAX swapping
         body = faker.sentence()
-        payload = {
-            "action": "comment",
-            "body": body,
-        }
-        # views/study.py does `from .. import forms as edd_forms`,
-        # so must mock that name
-        with patch("main.views.study.edd_forms.CreateCommentForm") as MockForm:
-            form = MockForm.return_value
-            # simulate a validation error
-            form.is_valid.return_value = False
-            response = self.client.post(self.url, data=payload, follow=True)
-        # response does not have invalid comment,
-        # response indicates bad request
-        self.assertNotContains(response, body, status_code=codes.bad_request)
-        # unchanged count of comments
-        self.assertEqual(self.target_study.comments.count(), 0)
+        payload = {"body": body}
+        response = self.client.post(
+            reverse("main:comment_ajax", kwargs=self.study_kwargs),
+            data=payload,
+            follow=True,
+        )
+        self.assertContains(response, body)
+        self.assertTemplateUsed(response, "main/include/comments.html")
+        assert self.target_study.comments.count() == 1
+
+    def test_overview_comment_without_content(self):
+        url = reverse("main:comment_ajax", kwargs=self.study_kwargs)
+        response = self.client.post(url, follow=True)
+        self.assertTemplateUsed(response, "main/include/add-comment.html")
+        assert response.status_code == codes.bad_request
+        assert self.target_study.comments.count() == 0
 
     def test_overview_delete_shows_confirmation_page(self):
-        payload = {
-            "action": "study_delete",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
+        response = self.client.post(
+            reverse("main:delete_study", kwargs=self.study_kwargs),
+            follow=True,
+        )
         self.assertEqual(response.status_code, codes.ok)
         self.assertTemplateUsed(response, "main/confirm_delete.html")
         assert self.query.count() == 1
 
     def test_overview_confirmed_delete(self):
-        payload = {
-            "action": "delete_confirm",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        payload = {"confirm": "true"}
+        response = self.client.post(
+            reverse("main:delete_study", kwargs=self.study_kwargs),
+            data=payload,
+            follow=True,
+        )
+        self.assertRedirects(response, reverse("main:index"))
         assert not self.query.exists()
 
     def test_overview_delete_readonly(self):
@@ -326,15 +377,16 @@ class StudyOverviewViewTests(StudyViewTestCase):
         readonly_user = UserFactory()
         self.client.force_login(readonly_user)
         self.target_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.READ, user=readonly_user
+            permission_type=models.StudyPermission.READ,
+            user=readonly_user,
         )
-        payload = {
-            "action": "study_delete",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertContains(
-            response, "You do not have permission", status_code=codes.forbidden,
+        payload = {"confirm": "true"}
+        response = self.client.post(
+            reverse("main:delete_study", kwargs=self.study_kwargs),
+            data=payload,
+            follow=True,
         )
+        assert response.status_code == codes.forbidden
         assert self.query.count() == 1
 
     def test_overview_delete_confirmation_with_data(self):
@@ -343,10 +395,12 @@ class StudyOverviewViewTests(StudyViewTestCase):
         assay = factory.AssayFactory(line=line)
         factory.MeasurementFactory(assay=assay)
         # send delete confirmation
-        payload = {
-            "action": "delete_confirm",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
+        payload = {"confirm": "true"}
+        response = self.client.post(
+            reverse("main:delete_study", kwargs=self.study_kwargs),
+            data=payload,
+            follow=True,
+        )
         # OK response, study still exists with active flag disabled
         self.assertEqual(response.status_code, codes.ok)
         assert self.query.filter(active=False).count() == 1
@@ -359,22 +413,22 @@ class StudyOverviewViewTests(StudyViewTestCase):
         admin_user.is_superuser = True
         admin_user.save()
         self.client.force_login(admin_user)
-        payload = {
-            "action": "study_restore",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        # OK response, study has active flag flipped on
-        self.assertEqual(response.status_code, codes.ok)
+        response = self.client.post(
+            reverse("main:restore_study", kwargs=self.study_kwargs),
+            follow=True,
+        )
+        # Redirect response, study has active flag flipped on
+        self.assertRedirects(response, self.url)
         assert self.query.filter(active=True).count() == 1
 
     def test_overview_restore_without_admin(self):
         self.target_study.active = False
         self.target_study.save()
         # send restore
-        payload = {
-            "action": "study_restore",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
+        response = self.client.post(
+            reverse("main:restore_study", kwargs=self.study_kwargs),
+            follow=True,
+        )
         # not found, study does not have active flag restored
         self.assertEqual(response.status_code, codes.not_found)
         assert not self.query.filter(active=True).exists()
@@ -386,9 +440,12 @@ class StudyOverviewViewTests(StudyViewTestCase):
             form = MockForm.return_value
             form.is_valid.return_value = False
             # should be no redirect
-            response = self.client.post(self.url, data={"action": "update"})
+            response = self.client.post(
+                reverse("main:modify_study_ajax", kwargs=self.study_kwargs),
+                data={"action": "update"},
+            )
         # verify that a failed validation renders to overview page
-        self.assertTemplateUsed(response, "main/study-overview.html")
+        self.assertTemplateUsed(response, "main/include/studyinfo-editable.html")
         self.assertEqual(response.status_code, codes.bad_request)
 
 
@@ -791,7 +848,8 @@ class StudyDetailViewTests(StudyViewTestCase):
         # when study has no lines, get a redirect to the overview page
         response = self.client.get(self.url)
         self.assertRedirects(
-            response, reverse("main:overview", kwargs={"slug": self.target_study.slug}),
+            response,
+            reverse("main:overview", kwargs={"slug": self.target_study.slug}),
         )
 
     def test_detail_get_study_with_only_lines(self):
@@ -799,7 +857,8 @@ class StudyDetailViewTests(StudyViewTestCase):
         factory.LineFactory(study=self.target_study)
         response = self.client.get(self.url)
         self.assertRedirects(
-            response, reverse("main:lines", kwargs={"slug": self.target_study.slug}),
+            response,
+            reverse("main:lines", kwargs={"slug": self.target_study.slug}),
         )
 
     def test_detail_get_study_with_measurements(self):
@@ -910,7 +969,9 @@ class StudyDetailViewTests(StudyViewTestCase):
         response = self.client.post(self.url, data=payload, follow=True)
         self.assertTemplateUsed(response, "main/study-data.html")
         self.assertContains(
-            response, "Saved 0 of 1 Assays", status_code=codes.bad_request,
+            response,
+            "Saved 0 of 1 Assays",
+            status_code=codes.bad_request,
         )
         assert self.target_study.assay_set.filter(name=assay.name).exists()
 
@@ -1038,9 +1099,9 @@ class StudyAjaxViewTests(StudyViewTestCase):
 
     def test_study_access_identifiers(self):
         """A valid study should have all study identifiers in access response."""
-        url = reverse("main:access", kwargs={"slug": self.target_study.slug})
+        url = reverse("main:access", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.ok)
+        assert response.status_code == codes.ok
         payload = response.json()
         assert payload["study"]["pk"] == self.target_study.pk
         assert payload["study"]["slug"] == self.target_study.slug
@@ -1068,183 +1129,28 @@ class StudyAjaxViewTests(StudyViewTestCase):
 
             load_study(request)
 
+    def test_assaydata(self):
+        # this is deprecated, but we should test until it's officially removed
+        url = reverse("main:assaydata", kwargs=self.study_kwargs)
+        response = self.client.get(url)
+        assert response.status_code == codes.ok
+        payload = response.json()
+        assert "ATData" in payload
+        assert payload["EDDData"]["currentStudyID"] == self.target_study.pk
 
-class AjaxPermissionViewTests(TestCase):
-    """
-    Tests for the behavior of AJAX views assisting front-end display of
-    Study permissions.
-    """
+    def test_edddata(self):
+        # this is deprecated, but we should test until it's officially removed
+        url = reverse("main:edddata", kwargs=self.study_kwargs)
+        response = self.client.get(url)
+        assert response.status_code == codes.ok
+        payload = response.json()
+        assert payload["currentStudyID"] == self.target_study.pk
 
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.target_study = factory.StudyFactory()
-        cls.url = reverse("main:permissions", kwargs={"slug": cls.target_study.slug})
-        cls.user = UserFactory()
-
-    def setUp(self):
-        super().setUp()
-        self.client.force_login(self.user)
-
-    def _set_permission(self, permission_type=models.StudyPermission.READ, user=None):
-        # abstracting this repeating pattern for setting a permission
-        user = self.user if user is None else user
-        self.target_study.userpermission_set.update_or_create(
-            permission_type=permission_type, user=user
-        )
-
-    def _length_of_permissions(self):
-        # making a nicer name for the below repeated expression
-        return len(list(self.target_study.get_combined_permission()))
-
-    def test_get_permissions_no_read(self):
-        # no permissions set
-        response = self.client.get(self.url)
-        # response will be NOT FOUND
-        self.assertEqual(response.status_code, codes.not_found)
-
-    def test_get_permissions_with_read(self):
-        self._set_permission(models.StudyPermission.READ)
-        response = self.client.get(self.url)
-        # response has username listed in permissions (implicit status OK)
-        self.assertContains(response, self.user.username)
-
-    def test_get_permissions_with_admin(self):
-        # make user admin
-        self.user.is_superuser = True
-        self.user.save(update_fields=["is_superuser"])
-        response = self.client.get(self.url)
-        # response is empty array
-        self.assertEqual(response.status_code, codes.ok)
-        self.assertJSONEqual(force_str(response.content), [])
-
-    def test_head_permissions(self):
-        self._set_permission(models.StudyPermission.READ)
-        response = self.client.head(self.url)
-        # HEAD requests should always be OK with zero length
-        self.assertEqual(response.status_code, codes.ok)
-        self.assertEqual(len(response.content), 0)
-
-    def test_delete_permissions_no_read(self):
-        # no permissions set
-        response = self.client.delete(self.url)
-        # response will be NOT FOUND
-        self.assertEqual(response.status_code, codes.not_found)
-
-    def test_delete_permissions_with_read(self):
-        # add a READ permission
-        self._set_permission(models.StudyPermission.READ)
-        response = self.client.delete(self.url)
-        # response will be FORBIDDEN (no write access)
-        self.assertEqual(response.status_code, codes.forbidden)
-
-    def test_delete_permissions_with_write(self):
-        self._set_permission(models.StudyPermission.WRITE)
-        # have one permission before deletion
-        self.assertEqual(self._length_of_permissions(), 1)
-        # do deletion
-        response = self.client.delete(self.url)
-        # correct response of NO CONTENT, and permissions length zero
-        self.assertEqual(response.status_code, codes.no_content)
-        self.assertEqual(self._length_of_permissions(), 0)
-
-    def test_post_permissions_no_read(self):
-        # no permissions set
-        response = self.client.post(self.url, data={})
-        # response will be NOT FOUND
-        self.assertEqual(response.status_code, codes.not_found)
-
-    def test_post_permissions_with_read(self):
-        # add a READ permission
-        self._set_permission(models.StudyPermission.READ)
-        response = self.client.post(self.url, data={})
-        # response will be FORBIDDEN (no write access)
-        self.assertEqual(response.status_code, codes.forbidden)
-
-    def test_post_permissions_empty(self):
-        self._set_permission(models.StudyPermission.WRITE)
-        # have one permission before empty post
-        self.assertEqual(self._length_of_permissions(), 1)
-        response = self.client.post(self.url, data={})
-        # correct response, no change in permission count
-        self.assertEqual(response.status_code, codes.no_content)
-        self.assertEqual(self._length_of_permissions(), 1)
-
-    def test_post_permissions_adding(self):
-        self._set_permission(models.StudyPermission.WRITE)
-        # have one permission before post
-        self.assertEqual(self._length_of_permissions(), 1)
-        # create a bunch of things to add permissions for
-        other_user = UserFactory()
-        some_group = GroupFactory()
-        add_other_user = {
-            "type": models.StudyPermission.WRITE,
-            "user": {"id": other_user.id},
-        }
-        add_some_group = {
-            "type": models.StudyPermission.WRITE,
-            "group": {"id": some_group.id},
-        }
-        payload = json.dumps([add_other_user, add_some_group])
-        response = self.client.post(self.url, data={"data": payload})
-        # correct response NO CONTENT, permission count updated
-        self.assertEqual(response.status_code, codes.no_content)
-        self.assertEqual(self._length_of_permissions(), 3)
-
-    def test_post_permissions_removing(self):
-        self._set_permission(models.StudyPermission.WRITE)
-        # create some permissions to delete
-        other_user = UserFactory()
-        self._set_permission(models.StudyPermission.READ, user=other_user)
-        delete_other_user = {
-            "type": models.StudyPermission.NONE,
-            "user": {"id": other_user.id},
-        }
-        # have two permissions before post
-        self.assertEqual(self._length_of_permissions(), 2)
-        payload = json.dumps([delete_other_user])
-        response = self.client.post(self.url, data={"data": payload})
-        # correct response NO CONTENT, permission count updated
-        self.assertEqual(response.status_code, codes.no_content)
-        self.assertEqual(self._length_of_permissions(), 1)
-
-    def test_post_permissions_public_without_access(self):
-        self._set_permission(models.StudyPermission.WRITE)
-        # have one permission before post
-        self.assertEqual(self._length_of_permissions(), 1)
-        add_everyone = {"type": models.StudyPermission.READ, "public": None}
-        payload = json.dumps([add_everyone])
-        response = self.client.post(self.url, data={"data": payload})
-        # without access to make public, FORBIDDEN response and no change in length
-        self.assertEqual(response.status_code, codes.forbidden)
-        self.assertEqual(self._length_of_permissions(), 1)
-
-    def test_post_permissions_public_with_access(self):
-        # self.user gets a write permission AND Django ContentType permission
-        self._set_permission(models.StudyPermission.WRITE)
-        public_ct = ContentType.objects.get_for_model(models.EveryonePermission)
-        public_permission = auth_models.Permission.objects.get(
-            codename="add_everyonepermission", content_type=public_ct
-        )
-        self.user.user_permissions.add(public_permission)
-        # have one permission before post
-        self.assertEqual(self._length_of_permissions(), 1)
-        add_everyone = {"type": models.StudyPermission.READ, "public": None}
-        payload = json.dumps([add_everyone])
-        response = self.client.post(self.url, data={"data": payload})
-        # correct response NO CONTENT, permission count updated
-        self.assertEqual(response.status_code, codes.no_content)
-        self.assertEqual(self._length_of_permissions(), 2)
-
-    def test_post_permissions_public_with_admin(self):
-        # make user admin
-        self.user.is_superuser = True
-        self.user.save(update_fields=["is_superuser"])
-        # have empty permission before post
-        self.assertEqual(self._length_of_permissions(), 0)
-        add_everyone = {"type": models.StudyPermission.READ, "public": None}
-        payload = json.dumps([add_everyone])
-        response = self.client.post(self.url, data={"data": payload})
-        # correct response NO CONTENT, permission count updated to one
-        self.assertEqual(response.status_code, codes.no_content)
-        self.assertEqual(self._length_of_permissions(), 1)
+    def test_edddata_as_admin(self):
+        self._setup_admin()
+        # this is deprecated, but we should test until it's officially removed
+        url = reverse("main:edddata", kwargs=self.study_kwargs)
+        response = self.client.get(url)
+        assert response.status_code == codes.ok
+        payload = response.json()
+        assert payload["currentStudyID"] == self.target_study.pk

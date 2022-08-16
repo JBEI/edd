@@ -22,9 +22,12 @@ class UpdateManager(models.Manager):
 
 
 class Update(models.Model, EDDSerialize):
-    """ A user update; referenced from other models that track creation and/or modification.
-        Views get an Update object by calling main.models.Update.load_request_update(request) to
-        lazy-load a request-scoped Update object model. """
+    """
+    A user update; referenced from other models that track creation and/or
+    modification. Views get an Update object by calling
+    main.models.Update.load_request_update(request) to lazy-load a
+    request-scoped Update object model.
+    """
 
     class Meta:
         db_table = "update_info"
@@ -150,7 +153,9 @@ class Update(models.Model, EDDSerialize):
     def full_name(self):
         if self.mod_by_id is None:
             return None
-        return " ".join([self.mod_by.first_name, self.mod_by.last_name])
+        elif display := self.mod_by.profile.display_name:
+            return display
+        return self.mod_by.username
 
     @property
     def email(self):
@@ -163,17 +168,21 @@ class Update(models.Model, EDDSerialize):
         return arrow.get(self.mod_time).int_timestamp
 
     def to_json(self, depth=0):
-        """ Converts object to a dict appropriate for JSON serialization. If the depth argument
-            is positive, the dict will expand links to other objects, rather than inserting a
-            database identifier. """
+        """
+        Converts object to a dict appropriate for JSON serialization. If the
+        depth argument is positive, the dict will expand links to other
+        objects, rather than inserting a database identifier.
+        """
         return {
             "time": arrow.get(self.mod_time).int_timestamp,
             "user": self.get_attr_depth("mod_by", depth),
         }
 
     def format_timestamp(self, format_string="%Y-%m-%d %I:%M%p"):
-        """ Convert the datetime (mod_time) to a human-readable string, including conversion from
-            UTC to local time zone. """
+        """
+        Convert the datetime (mod_time) to a human-readable string, including
+        conversion from UTC to local time zone.
+        """
         return arrow.get(self.mod_time).to("local").strftime(format_string)
 
 

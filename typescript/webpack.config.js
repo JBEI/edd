@@ -50,7 +50,6 @@ module.exports = {
             __dirname,
             "./src/Study-Lines-Add-Combos.ts",
         ),
-        "StudyOverview": path.resolve(__dirname, "./src/Study-Overview.ts"),
         "WizardHelp": path.resolve(__dirname, "./src/WizardHelp.ts"),
     },
     "output": {

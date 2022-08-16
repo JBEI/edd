@@ -1,0 +1,36 @@
+{% load i18n %}
+<form
+  action="{% url 'main:comment' slug=study.slug %}"
+  {% if permission_form.errors %}class="was-validated"{% endif %}
+  enctype="multipart/form-data"
+  id="edd-comment-form"
+  method="POST"
+  data-action-inline="{% url 'main:comment_ajax' slug=study.slug %}"
+>
+  {% csrf_token %}
+  {{ new_comment }}
+  <button
+    class="btn btn-primary btn-sm"
+    id="edd-comment-update"
+    type="submit"
+  >
+    <i class="fas fa-comment"></i>
+    {% translate "Add Comment" %}
+  </button>
+  <button
+    class="btn btn-primary btn-sm d-none"
+    id="edd-comment-saving"
+    type="button"
+  >
+    <span aria-hidden="true" class="spinner-border spinner-border-sm" role="status"></span>
+    {% translate "Posting" %}
+  </button>
+  <button
+    class="btn btn-outline-secondary btn-sm"
+    id="edd-comment-cancel"
+    type="reset"
+  >
+    <i class="fas fa-xmark"></i>
+    {% translate "Cancel" %}
+  </button>
+</form>

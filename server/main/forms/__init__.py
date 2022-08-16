@@ -8,6 +8,8 @@ from .forms import (
     MeasurementForm,
     MeasurementValueForm,
     MeasurementValueFormSet,
+    ModifyStudyForm,
+    PermissionForm,
 )
 from .widgets import (
     AutocompleteWidget,
@@ -39,8 +41,10 @@ __all__ = [
     MeasurementValueForm,
     MeasurementValueFormSet,
     MetadataTypeAutocompleteWidget,
+    ModifyStudyForm,
     MultiAutocompleteWidget,
     MultiRegistryAutocompleteWidget,
+    PermissionForm,
     ProtocolAutocompleteWidget,
     RegistryAutocompleteWidget,
     SbmlExchangeAutocompleteWidget,

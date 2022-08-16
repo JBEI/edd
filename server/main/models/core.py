@@ -843,6 +843,21 @@ class Line(EDDObject):
     def allow_metadata(self, metatype):
         return metatype.for_context == MetadataType.LINE
 
+    def clone_to_study(self, study):
+        """
+        Modifies the current line to remove current database IDs, and repoints
+        to a new parent study. Saving the modified line results in a new cloned
+        record in the database.
+        """
+        self.pk = self.id = None
+        self.uuid = None
+        self.study = study
+        self.study_id = study.id
+        self.created = None
+        self.updated = None
+        # NOTE: strains are not copied!
+        return self
+
     @classmethod
     def export_columns(cls, table_generator, instances=None):
         super().export_columns(table_generator, instances=instances)
@@ -1141,10 +1156,12 @@ class Measurement(EDDMetadata, EDDSerialize):
             lookup=lambda measure: measure.update_ref.mod_time,
         )
         table_generator.define_field_column(
-            cls._meta.get_field("x_units"), lookup=measurement_x_unit,
+            cls._meta.get_field("x_units"),
+            lookup=measurement_x_unit,
         )
         table_generator.define_field_column(
-            cls._meta.get_field("y_units"), lookup=measurement_y_unit,
+            cls._meta.get_field("y_units"),
+            lookup=measurement_y_unit,
         )
 
     def to_json(self, depth=0):

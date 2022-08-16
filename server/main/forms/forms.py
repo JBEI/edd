@@ -4,73 +4,67 @@ from functools import partial
 
 from django import forms
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import CharField, F, Value
 from django.db.models.functions import Concat
 from django.utils.translation import gettext_lazy as _
 
+from edd.search import widgets as autocomplete
 from edd.search.registry import RegistryValidator
 
 from .. import models
 from . import mixins, widgets
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
-class CreateStudyForm(forms.ModelForm):
-    """Form to create a new study."""
-
-    # include hidden field for copying multiple Line instances by ID
-    lineId = forms.ModelMultipleChoiceField(
-        queryset=models.Line.objects.none(),
+class ModifyStudyForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text="",
+        label=_("Study Name"),
+        required=True,
+        widget=forms.widgets.TextInput(
+            attrs={
+                "aria-invalid": "false",
+                "class": "form-control form-control-lg",
+                "data-validation-text": _("Study Name is required."),
+                "pattern": r".*[\S]+.*",
+            },
+        ),
+    )
+    description = forms.CharField(
+        help_text="",
+        label=_("Description"),
         required=False,
-        widget=forms.MultipleHiddenInput,
+        widget=forms.widgets.Textarea(attrs={"class": "form-control"}),
+    )
+    contact = forms.ModelChoiceField(
+        empty_label=None,
+        help_text="",
+        label=_("Contact"),
+        queryset=User.objects.all(),
+        required=False,
+        widget=autocomplete.UserAutocomplete(),
     )
 
+    error_css_class = "is-invalid"
+    template_name = "main/forms/simple_bootstrap.html"
+
     class Meta:
+        fields = ("name", "description", "contact")
         model = models.Study
-        fields = ["name", "description", "contact"]
-        labels = {
-            "name": _("Study Name"),
-            "description": _("Description"),
-            "contact": _("Contact"),
-        }
-        widgets = {
-            "name": forms.widgets.TextInput(
-                attrs={
-                    "aria-invalid": "false",
-                    "class": "form-control",
-                    "data-validation-text": _("Study Name is required."),
-                    # at least one non-whitespace character
-                    "pattern": r".*[\S]+.*",
-                    "size": 50,
-                },
-            ),
-            "description": forms.widgets.Textarea(
-                attrs={"cols": 49, "class": "form-control"}
-            ),
-            "contact": widgets.UserAutocompleteWidget(),
-        }
 
-        help_texts = {"name": _(""), "description": _("")}
-
-    def __init__(self, *args, **kwargs):
-        # removes default hard-coded suffix of colon character on all labels
-        kwargs.setdefault("label_suffix", "")
-        self._user = kwargs.pop("user", None)
+    def __init__(self, user=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self.fields exists after super.__init__()
-        if self._user:
-            # make sure lines are in a readable study
-            access = models.Study.access_filter(self._user, via="study")
-            queryset = models.Line.objects.filter(access).distinct()
-            self.fields["lineId"].queryset = queryset
+        self._user = user
 
     def clean(self):
         super().clean()
         # if no explicit contact is set, make the current user the contact
-        # TODO: handle contact_extra too
         if not self.cleaned_data.get("contact", None):
             self.cleaned_data["contact"] = self._user
 
@@ -81,67 +75,95 @@ class CreateStudyForm(forms.ModelForm):
             s = super().save(commit=commit, *args, **kwargs)
             # make sure the creator has write permission, and ESE has read
             s.userpermission_set.update_or_create(
-                user=s.created.mod_by, permission_type=models.StudyPermission.WRITE
+                permission_type=models.StudyPermission.WRITE,
+                user=s.created.mod_by,
             )
-
             # if configured, apply default group read permissions to the new study
-            _SETTING_NAME = "EDD_DEFAULT_STUDY_READ_GROUPS"
-            default_group_names = getattr(settings, _SETTING_NAME, None)
-            if default_group_names:
-                default_groups = Group.objects.filter(name__in=default_group_names)
-                default_groups = default_groups.values_list("pk", flat=True)
-                requested_groups = len(default_group_names)
-                found_groups = len(default_groups)
-                if requested_groups != found_groups:
-                    logger.error(
-                        f"Setting only {found_groups} of {requested_groups} read permissions "
-                        f"for study `{s.slug}`."
-                    )
-                    logger.error(
-                        f"Check that all group names set in the `{_SETTING_NAME}` value in "
-                        "Django settings is valid."
-                    )
-                for group in default_groups:
-                    s.grouppermission_set.update_or_create(
-                        group_id=group,
-                        defaults={"permission_type": models.StudyPermission.READ},
-                    )
-
-            # create copies of passed in Line IDs
-            self.save_lines(s)
+            self._apply_default_read_permissions(s)
         return s
 
-    def save_lines(self, study):
+    def _apply_default_read_permissions(self, study):
+        _SETTING_NAME = "EDD_DEFAULT_STUDY_READ_GROUPS"
+        default_group_names = getattr(settings, _SETTING_NAME, None)
+        if default_group_names:
+            default_groups = Group.objects.filter(name__in=default_group_names)
+            default_groups = default_groups.values_list("pk", flat=True)
+            requested_groups = len(default_group_names)
+            found_groups = len(default_groups)
+            if requested_groups != found_groups:
+                logger.error(
+                    f"Setting only {found_groups} of {requested_groups} read permissions "
+                    f"for study `{study.slug}`. Check that all group names set in the "
+                    f"`{_SETTING_NAME}` value in Django settings is valid."
+                )
+            for group in default_groups:
+                study.grouppermission_set.update_or_create(
+                    group_id=group,
+                    defaults={"permission_type": models.StudyPermission.READ},
+                )
+
+
+class CreateStudyForm(ModifyStudyForm):
+    """Form to create a new study."""
+
+    # include hidden field for copying multiple Line instances by ID
+    lineId = forms.ModelMultipleChoiceField(
+        queryset=models.Line.objects.none(),
+        required=False,
+        widget=forms.MultipleHiddenInput,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # self.fields exists after super.__init__()
+        if self._user:
+            # make sure lines are in a readable study
+            access = models.Study.access_filter(self._user, via="study")
+            queryset = models.Line.objects.filter(access).distinct()
+            self.fields["lineId"].queryset = queryset
+
+    def save(self, commit=True, *args, **kwargs):
+        # perform updates atomically to the study and related user permissions
+        with transaction.atomic():
+            # save the study
+            s = super().save(commit=commit, *args, **kwargs)
+            # create copies of passed in Line IDs
+            self._save_lines(s)
+        return s
+
+    def _save_lines(self, study):
         """Saves copies of Line IDs passed to the form on the study."""
-        to_add = []
-        lines = self.cleaned_data.get("lineId", None)
-        if lines is None:
-            lines = []
-        for line in lines:
-            line.pk = line.id = None
-            line.study = study
-            line.study_id = study.id
-            line.uuid = None
-            to_add.append(line)
+        lines = self.cleaned_data.get("lineId", [])
+        to_add = [line.clone_to_study(study) for line in lines]
         study.line_set.add(*to_add, bulk=False)
 
 
 class CreateAttachmentForm(forms.ModelForm):
     """Form to create a new attachment."""
 
+    file = forms.FileField(
+        help_text="",
+        label=_("File"),
+        required=True,
+        widget=forms.widgets.FileInput(attrs={"class": "form-control"}),
+    )
+    description = forms.CharField(
+        help_text="",
+        label=_("Description"),
+        required=False,
+        widget=forms.widgets.TextInput(attrs={"class": "form-control"}),
+    )
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/attachment.html"
+
     class Meta:
         model = models.Attachment
         fields = ("file", "description")
-        labels = {"file": _(""), "description": _("Description")}
-        help_texts = {"description": _(""), "file": _("")}
-        widgets = {"description": forms.widgets.TextInput()}
 
-    def __init__(self, *args, **kwargs):
-        # removes default hard-coded suffix of colon character on all labels
-        kwargs.setdefault("label_suffix", "")
-        # store the parent EDDObject
-        self._parent = kwargs.pop("edd_object", None)
-        super().__init__(*args, **kwargs)
+    def __init__(self, edd_object=None, *args, **kwargs):
+        super().__init__(label_suffix="", *args, **kwargs)
+        self._parent = edd_object
 
     def save(self, commit=True, *args, **kwargs):
         a = super().save(commit=False, *args, **kwargs)
@@ -154,18 +176,23 @@ class CreateAttachmentForm(forms.ModelForm):
 class CreateCommentForm(forms.ModelForm):
     """Form to create a new comment."""
 
+    body = forms.CharField(
+        help_text="",
+        label=_("Comment"),
+        required=True,
+        widget=forms.widgets.Textarea(attrs={"class": "form-control"}),
+    )
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/comment.html"
+
     class Meta:
         model = models.Comment
         fields = ("body",)
-        labels = {"body": _("")}
-        help_texts = {"body": _("")}
 
-    def __init__(self, *args, **kwargs):
-        # removes default hard-coded suffix of colon character on all labels
-        kwargs.setdefault("label_suffix", "")
-        # store the parent EDDObject
-        self._parent = kwargs.pop("edd_object", None)
+    def __init__(self, edd_object=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._parent = edd_object
 
     def save(self, commit=True, *args, **kwargs):
         c = super().save(commit=False, *args, **kwargs)
@@ -421,6 +448,47 @@ MeasurementValueFormSet = forms.models.inlineformset_factory(
 )
 
 
+class PermissionForm(forms.Form):
+    who = forms.JSONField(
+        help_text="",
+        label=_("User or Group"),
+        widget=autocomplete.PermissionAutocomplete(),
+    )
+    perm = forms.ChoiceField(
+        choices=models.StudyPermission.TYPE_CHOICE,
+        help_text="",
+        label=_("Access Level"),
+        widget=forms.widgets.Select(attrs={"class": "form-select"}),
+    )
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/permission.html"
+
+    def __init__(self, *, study, **kwargs):
+        super().__init__(**kwargs)
+        self._study = study
+
+    def clean(self):
+        cleaned_data = super().clean()
+        target = {}
+        match cleaned_data.get("who"):
+            case {"type": "user", "id": user_id}:
+                manager = self._study.userpermission_set
+                target.update(user_id=user_id)
+            case {"type": "group", "id": group_id}:
+                manager = self._study.grouppermission_set
+                target.update(group_id=group_id)
+            case {"type": "everyone"}:
+                manager = self._study.everyonepermission_set
+            case _:
+                raise ValidationError(_("Could not find permission target"))
+        match perm := cleaned_data.get("perm"):
+            case models.StudyPermission.WRITE | models.StudyPermission.READ:
+                manager.update_or_create(permission_type=perm, **target)
+            case models.StudyPermission.NONE:
+                manager.filter(**target).delete()
+
+
 __all__ = [
     AssayForm,
     CreateAttachmentForm,
@@ -430,4 +498,6 @@ __all__ = [
     MeasurementForm,
     MeasurementValueForm,
     MeasurementValueFormSet,
+    ModifyStudyForm,
+    PermissionForm,
 ]

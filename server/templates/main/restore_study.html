@@ -1,0 +1,21 @@
+{% extends "main/study.html" %}
+{% load static %}
+{% load i18n %}
+
+
+{% block content %}
+<h2>{% translate "Restore Study" %}</h2>
+<p>
+  {% blocktranslate trimmed %}
+  Do you want to restore previously deleted Study "{{ name }}"?
+  {% endblocktranslate %}
+</p>
+<form action="" method="POST">
+  {% csrf_token %}
+  <button
+    class="btn btn-primary"
+    type="submit"
+  >{% translate "Yes, Restore" %}</button>
+  <a href="{% url 'main:index' %}">{% translate "Cancel" %}</a>
+</form>
+{% endblock content %}

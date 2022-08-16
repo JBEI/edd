@@ -7,7 +7,7 @@ TODO deleting a file may be a little too easy; should we require confirmation?
 -->
 {% endcomment %}
 <table class="table table-condensed table-striped" id="attach-table">
-  {% if attachments %}
+  {% if study.attachments %}
   <thead>
     <tr>
       <th>{% translate 'Filename' %}</th>
@@ -22,12 +22,15 @@ TODO deleting a file may be a little too easy; should we require confirmation?
   </thead>
   {% endif %}
   <tbody>
-    {% for a in attachments %}
+    {% for a in study.attachments %}
     {% with slug=study.slug urlname=a.filename|urlencode %}
     {% url 'main:attachment' slug=slug file_id=a.id file_name=urlname as filelink %}
     <tr>
       <td class="nowrap">
-        <img class="attach-icon" src="{% static 'main/images/' %}{{ a.icon }}"/>
+        <img
+          class="attach-icon"
+          src="{% static 'main/images/' %}{{ a.icon }}"/
+        >
         <a href="{{ filelink }}">{{ a.filename }}</a>
       </td>
       <td>{{ a.description }}</td>
@@ -38,8 +41,15 @@ TODO deleting a file may be a little too easy; should we require confirmation?
       <td class="text-right">
         <form action="{{ filelink }}" method="POST">
           {% csrf_token %}
-          <button type="submit" class="btn btn-danger btn-xs" aria-label="{% translate 'Delete' %}">
-            <span class="fas fa-trash-alt" aria-hidden="true"></span>
+          {% blocktranslate trimmed with name=a.filename asvar delete_label %}
+          Delete {{ name }}
+          {% endblocktranslate %}
+          <button
+            class="btn btn-outline-danger btn-sm"
+            type="submit"
+            aria-label="{{ delete_label }}"
+          >
+            <span class="fas fa-trash-can" aria-hidden="true"></span>
           </button>
         </form>
       </td>

@@ -1,0 +1,16 @@
+{% for error in errors %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endfor %}
+{% if not fields %}
+  {% for field in hidden_fields %}{{ field }}{% endfor %}
+{% else %}
+  {% for field, errors in fields %}
+    <div class="mb-3">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% for error in field.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+{% endif %}

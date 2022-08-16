@@ -1,0 +1,51 @@
+{% load i18n %}
+
+{% with perms=study.get_combined_permission %}
+{% if perms %}
+<table class="permissions table table-condensed table-striped">
+  <thead>
+    <tr>
+      <th>{% translate 'Who' %}</th>
+      <th class="text-end">{% translate 'Level' %}</th>
+      {% if writable %}
+      <th class="text-end">{% translate 'Actions' %}</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for perm in perms %}
+    <tr>
+      <td>{{ perm.get_who_label }}</td>
+      <td class="text-end">{{ perm.get_type_label }}</td>
+      {% if writable %}
+      <td class="text-end">
+        <button
+          class="btn btn-outline-secondary btn-sm"
+          title="{% translate 'Change Permission' context 'button' %}"
+          type="button"
+          data-label="{{ perm.get_who_label }}"
+          data-level="{{ perm.permission_type }}"
+          data-target-id="{{ perm.get_target_id }}"
+          data-target-type="{{ perm.get_target_type }}"
+        >
+          <i class="fas fa-pencil"></i>
+        </button>
+        <button
+          class="btn btn-outline-danger btn-sm"
+          title="{% translate 'Remove Permission' context 'button' %}"
+          type="button"
+          data-label="{{ perm.get_who_label }}"
+          data-remove="true"
+          data-target-id="{{ perm.get_target_id }}"
+          data-target-type="{{ perm.get_target_type }}"
+        >
+          <i class="fas fa-trash-can"></i>
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endwith %}

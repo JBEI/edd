@@ -1,4 +1,4 @@
-{% extends "main/study.html" %}
+{% extends "main/study_bs5.html" %}
 {% load describe %}
 {% load static %}
 {% load i18n %}
@@ -6,371 +6,203 @@
 
 {% block js_css %}
   {{ block.super }}
-  <link rel="stylesheet" type="text/css" href="{% static 'main/study-overview.css' %}" />
-  <script src="{% static 'dist/StudyOverview.js' %}"></script>
+  <script src="{% static 'bs5/overview.js' %}"></script>
 {% endblock js_css %}
 
 
 {% block content %}
   {{ block.super }}
 
-<form
-    class="edd-form"
-    data-rest="{{ rest }}"
-    enctype="multipart/form-data"
-    id="general"
-    method="POST"
-    style="clear:both;">
-  {% csrf_token %}
+{% if writable %}
+{% include 'main/include/dropzone_messages_bs5.html' %}
+{% endif %}
 
-  <div>
-    {% if writable %}
-      {% include 'main/include/dropzone_messages.html' %}
-    {% endif %}
-    <div class="sectionActions">
-      <div class="flex-row">
-        {% if writable %}
-        <div class="editable-field inactive editableStudyName flex-item" id="editable-study-name">
-          {{ study.name }}
-          {{ edit_study.name }}
+<div class="row mb-3">
+  <div class="col-9" id="edd-studyinfo-readonly">
+    {% include 'main/include/studyinfo-readonly.html' %}
+  </div>
+  {% if writable %}
+  <div class="col-9 d-none" id="edd-studyinfo-editable">
+    {% include 'main/include/studyinfo-editable.html' %}
+  </div>
+  <div class="col-auto ms-auto">
+    <button
+      class="btn btn-outline-secondary btn-large"
+      id="edd-studyinfo-edit"
+      title="{% translate 'Edit Study Details' %}"
+      type="button"
+    >
+      <i class="fas fa-pencil"></i>
+      {% translate "Edit" %}
+    </button>
+    <a
+      class="btn btn-primary btn-large"
+      href="{% url 'main:load:wizard' slug=study.slug as wizard_url %}"
+    >
+      <i class="fas fa-cloud-upload-alt"></i>
+      {% translate "Import Data" %}
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% if writable %}
+<hr/>
+<div class="row mb-3">
+  <div class="col-2">
+    <p>
+      {% blocktranslate trimmed %}
+        An experiment description file is an Excel file that describes your experiment: which
+        strains you are using (part ID from ICE), how they are being cultured (lines and
+        metadata), the procedure for processing samples (protocol), and which samples are being
+        taken (assays).
+      {% endblocktranslate %}
+    </p>
+    <p>
+      <a
+        href="{% url 'main:describe:help' slug=study.slug %}#column_options"
+        target="_blank"
+      >
+        {% translate 'Click here for column options' %}
+      </a>
+    </p>
+  </div>
+  <div class="col text-center">
+    <div
+      data-url="{% url 'main:describe:describe' slug=study.slug %}"
+      id="experimentDescDropZone"
+    >
+      <div class="dz-message d-none" data-dz-message="">
+        <div class="my-2">
+          {% translate 'Drop file here to upload.' %}
+          <a
+            class="btn btn-info btn-sm"
+            href="{% url 'main:describe:help' slug=study.slug %}"
+            id="helpExperimentDescription"
+            target="_blank"
+            title="{% translate 'Click for help on Experiment Description files' %}"
+          >
+            {% translate 'Help' %}
+          </a>
         </div>
-        {% url "main:load:wizard" slug=study.slug as wizard_url %}
-        <a class="{% if not lines %}off{% endif %} btn btn-primary btn-large" href="{{ wizard_url}}">
-            <span class="fas fa-cloud-upload-alt"></span>
-            {% translate 'Import Data' %}
-        </a>
-        {% else %}
-        <div class="flex-item">
-          {{ study.name }}
+        <div class="my-2">
+          <img
+            alt="{% translate 'Example description file preview' %}"
+            id="describeExampleImage"
+            src="{% describe_preview_img %}"
+          />
         </div>
-        {% endif %}
-      </div>
-      <div class="flex-row">
-        {% if writable %}
-          {{ edit_study.description.errors }}
-          <div class="editable-field inactive flex-item" id="editable-study-description">
-            {% firstof study.description|safe "<i>(Click to add description)</i>"|safe %}
-            {{ edit_study.description }}
-          </div>
-        {% else %}
-          <div class="flex-item">
-            {% firstof study.description|safe "<i>No description set</i>"|safe %}
-          </div>
-        {% endif %}
-        <div class="flex-item">
-          <label for="{{ edit_study.contact.id_for_label }}">Contact:</label>
-          {% if writable %}
-            {{ edit_study.contact.errors }}
-            <div class="editable-field editable-inline inactive" id="editable-study-contact">
-              {% if study.contact %}
-                {% firstof study.contact.profile.display_name study.contact.email as label %}
-                <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
-              {% elif study.contact_extra %}
-                {{ study.contact_extra }}
-              {% else %}
-                <i>(Enter Contact)</i>
-              {% endif %}
-              {{ edit_study.contact }}
-            </div>
-          {% else %}
-            <div>
-              {% if study.contact %}
-                {% firstof study.contact.profile.display_name study.contact.email as label %}
-                <a href="mailto:{{ study.contact.email }}">{{ label }}</a>
-              {% elif study.contact_extra %}
-                {{ study.contact_extra }}
-              {% else %}
-                <i>No contact set.</i>
-              {% endif %}
-            </div>
-          {% endif %}
+        <div class="my-2">
+          <a
+            class="btn btn-sm btn-outline-secondary"
+            href="{% describe_example_file %}"
+          >
+            <i class="fas fa-download"></i>
+            {% translate 'Example File' %}
+          </a>
         </div>
       </div>
     </div>
   </div>
-</form>
-
-
-{% if writable %}
-
-<div id="overviewWrapper">
-  <div class="row">
-    <div id="describeDirectionsDiv" class="column">
-      <h2 id="descriptionPromptTitle">{% translate 'Experiment Description' %}</h2>
-        <p>
-        {% blocktranslate trimmed %}
-          An experiment description file is an Excel file that describes your experiment: which
-          strains you are using (part ID from ICE), how they are being cultured (lines and
-          metadata), the procedure for processing samples (protocol), and which samples are being
-          taken (assays).
-        {% endblocktranslate %}
-      </p>
-      <p>
-        <a href="{% url 'main:describe:help' slug=study.slug %}#column_options" target="_blank">
-          {% translate 'Click here for column options' %}
-        </a>
-      </p>
-    </div>
-    <div class="column overviewDropZone">
-      <div
-        class="fd-zone"
-        id="experimentDescDropZone"
-        data-url="{% url 'main:describe:describe' slug=study.slug %}"
+  <div class="col-2">
+    <div class="d-grid gap-2">
+      <a
+        class="btn btn-outline-secondary"
+        href="{% url 'main:describe:describe' slug=study.slug %}"
       >
-        <div id="dz-title">
-          <div id="experimentDescTitle">
-            <h2>{% translate 'Experiment Description File' %}</h2>
-            <a
-              class="btn btn-primary btn-sm helpBadgeDiv"
-              href="{% url 'main:describe:help' slug=study.slug %}"
-              id="helpExperimentDescription"
-              target="_blank"
-            >
-              {% translate 'Help' %}
-              <span class="helpContent">
-                <span>
-                  {% translate "Click for help on Experiment Description files" %}
-                </span>
-              </span>
-            </a>
-          </div>
-        </div>
-        <div class="dz-message" data-dz-message>
-          <span>{% translate 'Drop file here to upload, or' %}</span>
-          <a href="#" class="dz-browse-link"><span>{% translate 'browse' %}</span></a>
-          <div>
-            <img id="describeExampleImage" src="{% describe_preview_img %}"
-               alt="{% translate 'Example description file preview' %}" />
-          </div>
-          <div>
-            <a href="{% describe_example_file %}"
-                class="sampleFileDownloadLink">
-              {% translate 'Example File' %} <span class="fas fa-download"></span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div id="describeButtonsColumn" class="column">
-      <div>
-        <h2>
-          {% blocktranslate %}
-          Other line creation options:
-          {% endblocktranslate %}
-        </h2>
-        <a class="dropLink btn btn-default combosButton" href="{% url 'main:describe:describe' slug=study.slug %}"
-          id="combosButton"
-        >
-          <span class="fas fa-random"></span>
-          {% translate "Add Line Combo's" %}
-        </a>
-      </div>
-      <div>
-        <a class="dropLink btn btn-default" href="{% url 'main:lines' slug=study.slug %}"
-          id="manualButton"
-        >
-          <span class="fas fa-pencil-alt"></span>
-          {% translate 'Enter Manually' %}
-        </a>
-      </div>
-      <div>
-        <a class="dropLink btn btn-default dz-browse-link" href="#" id="browseButton">
-          <span class="fas fa-folder-open"></span>
-          {% translate "Browse for file" %}
-        </a>
-      </div>
+        <span class="fas fa-random"></span>
+        {% translate "Add Line Combo's" %}
+      </a>
+      <a
+        class="btn btn-outline-secondary"
+        href="{% url 'main:lines' slug=study.slug %}"
+        id="manualButton"
+      >
+        <span class="fas fa-pencil-alt"></span>
+        {% translate 'Enter Manually' %}
+      </a>
+      <button
+        class="btn btn-outline-secondary dz-browse-link d-none"
+        id="browseButton"
+        type="button"
+      >
+        <span class="fas fa-folder-open"></span>
+        {% translate "Browse for file" %}
+      </button>
     </div>
   </div>
 </div>
-
-<details class="clearfix">
-  <summary class="pageDivider">
-    <span>{% translate "Permissions" %}</span>
-  </summary>
-  <div class="sectionContent">
-    {% with perms=study.get_combined_permission %}
-    {% if perms %}
-    <table class="permissions table table-condensed table-striped">
-      <thead>
-        <tr>
-          <th>{% translate 'Who' %}</th>
-          <th class="text-right">{% translate 'Level' %}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for perm in perms %}
-        <tr>
-          <td>{{ perm.get_who_label }}</td>
-          <td class="text-right">{{ perm.get_type_label }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
-    {% endwith %}
-    <button class="btn btn-primary" id="addPermission">
-      {% translate 'Configure Permissions' %}
-    </button>
-  </div>
-</details>
 {% endif %}
 
-<details class="clearfix">
-  <summary class="pageDivider">
-    {% blocktranslate with count=study.attachments|length %}
-    <span>Attachments ({{ count }})</span>
-    {% endblocktranslate %}
-  </summary>
-  <div class="sectionContent">
-    {% with attachments=study.attachments %}
-    {% include "main/include/attachments.html" %}
-    {% endwith %}
+<details class="mb-3">
+  <summary>{% translate "Permissions" %}</summary>
+  <div class="row">
+    <div class="col-md-6" id="edd-studyperm-readonly">
+      {% include "main/include/studyperm-readonly.html" %}
+    </div>
     {% if writable %}
-    <form
-      class="attachments edd-form"
-      enctype="multipart/form-data"
-      method="POST"
-    >
-      {% csrf_token %}
-      {{ new_attach.as_p }}
-      <p>
-        <button
-          class="btn btn-primary btn-sm"
-          name="action"
-          style="margin-top:-4px"
-          type="submit"
-          value="attach"
-        >
-          {% translate 'Attach File' %}
-        </button>
-      </p>
-    </form>
+    <div class="col-md-6 d-none" id="edd-studyperm-editable">
+      {% include "main/include/studyperm-editable.html" %}
+    </div>
     {% endif %}
   </div>
 </details>
 
-<details class="clearfix">
-  <summary class="pageDivider">
+<details class="mb-3">
+  <summary>
+    {% blocktranslate with count=study.attachments|length %}
+    Attachments ({{ count }})
+    {% endblocktranslate %}
+  </summary>
+  <div id="edd-attachments">
+    {% include "main/include/attachments.html" %}
+  </div>
+  {% if writable %}
+  <div id="edd-add-attachment">
+    {% include "main/include/add-attachment.html" %}
+  </div>
+  {% endif %}
+  </div>
+</details>
+
+<details class="mb-3">
+  <summary>
     {% blocktranslate with count=study.comment_list|length %}
     <span>Comments ({{ count }})</span>
     {% endblocktranslate %}
   </summary>
-  <div class="sectionContent">
-    <ol class="comment-list">
-      {% for comment in study.comment_list reversed %}
-      <li>
-        <span>
-          {% with created=comment.created %}
-          {% blocktranslate with name=created.full_name time=created.format_timestamp %}
-          {{ name }} at {{ time }}
-          {% endblocktranslate %}
-          {% endwith %}
-        </span>
-        <p>{{ comment.body }}</p>
-      </li>
-      {% endfor %}
-    </ol>
-    <div class="sectionActions">
-      <form method="POST" class="comments edd-form">
-        {% csrf_token %}
-        {{ new_comment.as_p }}
-        <p>
-          <button
-            class="btn btn-primary"
-            name="action"
-            type="submit"
-            value="comment"
-          >
-            {% translate 'Add Comment' %}
-          </button>
-        </p>
-      </form>
-    </div>
+  <div id="edd-comments">
+    {% include "main/include/comments.html" %}
+  </div>
+  {% if writable %}
+  <div id="edd-add-comment">
+    {% include "main/include/add-comment.html" %}
+  </div>
+  {% endif %}
   </div>
 </details>
 
 {% if writable %}
-<details class="clearfix">
-  <summary class="pageDivider">
-    <span>{% translate " Manage Study" %}</span>
+<details class="mb-3">
+  <summary>
+    <span>{% translate "Manage Study" %}</span>
   </summary>
-  <div class="sectionContent indent">
-    <form class="edd-form" method="POST">
-      {% csrf_token %}
-      <input type="hidden" name="studyId" value="{{ object.id }}" />
-      {% if object.active %}
-      <button
-        class="btn btn-danger"
-        name="action"
-        type="submit"
-        value="study_delete"
-      >
-        {% translate "Delete Study" %}
-      </button>
-      {% else %}
-      <button
-        class="btn btn-primary"
-        name="action"
-        type="submit"
-        value="study_restore"
-      >
-        {% translate "Restore Study" %}
-      </button>
-      {% endif %}
-    </form>
-  </div>
+  <form
+    action="{% url 'main:delete_study' slug=study.slug %}"
+    method="POST"
+  >
+    {% csrf_token %}
+    <input type="hidden" name="studyId" value="{{ object.id }}" />
+    <button
+      class="btn btn-danger"
+      name="action"
+      type="submit"
+      value="study_delete"
+    >
+      {% translate "Delete Study" %}
+    </button>
+  </form>
 </details>
-
-{# add permissions modal #}
-<div class="indent off" title="{% translate 'Configure Permissions' %}" id="permissionsSection">
-  <div class="sectionActions">
-    <form action="{% url 'main:permissions' slug=study.slug %}"
-        method="POST"
-        class="edd-form"
-        id="permissions"
-        enctype="multipart/form-data">
-      {% csrf_token %}
-      <div class="permission" id="permission_user_box">
-        <label for="permission_user">
-          <input type="radio" id="permission_user" name="class" value="User" hidden/>
-          <span>{% translate 'User' %}</span>
-        </label>
-        <select id="user_permission_options" name="type">
-          <option value="{{ permission_none }}">{% translate 'None' %}</option>
-          <option value="{{ permission_read }}">{% translate 'Read' %}</option>
-          <option value="{{ permission_write }}">{% translate 'Write' %}</option>
-        </select>
-        <button id="set_user_permission">{% translate 'Set Permission' %}</button>
-      </div>
-      <div class="permission" id="permission_group_box">
-        <label for="permission_group">
-          <input type="radio" id="permission_group" name="class" value="Group" hidden/>
-          <span>{% translate 'Group' %}</span>
-        </label>
-        <select id="group_permission_options" name="type">
-          <option value="{{ permission_none }}">{% translate 'None' %}</option>
-          <option value="{{ permission_read }}">{% translate 'Read' %}</option>
-          <option value="{{ permission_write }}">{% translate 'Write' %}</option>
-        </select>
-        <button id="set_group_permission">{% translate 'Set Permission' %}</button>
-      </div>
-      {% if can_make_public %}
-      <div class="permission" id="permission_public_box">
-        <input type="radio" id="permission_public" name="class" value="Public" hidden/>
-        <label for="permission_public">
-          <span>{% translate 'Everyone' %}</span>
-        </label>
-        <select name="type">
-          <option value="{{ permission_none }}">{% translate 'None' %}</option>
-          <option value="{{ permission_read }}">{% translate 'Read' %}</option>
-          <option value="{{ permission_write }}">{% translate 'Write' %}</option>
-        </select>
-        <button id="set_everyone_permission">{% translate 'Set Permission' %}</button>
-      </div>
-      {% endif %}
-    </form>
-  </div>
-</div>
 {% endif %}
 
 {% endblock content %}

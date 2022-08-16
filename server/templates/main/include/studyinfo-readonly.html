@@ -1,0 +1,26 @@
+{% load i18n %}
+<h2 class="edd-studyinfo-name">{{ study.name }}</h2>
+<p class="edd-studyinfo-desc">
+  {% if study.description %}
+    {{ study.description|safe }}
+  {% else %}
+    <i>{% translate "No description set." %}</i>
+  {% endif %}
+</p>
+<div class="row g-3 align-items-center">
+  <div class="col-auto">
+    <span class="form-label">{% translate "Contact" %}</span>
+  </div>
+  <div class="col-auto">
+    <span class="form-label">
+      {% if study.contact %}
+        {% firstof study.contact.get_full_name study.contact.email as contact_label %}
+        <a href="mailto:{{ study.contact.email }}">{{ contact_label }}</a>
+      {% elif study.contact_extra %}
+        {{ study.contaxt_extra }}
+      {% else %}
+        <i>{% translate "No contact set." %}</i>
+      {% endif %}
+    </span>
+  </div>
+</div>

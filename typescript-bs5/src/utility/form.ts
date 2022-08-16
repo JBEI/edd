@@ -1,5 +1,11 @@
 "use strict";
 
+import "jquery";
+
+export function findCSRFToken(): string {
+    return ($("input[name=csrfmiddlewaretoken]").val() as string) || "";
+}
+
 export function initializeInputsWithErrors(inputs: JQuery): void {
     inputs.each((index, input) => {
         input.setAttribute("aria-invalid", "true");

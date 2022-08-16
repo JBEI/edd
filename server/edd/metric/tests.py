@@ -1,5 +1,4 @@
 import io
-import json
 
 from django.http import QueryDict
 from django.urls import reverse
@@ -34,23 +33,24 @@ class StudyLogMixin:
     def _writable_study(self):
         study = factory.StudyFactory()
         study.userpermission_set.update_or_create(
-            permission_type=edd_models.StudyPermission.WRITE, user=self.user,
+            permission_type=edd_models.StudyPermission.WRITE,
+            user=self.user,
         )
         return study
 
 
 def _permission_command(level, *, user=None, group=None, public=False):
     """Build a JSON command string to send to our hacky permission view."""
-    command = {"type": level}
+    command = {"perm": level}
     if user is not None:
-        command.update(user={"id": user.id})
+        command.update(who=f"""{{"type":"user","id":{user.id}}}""")
     elif group is not None:
-        command.update(group={"id": group.id})
+        command.update(who=f"""{{"type":"group","id":{group.id}}}""")
     elif public:
-        command.update(public=None)
+        command.update(who="""{{"type":"everyone"}}""")
     else:
         raise ValueError("Must pick one of user, group, or public")
-    return json.dumps([command])
+    return command
 
 
 class StudyLogReceiverTests(StudyLogMixin, TestCase):
@@ -174,7 +174,7 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
 
         self.client.post(
             reverse("main:describe:describe", kwargs={"slug": study.slug}),
-            br"""
+            rb"""
             {
                 "name_elements":{
                     "elements":["replicate_num"]
@@ -312,8 +312,8 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
         command = _permission_command(edd_models.StudyPermission.READ, user=other)
 
         self.client.post(
-            reverse("main:permissions", kwargs={"slug": study.slug}),
-            data={"data": command},
+            reverse("main:permission", kwargs={"slug": study.slug}),
+            data=command,
         )
 
         qs = self._find_log(event=StudyLog.Event.PERMISSION)
@@ -329,13 +329,14 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
         study = self._writable_study()
         other = factory.UserFactory()
         study.userpermission_set.create(
-            permission_type=edd_models.StudyPermission.READ, user=other,
+            permission_type=edd_models.StudyPermission.READ,
+            user=other,
         )
         command = _permission_command(edd_models.StudyPermission.NONE, user=other)
 
         self.client.post(
-            reverse("main:permissions", kwargs={"slug": study.slug}),
-            data={"data": command},
+            reverse("main:permission", kwargs={"slug": study.slug}),
+            data=command,
         )
 
         qs = self._find_log(event=StudyLog.Event.PERMISSION)
@@ -344,20 +345,6 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
         assert sl.detail == {
             "removed": f"u:{other.id}",
             "permission": edd_models.StudyPermission.READ,
-            "slug": study.slug,
-        }
-
-    def test_clearing_permission_adds_log(self):
-        study = self._writable_study()
-
-        self.client.delete(reverse("main:permissions", kwargs={"slug": study.slug}))
-
-        qs = self._find_log(event=StudyLog.Event.PERMISSION)
-        assert qs.count() == 1
-        sl = qs.get()
-        assert sl.detail == {
-            "removed": f"u:{self.user.id}",
-            "permission": edd_models.StudyPermission.WRITE,
             "slug": study.slug,
         }
 

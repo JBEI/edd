@@ -1,0 +1,23 @@
+{% for error in errors %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endfor %}
+{% if not fields %}
+  {% for field in hidden_fields %}{{ field }}{% endfor %}
+{% else %}
+  <div class="mb-3 row">
+    <div class="col-md-8">
+      <label for="{{ form.who.id_for_label }}">{{ form.who.label }}</label>
+      {{ form.who }}
+      {% for error in form.who.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+    <div class="col-md-4">
+      <label for="{{ form.perm.id_for_label }}">{{ form.perm.label }}</label>
+      {{ form.perm }}
+      {% for error in form.perm.errors %}
+      <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}

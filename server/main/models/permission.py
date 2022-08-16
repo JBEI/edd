@@ -37,6 +37,12 @@ class Permission:
         """
         return "?"
 
+    def get_target_id(self):
+        return None
+
+    def get_target_type(self):
+        return None
+
     def get_who_label(self):
         return "?"
 
@@ -106,6 +112,12 @@ class UserMixin(models.Model):
     def get_selector(self):
         return f"u:{self.user_id}"
 
+    def get_target_id(self):
+        return self.user.pk
+
+    def get_target_type(self):
+        return "user"
+
     def get_who_label(self):
         return self.user.profile.display_name
 
@@ -144,6 +156,12 @@ class GroupMixin(models.Model):
     def get_selector(self):
         return f"g:{self.group_id}"
 
+    def get_target_id(self):
+        return self.group.pk
+
+    def get_target_type(self):
+        return "group"
+
     def get_who_label(self):
         return self.group.name
 
@@ -170,6 +188,12 @@ class EveryoneMixin:
 
     def get_selector(self):
         return "*"
+
+    def get_target_id(self):
+        return ""
+
+    def get_target_type(self):
+        return "everyone"
 
     def get_who_label(self):
         return _("Everyone")

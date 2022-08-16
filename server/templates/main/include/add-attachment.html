@@ -1,0 +1,36 @@
+{% load i18n %}
+<form
+  action="{% url 'main:attach' slug=study.slug %}"
+  {% if permission_form.errors %}class="was-validated"{% endif %}
+  enctype="multipart/form-data"
+  id="edd-attachment-form"
+  method="POST"
+  data-action-inline="{% url 'main:attach_ajax' slug=study.slug %}"
+>
+  {% csrf_token %}
+  {{ new_attach }}
+  <button
+    class="btn btn-primary btn-sm"
+    id="edd-attachment-update"
+    type="submit"
+  >
+    <i class="fas fa-paperclip"></i>
+    {% translate "Attach File" %}
+  </button>
+  <button
+    class="btn btn-primary btn-sm d-none"
+    id="edd-attachment-saving"
+    type="button"
+  >
+    <span aria-hidden="true" class="spinner-border spinner-border-sm" role="status"></span>
+    {% translate "Uploading" %}
+  </button>
+  <button
+    class="btn btn-outline-secondary btn-sm"
+    id="edd-attachment-cancel"
+    type="reset"
+  >
+    <i class="fas fa-xmark"></i>
+    {% translate "Cancel" %}
+  </button>
+</form>

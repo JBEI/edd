@@ -228,8 +228,6 @@ class Autocomplete:
                 "html": template.render({"item": item}),
                 "id": json.dumps(item),
                 "text": item.get("text", _("Unknown Record")),
-                "type": "",
-                "backup": "",
             }
             for item in union[start:end]
         ]
@@ -241,8 +239,6 @@ class Autocomplete:
                     "html": template.render({"item": everyone}),
                     "id": json.dumps(everyone),
                     "text": _("Any User"),
-                    "type": "everyone",
-                    "backup": "",
                 },
                 *items,
             ]

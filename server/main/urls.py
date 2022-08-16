@@ -57,11 +57,6 @@ study_url_patterns = [
         name="access",
     ),
     path(
-        "permissions/",
-        login_required(views.StudyPermissionJSONView.as_view()),
-        name="permissions",
-    ),
-    path(
         "files/<int:file_id>/",
         include(
             [
@@ -79,6 +74,56 @@ study_url_patterns = [
                 ),
             ]
         ),
+    ),
+    path(
+        "edit/",
+        login_required(views.ModifyStudyView.as_view()),
+        name="modify_study",
+    ),
+    path(
+        "edit-ajax/",
+        login_required(views.ModifyStudyView.as_view(inline=True)),
+        name="modify_study_ajax",
+    ),
+    path(
+        "delete/",
+        login_required(views.DeleteStudyView.as_view()),
+        name="delete_study",
+    ),
+    path(
+        "restore/",
+        login_required(views.RestoreStudyView.as_view()),
+        name="restore_study",
+    ),
+    path(
+        "permission/",
+        login_required(views.ModifyPermissionView.as_view()),
+        name="permission",
+    ),
+    path(
+        "permission-ajax/",
+        login_required(views.ModifyPermissionView.as_view(inline=True)),
+        name="permission_ajax",
+    ),
+    path(
+        "attach/",
+        login_required(views.CreateAttachmentView.as_view()),
+        name="attach",
+    ),
+    path(
+        "attach-ajax/",
+        login_required(views.CreateAttachmentView.as_view(inline=True)),
+        name="attach_ajax",
+    ),
+    path(
+        "comment/",
+        login_required(views.CreateCommentView.as_view()),
+        name="comment",
+    ),
+    path(
+        "comment-ajax/",
+        login_required(views.CreateCommentView.as_view(inline=True)),
+        name="comment_ajax",
     ),
 ]
 

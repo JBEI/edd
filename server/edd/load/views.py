@@ -30,11 +30,8 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
         study = self.object = self.get_object()
         # FIXME protocol display on import page should be an autocomplete
         protocols = edd_models.Protocol.objects.order_by("name")
-        user_can_write = study.user_can_write(self.request.user)
         return super().get_context_data(
-            study=study,
             protocols=protocols,
-            writable=user_can_write,
             import_id=uuid.uuid4(),
             page_size_limit=getattr(settings, "EDD_IMPORT_PAGE_SIZE", 1000),
             page_count_limit=getattr(settings, "EDD_IMPORT_PAGE_LIMIT", 1000),

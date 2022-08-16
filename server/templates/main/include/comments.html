@@ -1,0 +1,17 @@
+{% load i18n %}
+<ol class="comment-list">
+  {% for comment in study.comment_list reversed %}
+  <li>
+    <span class="text-muted">
+      <small>
+      {% with created=comment.created %}
+      {% blocktranslate with name=created.full_name time=created.format_timestamp %}
+      {{ name }} at {{ time }}
+      {% endblocktranslate %}
+      {% endwith %}
+      </small>
+    </span>
+    <p>{{ comment.body }}</p>
+  </li>
+  {% endfor %}
+</ol>

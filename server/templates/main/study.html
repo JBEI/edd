@@ -20,12 +20,12 @@
     <li class="{% if showingoverview %}active{% endif %}">
       <a href="{% url 'main:overview' slug=study.slug %}">{% translate 'Overview' %}</a>
     </li>
-    {% if lines %}
+    {% if has_lines %}
     <li class="{% if showinglines %}active{% endif %}">
       <a href="{% url 'main:lines' slug=study.slug %}">{% translate 'Description' %}</a>
     </li>
     {% endif %}
-    {% if assays %}
+    {% if has_assays %}
     <li class="{% if showingdata %}active{% endif %}">
       <a href="{% url 'main:detail' slug=study.slug %}">{% translate 'Data' %}</a>
     </li>
