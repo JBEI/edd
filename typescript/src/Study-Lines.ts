@@ -217,7 +217,7 @@ class LineForms {
         );
         contactField.render((r: LineRecord): Pair => {
             const contact = lazy.user.get(r.contact);
-            return [contact?.email || "--", `${r.contact}`];
+            return [contact?.email || "--", `${r.contact || ""}`];
         });
         const experimenterField = new Forms.Autocomplete(
             this.lineModal.find("[name=line-experimenter_0"),
@@ -226,7 +226,7 @@ class LineForms {
         );
         experimenterField.render((r: LineRecord): Pair => {
             const experimenter = lazy.user.get(r.experimenter);
-            return [experimenter?.email || "--", `${r.experimenter}`];
+            return [experimenter?.email || "--", `${r.experimenter || ""}`];
         });
         const strainField = new Forms.Autocomplete(
             this.lineModal.find("[name=line-strains_0"),

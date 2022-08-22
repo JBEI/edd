@@ -34,9 +34,10 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
         # if the value is the actual model instance, don't try to look up model
         if isinstance(value, Model):
             return [self.display_value(value), value.pk]
-        elif value:
-            o = self.model.objects.get(pk=value)
-            return [self.display_value(o), value]
+        elif not value:
+            pass
+        elif o := self._find_instance(value):
+            return [self.display_value(o), o.pk]
         return ["", None]
 
     def display_value(self, value):
@@ -44,9 +45,15 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
 
     def value_from_datadict(self, data, files, name):
         widgets = enumerate(self.widgets)
-        v = [w.value_from_datadict(data, files, name + "_%s" % i) for i, w in widgets]
+        v = [w.value_from_datadict(data, files, f"{name}_{i}") for i, w in widgets]
         # v[0] is text of field, v[1] is hidden ID
         return v[1]
+
+    def _find_instance(self, value):
+        try:
+            return self.model.objects.get(pk=value)
+        except Exception:
+            return None
 
 
 class MultiAutocompleteWidget(AutocompleteWidget):
