@@ -1535,7 +1535,7 @@ class Migration(migrations.Migration):
             field=models.ManyToManyField(
                 db_table="edd_object_update",
                 help_text="List of Update objects logging changes to this object.",
-                related_name="_eddobject_updates_+",
+                related_name="+",
                 to="main.Update",
                 verbose_name="Updates",
             ),
@@ -2267,7 +2267,11 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={"db_table": "study_public_permission"},
-            bases=(permission.EveryoneMixin, permission.Permission, models.Model,),
+            bases=(
+                permission.EveryoneMixin,
+                permission.Permission,
+                models.Model,
+            ),
         ),
         migrations.AddField(
             model_name="assay",
@@ -2325,7 +2329,8 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.AlterIndexTogether(
-            name="metabolitespecies", index_together={("sbml_template", "species")},
+            name="metabolitespecies",
+            index_together={("sbml_template", "species")},
         ),
         migrations.AlterUniqueTogether(
             name="metaboliteexchange",

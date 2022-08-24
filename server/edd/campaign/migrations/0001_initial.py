@@ -339,7 +339,7 @@ class Migration(migrations.Migration):
             name="updates",
             field=models.ManyToManyField(
                 help_text="List of Update objects logging changes to this Campaign.",
-                related_name="_campaign_updates_+",
+                related_name="+",
                 to="main.Update",
                 verbose_name="Updates",
             ),
