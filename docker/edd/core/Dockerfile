@@ -64,35 +64,8 @@ RUN set -ex \
 
 # ---
 
-FROM pybase as prod-preinstall
-
-WORKDIR /install
-ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
-
-COPY ./docker/edd/core/Pipfile* /install/
-
-RUN set -ex \
-# update package index from base file
- && apt-get update \
-# need build tools to compile some python packages
- && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-    build-essential \
-    libldap2-dev \
-    libsasl2-dev \
-# not installing dev packages in prod
- && pipenv install --system --deploy --verbose \
- && DEBIAN_FRONTEND=noninteractive apt-get -y purge \
-    build-essential \
-    libldap2-dev \
-    libsasl2-dev \
- && apt autoremove -y \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/* \
- && rm -rf /root/.cache
-
-# ---
-
-FROM pybase as dev-preinstall
+FROM pybase as preinstall
+ARG TARGET
 
 WORKDIR /install
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
@@ -108,8 +81,10 @@ RUN set -ex \
     build-essential \
     libldap2-dev \
     libsasl2-dev \
-# including dev packages in dev
- && pipenv install --dev --system --deploy --verbose \
+ && if [ "${TARGET}" = "dev" ]; \
+    then pipenv install --dev --system --deploy --verbose; \
+    else pipenv install       --system --deploy --verbose; \
+    fi \
  && DEBIAN_FRONTEND=noninteractive apt-get -y purge \
     build-essential \
     libldap2-dev \
@@ -141,7 +116,7 @@ RUN ls -al && yarn build
 
 # ---
 
-FROM ${TARGET}-preinstall as configure
+FROM preinstall as configure
 
 WORKDIR /tmp/
 COPY ./.git /tmp/.git
@@ -150,7 +125,7 @@ RUN git rev-parse --short HEAD > /tmp/edd.hash
 
 # ---
 
-FROM ${TARGET}-preinstall as staticfiles
+FROM preinstall as staticfiles
 
 WORKDIR /usr/local/edd
 # Copy in python code
@@ -166,7 +141,7 @@ RUN python manage.py collectstatic \
 
 # ---
 
-FROM ${TARGET}-preinstall as install
+FROM preinstall as install
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ARG EDD_VERSION
