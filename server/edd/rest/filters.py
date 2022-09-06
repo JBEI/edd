@@ -391,8 +391,7 @@ class ExportFilter(filters.FilterSet):
         # create filter by OR together the ID fields
         for name in names:
             f = self.filters.get(name)
-            value = self.form.cleaned_data.get(name)
-            if value:
+            if value := self.form.cleaned_data.get(name):
                 id_filter |= Q(**{f"{f.field_name}__{f.lookup_expr}": value})
         return id_filter
 
@@ -402,8 +401,7 @@ class ExportFilter(filters.FilterSet):
         AND-query on the in_study filter, if specified.
         """
         queryset = queryset.filter(self._compose_id_filters())
-        in_study = self.form.cleaned_data.get("in_study", None)
-        if in_study:
+        if in_study := self.form.cleaned_data.get("in_study", None):
             queryset = self.filters["in_study"].filter(queryset, in_study)
         return queryset
 
@@ -511,7 +509,10 @@ class MetadataTypesFilter(filters.FilterSet):
 
 
 class MeasurementUnitFilter(filters.FilterSet):
-    unit_name = django_filters.CharFilter(field_name="unit_name", lookup_expr="iregex",)
+    unit_name = django_filters.CharFilter(
+        field_name="unit_name",
+        lookup_expr="iregex",
+    )
     in_study = django_filters.CharFilter(
         help_text=_("An identifier for the study; can use ID, UUID, or Slug"),
         method="used_in_study",
@@ -569,7 +570,10 @@ class UserFilter(filters.FilterSet):
         assay_experimenters = queryset.filter(assay_experimenter_set__study__in=study)
         experimenters = queryset.filter(measurement_experimenter_set__study__in=study)
         return study_contact.union(
-            line_contacts, line_experimenters, assay_experimenters, experimenters,
+            line_contacts,
+            line_experimenters,
+            assay_experimenters,
+            experimenters,
         ).order_by("pk")
 
 

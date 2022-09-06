@@ -195,7 +195,13 @@ class ExportViewSet(BaseExportViewSet):
         return response
 
     def get_queryset(self):
-        qs = models.MeasurementValue.objects.order_by("pk")
+        qs = models.MeasurementValue.objects.filter(
+            measurement__active=True,
+            measurement__assay__active=True,
+            measurement__assay__line__active=True,
+            study__active=True,
+        )
+        qs = qs.order_by("pk")
         return qs.select_related(
             "measurement__measurement_type",
             "measurement__y_units",
