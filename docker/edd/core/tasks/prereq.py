@@ -40,11 +40,17 @@ def code(context):
         print("Running with container copy of code …")
         with context.cd(runtime_code):
             context.run(f"cp -R {container_code}/. .")
-    if context.run(f"test -r {mounted_settings}").ok:
+    if context.run(f"test -r {mounted_settings}", warn=True).ok:
         print(f"Loading settings from {mounted_settings} …")
         with context.cd(f"{runtime_code}/edd/settings"):
             context.run("mkdir -p local")
             context.run(f"cp -R {mounted_settings}/. ./local")
+    else:
+        print(
+            "No settings provided, using defaults. "
+            "This is probably not what you want. "
+            f"Add config for settings at `{mounted_settings}`."
+        )
 
 
 @invoke.task(pre=[environment])
@@ -161,7 +167,7 @@ def errorpage(context):
         version_hash = util.get_version_hash(context)
         version_number = util.env("EDD_VERSION", default="unversioned")
         result = context.run(
-            fr"grep -E '\({version_hash}\)' '{error_html}'", warn=True, hide=True
+            rf"grep -E '\({version_hash}\)' '{error_html}'", warn=True, hide=True
         )
         # pull out the version string from grep
         # e.g. "Experiment Data Depot 1.2.3 (abcdef)"
