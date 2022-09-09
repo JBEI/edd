@@ -11,9 +11,10 @@
 {% endblock body_title %}
 
 {% block content %}
-  {% blocktranslate trimmed as error_message %}
+  <p>
+  {% blocktranslate trimmed %}
   The received request is malformed, and cannot be fulfilled. The site administrators have been
   notified of the problem, please check back later.
   {% endblocktranslate %}
-  <p>{{ error_message }}</p>
+  </p>
 {% endblock content %}
