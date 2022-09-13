@@ -473,20 +473,26 @@ class PermissionForm(forms.Form):
         target = {}
         match cleaned_data.get("who"):
             case {"type": "user", "id": user_id}:
-                manager = self._study.userpermission_set
+                qs = self._study.userpermission_set
                 target.update(user_id=user_id)
             case {"type": "group", "id": group_id}:
-                manager = self._study.grouppermission_set
+                qs = self._study.grouppermission_set
                 target.update(group_id=group_id)
             case {"type": "everyone"}:
-                manager = self._study.everyonepermission_set
+                qs = self._study.everyonepermission_set
             case _:
                 raise ValidationError(_("Could not find permission target"))
         match perm := cleaned_data.get("perm"):
             case models.StudyPermission.WRITE | models.StudyPermission.READ:
-                manager.update_or_create(permission_type=perm, **target)
+                # find any existing permission for selected entity,
+                # then update to the given access level
+                qs.update_or_create(
+                    defaults={"permission_type": perm},
+                    **target,
+                )
             case models.StudyPermission.NONE:
-                manager.filter(**target).delete()
+                # treat NONE access level as "delete permission"
+                qs.filter(**target).delete()
 
 
 __all__ = [
