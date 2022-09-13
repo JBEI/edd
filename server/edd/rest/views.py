@@ -155,6 +155,16 @@ class BaseExportViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     content_negotiation_class = ExportCsvContentNegotiation
     filterset_class = filters.ExportFilter
 
+    def get_queryset(self):
+        # exports should only return values from currently active records
+        qs = models.MeasurementValue.objects.filter(
+            measurement__active=True,
+            measurement__assay__active=True,
+            measurement__assay__line__active=True,
+            study__active=True,
+        )
+        return qs.order_by("pk")
+
     def _send_export_signal(self, request):
         try:
             # fetch the lines matching the ExportFilter for counting
@@ -195,13 +205,7 @@ class ExportViewSet(BaseExportViewSet):
         return response
 
     def get_queryset(self):
-        qs = models.MeasurementValue.objects.filter(
-            measurement__active=True,
-            measurement__assay__active=True,
-            measurement__assay__line__active=True,
-            study__active=True,
-        )
-        qs = qs.order_by("pk")
+        qs = super().get_queryset()
         return qs.select_related(
             "measurement__measurement_type",
             "measurement__y_units",
@@ -233,9 +237,6 @@ class StreamingExportViewSet(BaseExportViewSet):
     pagination_class = None
     renderer_classes = (renderers.ExportRenderer,)
     serializer_class = serializers.ExportSerializer
-
-    def get_queryset(self):
-        return models.MeasurementValue.objects.order_by("pk")
 
     def list(self, request, *args, **kwargs):
         # custom implementation of list() ignores serializers
