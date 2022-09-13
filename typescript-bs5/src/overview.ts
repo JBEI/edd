@@ -37,7 +37,10 @@ function setupStudyEdit(): void {
         if (ev.currentTarget.checkValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
             $.ajax({
+                "cache": false,
+                "contentType": false,
                 "data": new FormData(form[0]),
+                "processData": false,
                 "type": "POST",
                 "url": form.data("actionInline"),
             })
@@ -65,7 +68,10 @@ function setupPermissionEdit(): void {
         if (ev.currentTarget.checkValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
             $.ajax({
+                "cache": false,
+                "contentType": false,
                 "data": new FormData(form[0]),
+                "processData": false,
                 "type": "POST",
                 "url": form.data("actionInline"),
             })
@@ -144,7 +150,10 @@ function setupCommentAdd(): void {
         if (ev.currentTarget.checkValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
             $.ajax({
+                "cache": false,
+                "contentType": false,
                 "data": new FormData(form[0]),
+                "processData": false,
                 "type": "POST",
                 "url": form.data("actionInline"),
             })
