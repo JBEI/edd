@@ -36,6 +36,15 @@ def fuzzy_study_subquery(value):
     return models.Study.objects.filter(q).values_list("pk", flat=True)
 
 
+def truthy(value):
+    """
+    Utility to check if a string filter value is Boolean True for filtering.
+    Accepts case-insensitive "true", "yes", "t", "y", "1" as True. All
+    other values are treated as False.
+    """
+    return str(value).lower() in {"true", "t", "yes", "y", "1"}
+
+
 class ModelChoiceInFilter(
     django_filters.BaseInFilter, django_filters.ModelChoiceFilter
 ):
@@ -43,11 +52,11 @@ class ModelChoiceInFilter(
 
 
 class EDDObjectFilter(filters.FilterSet):
-    active = django_filters.BooleanFilter(
-        field_name="active",
+    active = django_filters.CharFilter(
         help_text=_(
             "Filter on currently active/visible items (True/1/yes or false/0/no)"
         ),
+        method="filter_is_active",
     )
     created_before = django_filters.IsoDateTimeFilter(
         field_name="created__mod_time",
@@ -84,14 +93,12 @@ class EDDObjectFilter(filters.FilterSet):
         model = models.EDDObject
         fields = []
 
-    @classmethod
-    def truthy(cls, value):
-        """
-        Utility to check if a string filter value is Boolean True for filtering.
-        Accepts case-insensitive "true", "yes", "t", "y", "1" as True. All
-        other values are treated as False.
-        """
-        return str(value).lower() in {"true", "t", "yes", "y", "1"}
+    def filter_is_active(self, queryset, name, value):
+        return queryset.filter(active=truthy(value))
+
+    @staticmethod
+    def truthy(value):
+        return truthy(value)
 
 
 class StudyFilter(EDDObjectFilter):
@@ -117,9 +124,9 @@ class LineFilter(EDDObjectFilter):
         help_text=_("ID of the user set as the Line contact"),
         queryset=User.objects.all(),
     )
-    control = django_filters.BooleanFilter(
-        field_name="control",
+    control = django_filters.CharFilter(
         help_text=_("Filter on Lines marked as controls (True/1/yes or false/0/no)"),
+        method="filter_is_control",
     )
     experimenter = django_filters.ModelChoiceFilter(
         field_name="experimenter",
@@ -150,6 +157,9 @@ class LineFilter(EDDObjectFilter):
         model = models.Line
         fields = []
 
+    def filter_is_control(self, queryset, name, value):
+        return queryset.filter(control=truthy(value))
+
     def filter_strains(self, queryset, name, values):
         # split out multiple values similar to other django_filters 'in' param processing
         uuid_values, url_values = [], []
@@ -163,7 +173,7 @@ class LineFilter(EDDObjectFilter):
         return queryset.filter(match_uuid | match_url)
 
     def group_replicates(self, queryset, name, value):
-        if self.truthy(value):
+        if truthy(value):
             replicate_type = models.MetadataType.system("Replicate")
             # extract replicate key from metadata
             replicate = Func(
@@ -206,11 +216,11 @@ class AssayFilter(EDDObjectFilter):
 
 
 class MeasurementFilter(filters.FilterSet):
-    active = django_filters.BooleanFilter(
-        field_name="active",
+    active = django_filters.CharFilter(
         help_text=_(
             "Filter on currently active/visible items (True/1/yes or false/0/no)"
         ),
+        method="filter_is_active",
     )
     assay = ModelChoiceInFilter(
         field_name="assay",
@@ -276,6 +286,9 @@ class MeasurementFilter(filters.FilterSet):
     class Meta:
         model = models.Measurement
         fields = []
+
+    def filter_is_active(self, queryset, name, value):
+        return queryset.filter(active=truthy(value))
 
 
 export_via_lookup = {
