@@ -11,6 +11,8 @@ from .base import env
 
 # Broker Settings
 CELERY_BROKER_URL = env("BROKER_URL")
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 CELERY_ACCEPT_CONTENT = {"json", "edd-json"}
 CELERY_TASK_SERIALIZER = "edd-json"
