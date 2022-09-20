@@ -58,7 +58,8 @@
         "build": "webpack --progress --color --mode production",
         "local": "webpack --progress --color --mode production --config typescript/webpack.config.js",
         "watch": "webpack --progress --color --watch --config typescript/webpack.config.js",
-        "test": "jest --config typescript/jest.config.js"
+        "test": "jest",
+        "localtest": "jest --config typescript/jest.config.js"
     },
     "repository": {
         "type": "git",
