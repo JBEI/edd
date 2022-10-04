@@ -581,7 +581,7 @@ export class Graph {
         const domain: T[] = scale.domain();
         if (domain.length === 2 && domain[0] instanceof Number) {
             // in a numeric domain, just use normal formatting
-            x_axis.ticks(10, ".2s");
+            x_axis.ticks(10, ".2g");
         } else if (domain.length <= 20) {
             // non-numeric domain with 20 or fewer items, display all values
             x_axis.tickFormat(tickFormat);
@@ -642,7 +642,7 @@ export class Graph {
         // define term so first axis has ticks moving to left, others ticks to right
         const direction = index > 0 ? 1 : -1;
         // set five value ticks, labeled SI prefix w/ 2 significant figures
-        y_axis.ticks(5, ".2s");
+        y_axis.ticks(5, ".2g");
         const group = parent.append("g").attr("class", "axis y-axis y-axis-right");
         group.call(y_axis);
         const axis_label = group
