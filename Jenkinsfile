@@ -53,14 +53,14 @@ def tests = swarmDeploy([
 // when everything until now worked, and built trunk, deploy to staging
 if (currentBuild.currentResult == "SUCCESS") {
     if (result.pushedTags.grep("cr.ese.lbl.gov/jbei/edd-core:trunk")) {
-        swarmDeploy()
+        swarmDeploy([name: "EDD-Test"])
     } else if (result.pushedTags.grep("cr.ese.lbl.gov/jbei/edd-core:dev1")) {
-        swarmDeploy([target: "dev1"])
+        swarmDeploy([name: "EDD-dev1", target: "dev1"])
     } else if (result.pushedTags.grep("cr.ese.lbl.gov/jbei/edd-core:dev2")) {
-        swarmDeploy([target: "dev2"])
+        swarmDeploy([name: "EDD-dev2", target: "dev2"])
     }
     // also deploy docs
     if (result.pushedTags.grep("cr.ese.lbl.gov/jbei/edd-docs:trunk")) {
-        swarmDeploy([target: "docs"])
+        swarmDeploy([name: "Docs", target: "docs"])
     }
 }
