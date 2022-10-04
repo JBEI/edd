@@ -59,4 +59,8 @@ if (currentBuild.currentResult == "SUCCESS") {
     } else if (result.pushedTags.grep("cr.ese.lbl.gov/jbei/edd-core:dev2")) {
         swarmDeploy([target: "dev2"])
     }
+    // also deploy docs
+    if (result.pushedTags.grep("cr.ese.lbl.gov/jbei/edd-docs:trunk")) {
+        swarmDeploy([target: "docs"])
+    }
 }
