@@ -337,13 +337,16 @@ class ImportResolver:
                 .values_list("name", flat=True)
             )
             reporting.add_errors(
-                self.load.request, exceptions.DuplicateAssayError(details=duplicates),
+                self.load.request,
+                exceptions.DuplicateAssayError(details=duplicates),
             )
         return True
 
     def _verify_line_match(self, names):
         qs = models.Line.objects.filter(
-            active=True, name__in=names, study_id=self.load.study.pk,
+            active=True,
+            name__in=names,
+            study_id=self.load.study.pk,
         )
         count = qs.count()
         self._loa_name_to_pk = dict(qs.values_list("name", "pk"))
@@ -352,7 +355,8 @@ class ImportResolver:
         elif count < len(names):
             unmatched = names - self._loa_name_to_pk.keys()
             reporting.add_errors(
-                self.load.request, exceptions.UnmatchedLineError(details=unmatched),
+                self.load.request,
+                exceptions.UnmatchedLineError(details=unmatched),
             )
         elif count > len(names):
             duplicates = (
@@ -365,7 +369,8 @@ class ImportResolver:
                 .values_list("name", flat=True)
             )
             reporting.add_errors(
-                self.load.request, exceptions.DuplicateLineError(details=duplicates),
+                self.load.request,
+                exceptions.DuplicateLineError(details=duplicates),
             )
         return True
 
@@ -391,7 +396,8 @@ class ImportResolver:
                 # track errors and progress
                 error_count += 1
                 reporting.add_errors(
-                    self.load.request, exceptions.UnmatchedMtypeError(details=mtype_id),
+                    self.load.request,
+                    exceptions.UnmatchedMtypeError(details=mtype_id),
                 )
                 # to stay responsive, stop lookups after a threshold is reached
                 if error_count == error_limit:
@@ -538,7 +544,8 @@ class ImportCacheCreator:
                     )
                 else:
                     reporting.warnings(
-                        self.load.request, exceptions.MergeWarning(total, conflicts),
+                        self.load.request,
+                        exceptions.MergeWarning(total, conflicts),
                     )
         return conflicts
 
@@ -593,7 +600,9 @@ class ImportCacheCreator:
                 # before filtering for x__in caused a Postgres type error.
                 # So unfortunately we have to do this query inside the loop
                 qs = models.MeasurementValue.objects.filter(
-                    study_id=study.pk, x=x, measurement__assay__protocol_id=protocol.pk,
+                    study_id=study.pk,
+                    x=x,
+                    measurement__assay__protocol_id=protocol.pk,
                 )
                 if self.matched_assays:
                     assay_pk = item["assay_id"]

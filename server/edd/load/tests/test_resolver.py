@@ -171,7 +171,8 @@ class ImportResolverTests(TestCase):
 
     def setUp(self):
         self.load = LoadRequest(
-            study_uuid=self.target_study.uuid, protocol_uuid=self.protocol.uuid,
+            study_uuid=self.target_study.uuid,
+            protocol_uuid=self.protocol.uuid,
         )
         self._tracker = reporting.tracker(self.load.request)
         self._tracker.__enter__()
@@ -220,7 +221,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product())
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -247,7 +251,10 @@ class ImportResolverTests(TestCase):
             self._generate_measurement_product(names=[assay_A.name, assay_B.name])
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -270,7 +277,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product(points=[[[None], [10]]]))
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=False, has_all_times=False,
+            series_data=mpr,
+            record_src="row",
+            any_time=False,
+            has_all_times=False,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -281,18 +291,26 @@ class ImportResolverTests(TestCase):
         # setup
         time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: 24},
+            protocol=self.protocol,
         )
         assay_B = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: 24},
+            protocol=self.protocol,
         )
         mpr = list(
             self._generate_measurement_product(
-                names=[assay_A.name, assay_B.name], points=[[[None], [10]]],
+                names=[assay_A.name, assay_B.name],
+                points=[[[None], [10]]],
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=False, has_all_times=False,
+            series_data=mpr,
+            record_src="row",
+            any_time=False,
+            has_all_times=False,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -317,11 +335,15 @@ class ImportResolverTests(TestCase):
         assay_B = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol)
         mpr = list(
             self._generate_measurement_product(
-                names=[assay_A.name, assay_B.name], points=[[[None], [10]]],
+                names=[assay_A.name, assay_B.name],
+                points=[[[None], [10]]],
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=False, has_all_times=False,
+            series_data=mpr,
+            record_src="row",
+            any_time=False,
+            has_all_times=False,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -344,17 +366,26 @@ class ImportResolverTests(TestCase):
         # setup
         time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: 24},
+            protocol=self.protocol,
         )
         # missing time on this one!
-        assay_B = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol,)
+        assay_B = main_factory.AssayFactory(
+            line=self.BW1,
+            protocol=self.protocol,
+        )
         mpr = list(
             self._generate_measurement_product(
-                names=[assay_A.name, assay_B.name], points=[[[None], [10]]],
+                names=[assay_A.name, assay_B.name],
+                points=[[[None], [10]]],
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=False, has_all_times=False,
+            series_data=mpr,
+            record_src="row",
+            any_time=False,
+            has_all_times=False,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -377,19 +408,27 @@ class ImportResolverTests(TestCase):
         # setup
         time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: 24},
+            protocol=self.protocol,
         )
         assay_B = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: 24},
+            protocol=self.protocol,
         )
         # including time in points
         mpr = list(
             self._generate_measurement_product(
-                names=[assay_A.name, assay_B.name], points=[[[12], [10]]],
+                names=[assay_A.name, assay_B.name],
+                points=[[[12], [10]]],
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -412,18 +451,27 @@ class ImportResolverTests(TestCase):
         # setup
         time = models.MetadataType.system("Time")
         assay_A = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: 24}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: 24},
+            protocol=self.protocol,
         )
         # missing time on this one!
-        assay_B = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol,)
+        assay_B = main_factory.AssayFactory(
+            line=self.BW1,
+            protocol=self.protocol,
+        )
         # including time in points
         mpr = list(
             self._generate_measurement_product(
-                names=[assay_A.name, assay_B.name], points=[[[12], [10]]],
+                names=[assay_A.name, assay_B.name],
+                points=[[[12], [10]]],
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -448,7 +496,10 @@ class ImportResolverTests(TestCase):
         main_factory.LineFactory(study=self.target_study, name="arcA")
         mpr = list(self._generate_measurement_product())
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -459,7 +510,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product(names=["foo", "bar"]))
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -470,7 +524,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product(names=["BW1", "arcA", "foobar"]))
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -486,11 +543,15 @@ class ImportResolverTests(TestCase):
         )
         mpr = list(
             self._generate_measurement_product(
-                names=[assay_A.name, assay_B.name], points=[[[None], [10]]],
+                names=[assay_A.name, assay_B.name],
+                points=[[[None], [10]]],
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -504,11 +565,15 @@ class ImportResolverTests(TestCase):
         points = [*self._make_scalars([None], [10])]
         mpr = list(
             self._generate_measurement_product(
-                names=[assay_A.name, assay_B.name, "foobar"], points=points,
+                names=[assay_A.name, assay_B.name, "foobar"],
+                points=points,
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -519,7 +584,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product(types=["foobar"]))
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=False, has_all_times=False,
+            series_data=mpr,
+            record_src="row",
+            any_time=False,
+            has_all_times=False,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -531,7 +599,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product(types=["foobar"]))
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=False, has_all_times=False,
+            series_data=mpr,
+            record_src="row",
+            any_time=False,
+            has_all_times=False,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -542,7 +613,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product(points=[None]))
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=False, has_all_times=False,
+            series_data=mpr,
+            record_src="row",
+            any_time=False,
+            has_all_times=False,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -572,7 +646,10 @@ class ImportResolverTests(TestCase):
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -619,7 +696,10 @@ class ImportResolverTests(TestCase):
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -661,7 +741,10 @@ class ImportResolverTests(TestCase):
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         self.load.options |= LoadRequest.Options.allow_overwrite
         resolver, type_resolver = self._make_resolvers(parsed)
@@ -697,7 +780,10 @@ class ImportResolverTests(TestCase):
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -720,7 +806,10 @@ class ImportResolverTests(TestCase):
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -754,7 +843,10 @@ class ImportResolverTests(TestCase):
             )
         ]
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -792,7 +884,10 @@ class ImportResolverTests(TestCase):
             )
         )
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec
@@ -820,7 +915,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product())
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert
@@ -831,7 +929,10 @@ class ImportResolverTests(TestCase):
         # setup
         mpr = list(self._generate_measurement_product(names=["BW1", "BW1"]))
         parsed = ParseResult(
-            series_data=mpr, record_src="row", any_time=True, has_all_times=True,
+            series_data=mpr,
+            record_src="row",
+            any_time=True,
+            has_all_times=True,
         )
         resolver, type_resolver = self._make_resolvers(parsed)
         # exec + assert

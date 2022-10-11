@@ -329,7 +329,9 @@ class IceIntegrationTests(TestCase):
         admin_ice = AdminRegistry()
         with admin_ice.login():
             admin_failure = patch.object(
-                admin_ice.session, "send", side_effect=ValueError("Dummy Exception"),
+                admin_ice.session,
+                "send",
+                side_effect=ValueError("Dummy Exception"),
             )
             with admin_failure, self.assertRaises(RegistryError):
                 admin_ice.get_user_id(self.admin_ice_user)
@@ -343,7 +345,9 @@ class IceIntegrationTests(TestCase):
         admin_ice = AdminRegistry()
         with admin_ice.login():
             admin_failure = patch.object(
-                admin_ice.session, "send", side_effect=ValueError("Dummy Exception"),
+                admin_ice.session,
+                "send",
+                side_effect=ValueError("Dummy Exception"),
             )
             with admin_failure, self.assertRaises(RegistryError):
                 admin_ice.bulk_upload(BytesIO(b""))
