@@ -3,7 +3,9 @@
 import logging
 
 from django import forms
-from django.contrib import admin
+from django.conf import settings
+from django.contrib import admin, messages
+from django.core import management
 from django.utils.translation import gettext_lazy as _
 
 from . import models
@@ -37,15 +39,21 @@ class CategoryLayoutInline(admin.TabularInline):
     model = models.Category.layouts.through
 
 
+class CategoryProtocolInline(admin.TabularInline):
+    autocomplete_fields = ["protocol"]
+    model = models.CategoryProtocol
+
+
 class CategoryAdmin(admin.ModelAdmin):
     """Definition for admin-edit of Protocols."""
 
+    actions = ["make_ese_protocols"]
     fields = (
         "name",
         "sort_key",
         "type_group",
     )
-    inlines = (CategoryLayoutInline,)
+    inlines = (CategoryLayoutInline, CategoryProtocolInline)
     list_display = (
         "name",
         "sort_key",
@@ -54,10 +62,33 @@ class CategoryAdmin(admin.ModelAdmin):
     list_filter = ("type_group",)
     radio_fields = {"type_group": admin.HORIZONTAL}
 
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        # only show the protocol init action when explicitly enabled
+        if getattr(settings, "EDD_ENABLE_ESE_PROTOCOL_INIT", False) is not True:
+            del actions["make_ese_protocols"]
+        return actions
+
     def get_readonly_fields(self, request, obj=None):
         if obj and obj.pk is not None:
             return ["name"]
         return []
+
+    @admin.action(description=_("Setup ESE protocols"), permissions=["add"])
+    def make_ese_protocols(self, request, queryset):
+        try:
+            management.call_command("ese_protocol_init")
+            self.message_user(
+                request,
+                _("ESE Non-specific protocols are installed!"),
+                level=messages.SUCCESS,
+            )
+        except Exception as e:
+            self.message_user(
+                request,
+                _("Command failed: {reason}").format(reason=e),
+                level=messages.ERROR,
+            )
 
 
 class DefaultUnitAdmin(admin.ModelAdmin):

@@ -79,23 +79,36 @@ class Category(models.Model):
     process they need.
     """
 
+    GROUPS = (
+        ("broad", _("Broad")),
+        ("omics", _("Omics")),
+        ("pubchem", _("PubChem")),
+    )
+
     class Meta:
         ordering = ("sort_key",)
         verbose_name_plural = "Categories"
 
     layouts = models.ManyToManyField(
         Layout,
-        through="CategoryLayout",
         help_text=_("Supported input layouts for this load category."),
-        verbose_name=_("File layouts"),
         related_name="load_category",
+        through="CategoryLayout",
+        verbose_name=_("File layouts"),
     )
     name = VarCharField(
         help_text=_("Name of this loading category."), verbose_name=_("Name")
     )
+    protocols = models.ManyToManyField(
+        edd_models.Protocol,
+        help_text=_("Supported non-specific protocols for this category."),
+        related_name="load_category",
+        through="CategoryProtocol",
+        verbose_name=_("Protocols"),
+    )
     type_group = VarCharField(
         blank=True,
-        choices=edd_models.MeasurementType.Group.GROUP_CHOICE,
+        choices=GROUPS,
         default=None,
         help_text=_("Constrains measurement types searched during data loading."),
         null=True,
@@ -121,8 +134,8 @@ class CategoryLayout(models.Model):
     """
 
     class Meta:
-        ordering = ("layout", "category", "sort_key")
-        unique_together = ("layout", "category", "sort_key")
+        ordering = ("sort_key",)
+        unique_together = ("category", "sort_key")
         verbose_name_plural = "Category Layouts"
 
     layout = models.ForeignKey(
@@ -146,6 +159,46 @@ class CategoryLayout(models.Model):
         ),
         verbose_name=_("Display order"),
     )
+
+    def __str__(self):
+        return f"{self.category}:{self.layout}"
+
+
+class CategoryProtocol(models.Model):
+    """
+    Model for defining non-specific protocols to display for a given Category
+    in the Load Wizard interface.
+    """
+
+    class Meta:
+        ordering = ("sort_key",)
+        unique_together = ("category", "sort_key")
+        verbose_name_plural = _("Category Protocols")
+
+    category = models.ForeignKey(
+        Category,
+        help_text=_("The category for loaded data."),
+        on_delete=models.CASCADE,
+        verbose_name=_("Category"),
+        null=False,
+    )
+    protocol = models.OneToOneField(
+        edd_models.Protocol,
+        help_text=_("Non-specific protocol for default display"),
+        on_delete=models.CASCADE,
+        verbose_name=_("Protocol"),
+        null=False,
+    )
+    sort_key = models.PositiveIntegerField(
+        null=False,
+        help_text=_(
+            "Relative order this protocol option is displayed under this category."
+        ),
+        verbose_name=_("Display order"),
+    )
+
+    def __str__(self):
+        return f"{self.category}::{self.protocol}"
 
 
 class DefaultUnit(models.Model):
@@ -172,6 +225,9 @@ class DefaultUnit(models.Model):
             "unit_name": self.unit.unit_name,
         }
 
+    def __str__(self):
+        return f"{self.measurement_type} -> {self.unit}"
+
 
 class MeasurementNameTransform(models.Model):
     class Meta:
@@ -196,3 +252,6 @@ class MeasurementNameTransform(models.Model):
             "edd_type_name": self.edd_type_name.type_name,
             "parser": self.parser,
         }
+
+    def __str__(self):
+        return f"{self.input_type_name} -> {self.edd_type_name}"

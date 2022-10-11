@@ -45,13 +45,6 @@ export class Step extends React.Component<Props, unknown> {
             },
             "json",
         );
-        $.ajax({
-            "data": { "page_size": 10 },
-            "type": "GET",
-            "url": this.props.protocolUrl,
-        }).then((payload) => {
-            this.props.onUpdate("step1", { "protocols": payload.results });
-        });
     }
 
     componentWillUnmount(): void {
@@ -200,39 +193,16 @@ export class Step extends React.Component<Props, unknown> {
     }
 
     private protocolInput(original) {
-        const protocols = this.props.step1.protocols || [];
+        const protocols = this.props.step1.category?.protocols || [];
         const placeholder = original.data("placeholder");
         const label = original.data("filterLabel");
         return (
-            <React.Fragment>
-                <div className="form-group">
-                    <label htmlFor="protocol_select">{label}</label>
-                    <input
-                        id="protocol_select"
-                        type="search"
-                        onChange={(event) => {
-                            $.ajax({
-                                "data": {
-                                    "name": $(event.target).val(),
-                                    "page_size": 10,
-                                },
-                                "type": "GET",
-                                "url": this.props.protocolUrl,
-                            }).then((payload) => {
-                                this.props.onUpdate("step1", {
-                                    "protocols": payload.results,
-                                });
-                            });
-                        }}
-                    />
-                </div>
-                <Inputs.MultiButtonSelect
-                    options={protocols}
-                    placeholder={placeholder}
-                    selected={this.props.step1.protocol}
-                    onSelect={(selected) => this.protocolSelect(selected)}
-                />
-            </React.Fragment>
+            <Inputs.MultiButtonSelect
+                options={protocols}
+                placeholder={placeholder}
+                selected={this.props.step1.protocol}
+                onSelect={(selected) => this.protocolSelect(selected)}
+            />
         );
     }
 

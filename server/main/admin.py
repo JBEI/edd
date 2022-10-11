@@ -8,7 +8,7 @@ from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.admin.widgets import AutocompleteSelect
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
-from django.db import connection
+from django.db import connection, transaction
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
@@ -193,6 +193,7 @@ class EDDObjectAdmin(admin.ModelAdmin):
 class ProtocolAdmin(admin.ModelAdmin):
     """Definition for admin-edit of Protocols"""
 
+    actions = ["merge_with_action"]
     list_display = [
         "name",
         "external_url",
@@ -201,6 +202,41 @@ class ProtocolAdmin(admin.ModelAdmin):
         "sbml_category",
     ]
     search_fields = ["name"]
+
+    class MergeWithProtocolForm(forms.Form):
+        # same name as admin site uses for checkboxes to select items for actions
+        _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
+        protocol = forms.ModelChoiceField(models.Protocol.objects.all())
+
+    @admin.action(description=_("Migrate protocol to …"))
+    def merge_with_action(self, request, queryset):
+        if "protocol" in request.POST:
+            form = self.MergeWithProtocolForm(request.POST)
+            if form.is_valid():
+                target = form.cleaned_data["protocol"]
+                # update all Assays with queryset protocols to target
+                with transaction.atomic(savepoint=True):
+                    assays = models.Assay.objects.filter(protocol__in=queryset)
+                    assay_count = assays.update(protocol=target)
+                    total, deleted = queryset.delete()
+                    logger.info(f"Deleted {deleted}")
+                self.message_user(
+                    request,
+                    _("Merged {count} protocols, updating {assay} Assays.").format(
+                        count=deleted["main.Protocol"],
+                        assay=assay_count,
+                    ),
+                    level=messages.SUCCESS,
+                )
+        else:
+            form = self.MergeWithProtocolForm(
+                initial={"_selected_action": request.POST.getlist(ACTION_CHECKBOX_NAME)}
+            )
+        return render(
+            request,
+            "admin/merge_protocol.html",
+            context={"form": form},
+        )
 
 
 def render_study_links(study_queryset, *, limit=10):

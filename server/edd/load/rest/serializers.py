@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from edd.rest.serializers import ProtocolSerializer
 from edd.utilities import guess_extension
 
 from .. import models
@@ -32,6 +33,7 @@ class LayoutSerializer(serializers.ModelSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     pk = serializers.IntegerField(read_only=True)
+    protocols = ProtocolSerializer(many=True)
     layouts = LayoutSerializer(many=True)
 
     class Meta:
@@ -40,5 +42,6 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = (
             "pk",
             "name",
+            "protocols",
             "layouts",
         )

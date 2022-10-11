@@ -1,0 +1,29 @@
+{% extends 'admin/base_site.html' %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {{ form.media }}
+    {% load static %}
+    <script type="text/javascript" src="{% static 'dist/vendor.js' %}"></script>
+    <script type="text/javascript" src="{% static 'dist/Admin.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'dist/vendor.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
+{% endblock extrahead %}
+
+{% block content %}
+<p>
+    Search for protocol to merge with the selected protocols. The protocol
+    <i>must</i> already exist in EDD. Selected protocols listed below:
+</p>
+<ul>
+    {{ protocols|unordered_list }}
+</ul>
+<form action="" method="POST">
+    {% csrf_token %}
+    {{ form }}
+    <input type="hidden" name="action" value="merge_with_action" />
+    <p>
+        <button type="submit">Merge Protocols</button>
+    </p>
+</form>
+{% endblock content %}

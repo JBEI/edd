@@ -30,60 +30,63 @@ class TypeResolver:
         self.category = category
 
     def lookup_type(self, token):
-        if not self.category.type_group:
-            # best try to match, fail if none found
-            return self._broad_measurement_type_lookup(token)
-        elif self.category.type_group == models.MeasurementType.Group.GENERIC:
-            return self._generic_measurement_type_lookup(token)
-        elif self.category.type_group == models.MeasurementType.Group.METABOLITE:
-            return models.Metabolite.load_or_create(str(token))
-        elif self.category.type_group == models.MeasurementType.Group.PROTEINID:
-            return models.ProteinIdentifier.load_or_create(str(token), self.user)
-        elif self.category.type_group == models.MeasurementType.Group.GENEID:
-            return models.GeneIdentifier.load_or_create(str(token), self.user)
-        # not supporting any other types at this time
-        raise ValidationError("Failed to match measurement type")
+        match self.category.type_group:
+            case None | "broad":
+                return self._broad_type_lookup(token)
+            case "omics":
+                return self._omics_type_lookup(token)
+            case "pubchem":
+                return models.Metabolite.load_or_create(str(token))
+            case _:
+                raise ValidationError(_("Could not look up measurement type in EDD"))
 
-    def _broad_measurement_type_lookup(self, mtype_id):
-        # check type_name first
+    def _broad_type_lookup(self, token):
+        # check for PubChem pattern
         try:
-            return models.MeasurementType.objects.get(type_name=mtype_id)
-        except models.MeasurementType.DoesNotExist:
-            # ok, no name match, keep trying below before failing
-            pass
-        except MultipleObjectsReturned as e:
-            raise ValidationError(
-                f'Multiple Measurement Types found matching "{mtype_id}"'
-            ) from e
-        # if not that, check for PubChem pattern
-        try:
-            return models.Metabolite.load_or_create(str(mtype_id))
+            return models.Metabolite.load_or_create(str(token))
         except ValidationError:
             # ok, not a PubChem ID, keep trying below
             pass
         # maybe it's a UniProt pattern
         try:
-            return models.ProteinIdentifier.load_or_create(str(mtype_id), self.user)
+            return models.ProteinIdentifier.load_or_create(str(token), self.user)
         except ValidationError:
             pass
+        # check type_name exact match
+        try:
+            return models.MeasurementType.objects.get(type_name=token)
+        except models.MeasurementType.DoesNotExist:
+            # ok, no name match, keep trying below before failing
+            pass
+        except MultipleObjectsReturned as e:
+            raise ValidationError(
+                f'Multiple Measurement Types found matching "{token}"'
+            ) from e
         # everything so far failed, time to give up
-        # GeneIdentifier should get caught by first try block
         # not attempting GeneIdentifier.load_or_create()
         # because it will *always* generate an identifier
-        raise ValidationError(f'Measurement Type "{mtype_id}" not found')
+        raise ValidationError(f'Measurement Type "{token}" not found')
 
-    def _generic_measurement_type_lookup(self, mtype_id):
-        # For now, we purposefully avoid filtering by
-        # type_group=Measurementype.Group.GENERIC
-        # to allow for bioreactors that contain multiple classes of MeasurementTypes
+    def _omics_type_lookup(self, token):
+        # check for PubChem pattern
         try:
-            return models.MeasurementType.objects.get(type_name=mtype_id)
-        except models.MeasurementType.DoesNotExist:
-            raise ValidationError(f'Measurement Type "{mtype_id}" not found')
-        except MultipleObjectsReturned:
-            raise ValidationError(
-                f'Multiple Measurement Types found matching "{mtype_id}"'
-            )
+            return models.Metabolite.load_or_create(str(token))
+        except ValidationError:
+            # ok, not a PubChem ID, keep trying below
+            pass
+        # maybe it's a UniProt pattern
+        try:
+            return models.ProteinIdentifier.load_or_create(str(token), self.user)
+        except ValidationError:
+            pass
+        # check type_name exact match
+        try:
+            return models.MeasurementType.objects.get(type_name=token)
+        except (models.MeasurementType.DoesNotExist, MultipleObjectsReturned):
+            # ok, no exact name match, keep trying below before failing
+            pass
+        # try to turn into GeneIdentifier when nothing else matches
+        return models.GeneIdentifier.load_or_create(token, self.user)
 
 
 class ImportResolver:

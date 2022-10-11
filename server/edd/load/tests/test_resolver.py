@@ -73,37 +73,8 @@ class TypeResolverTests(TestCase):
         found = tr.lookup_type("sp|P12345")
         assert found.pk == type_A.pk
 
-    def test_resolve_generic_type(self):
-        generic = factory.CategoryFactory(
-            type_group=models.MeasurementType.Group.GENERIC
-        )
-        tr = TypeResolver(self.user, generic)
-        found = tr.lookup_type("Optical Density")
-        assert found.pk
-        assert found.type_name == "Optical Density"
-
-    def test_resolve_generic_type_missing(self):
-        generic = factory.CategoryFactory(
-            type_group=models.MeasurementType.Group.GENERIC
-        )
-        tr = TypeResolver(self.user, generic)
-        with pytest.raises(ValidationError):
-            tr.lookup_type("foobar")
-
-    def test_resolve_generic_type_multiple(self):
-        generic = factory.CategoryFactory(
-            type_group=models.MeasurementType.Group.GENERIC
-        )
-        tr = TypeResolver(self.user, generic)
-        main_factory.MeasurementTypeFactory(type_name="foobar")
-        main_factory.MeasurementTypeFactory(type_name="foobar")
-        with pytest.raises(ValidationError):
-            tr.lookup_type("foobar")
-
-    def test_resolve_metabolite_type(self):
-        metabolomics = factory.CategoryFactory(
-            type_group=models.MeasurementType.Group.METABOLITE
-        )
+    def test_resolve_pubchem_type(self):
+        metabolomics = factory.CategoryFactory(type_group="pubchem")
         type_A = main_factory.MetaboliteFactory(pubchem_cid="9999")
         tr = TypeResolver(self.user, metabolomics)
         # on_commit hook will never trigger in test
@@ -113,10 +84,8 @@ class TypeResolverTests(TestCase):
             assert found.pk == type_A.pk
             hook.on_commit.assert_not_called()
 
-    def test_resolve_metabolite_type_invalid(self):
-        metabolomics = factory.CategoryFactory(
-            type_group=models.MeasurementType.Group.METABOLITE
-        )
+    def test_resolve_pubchem_type_invalid(self):
+        metabolomics = factory.CategoryFactory(type_group="pubchem")
         tr = TypeResolver(self.user, metabolomics)
         # on_commit hook will never trigger in test
         # but check that something should / should-not happen
@@ -126,18 +95,14 @@ class TypeResolverTests(TestCase):
             hook.on_commit.assert_called_once()
 
     def test_resolve_protein_type(self):
-        proteomics = factory.CategoryFactory(
-            type_group=models.MeasurementType.Group.PROTEINID
-        )
+        proteomics = factory.CategoryFactory(type_group="omics")
         type_A = main_factory.ProteinFactory(accession_code="P12345")
         tr = TypeResolver(self.user, proteomics)
         found = tr.lookup_type("sp|P12345")
         assert found.pk == type_A.pk
 
     def test_resolve_transcript_type(self):
-        transcriptomics = factory.CategoryFactory(
-            type_group=models.MeasurementType.Group.GENEID
-        )
+        transcriptomics = factory.CategoryFactory(type_group="omics")
         # GeneIdentifiers depend on the user who created it
         update = main_factory.UpdateFactory(mod_by=self.user)
         src = models.Datasource.objects.create(

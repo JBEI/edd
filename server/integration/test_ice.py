@@ -387,18 +387,14 @@ class IceIntegrationTests(TestCase):
                 folder.list_entries()
 
     def test_ice_protein_link(self):
-        category = load_factory.CategoryFactory.build(
-            type_group=models.MeasurementType.Group.PROTEINID,
-        )
+        category = load_factory.CategoryFactory.build(type_group="omics")
         resolver = TypeResolver(self.read_ice_user, category)
         protein = resolver.lookup_type(self.entry_ids[0])
         assert isinstance(protein, models.ProteinIdentifier)
         assert protein.accession_id == self.entry_ids[0]
 
     def test_ice_protein_link_twice(self):
-        category = load_factory.CategoryFactory.build(
-            type_group=models.MeasurementType.Group.PROTEINID,
-        )
+        category = load_factory.CategoryFactory.build(type_group="omics")
         resolver = TypeResolver(self.read_ice_user, category)
         protein = resolver.lookup_type(self.entry_ids[0])
         # running lookup_type again does not throw ValidationError
