@@ -1,66 +1,105 @@
 {% load i18n %}
 
 {% if edit_study.errors %}
-<div class="alert alert-danger alert-dismissible" role="alert">
-  <button type="button" class="close" data-dismiss="alert" aria-label="{% translate 'Close' %}">
-    <span aria-hidden="true">&times;</span>
-  </button>
+<div class="alert alert-danger alert-dismissible my-2" role="alert">
   <p>{{ edit_study.name.errors.as_text }}</p>
+  <button
+    class="btn-close"
+    type="button"
+    aria-label="{% translate 'Close' %}"
+    data-bs-dismiss="alert"
+  ></button>
 </div>
 <div class="alert alert-danger alert-dismissible" role="alert">
-  <button type="button" class="close" data-dismiss="alert" aria-label="{% translate 'Close' %}">
-    <span aria-hidden="true">&times;</span>
-  </button>
   <p>{{ edit_study.non_field_errors.as_text }}</p>
+  <button
+    class="btn-close"
+    type="button"
+    aria-label="{% translate 'Close' %}"
+    data-bs-dismiss="alert"
+  ></button>
 </div>
 {% endif %}
 <div id="linesAdded" class="alert alert-success alert-dismissible d-none" role="alert">
-  <button type="button" class="close" data-dismiss="alert" aria-label="{% translate 'Close' %}">
-    <span aria-hidden="true">&times;</span>
+  <button
+    class="btn-close"
+    type="button"
+    aria-label="{% translate 'Close' %}"
+    data-bs-dismiss="alert"
+  ></button>
+</div>
+<div id="dismissAll" class="d-none my-2">
+  <button class="btn btn-warning">
+    {% translate 'Dismiss Messages' %}
   </button>
 </div>
-<div id="dismissAll" class="d-none">
-  <button class="btn btn-info dismissAll">
-    {% translate 'Dismiss' %}
-  </button>
-</div>
-<div id="acceptWarnings" class="d-none">
-  <button type="button" class="acceptWarnings btn btn-primary">
+<div id="acceptWarnings" class="d-none my-2">
+  <button type="button" class="btn btn-primary">
     {% translate 'Acknowledge Warnings' %}
   </button>
 </div>
 <div id="alert_placeholder">
   <div class="alert alert-danger alert-dismissible d-none">
-    <button type="button" class="close" data-dismiss="alert">&times;</button>
-    <span class="alertSubject"></span>
-    <p class="alertWarning"></p>
+    <h4></h4>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate 'Close' %}"
+      data-bs-dismiss="alert"
+    ></button>
   </div>
   <div class="alert alert-warning alert-dismissible d-none">
-    <button type="button" class="close" data-dismiss="alert">&times;</button>
-    <span class="alertSubject"></span>
+    <h4></h4>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate 'Close' %}"
+      data-bs-dismiss="alert"
+    ></button>
   </div>
-  <div id="actionWarningBar">
-    <div id="duplicateError" role="alert" class="alert alert-warning alert-dismissible d-none">
-      <button type="button" class="close" data-dismiss="alert">&times;</button>
-      <span class="alertSubject"></span>
-      <p class="alertWarning"></p>
-      <button type="button" class="btn btn-warning yesAlertInput allowDuplicates">
-        {% translate 'Allow Duplicates' %}
-      </button>
-      <button type="button" class="btn btn-danger dontAllowError noDuplicates">
-        {% translate 'Cancel' %}
-      </button>
-    </div>
-    <div id="iceError" role="alert" class="alert alert-warning alert-dismissible d-none">
-      <button type="button" class="close" data-dismiss="alert">&times;</button>
-      <span class="alertSubject"></span>
-      <p class="alertWarning"></p>
-      <button type="button" class="btn btn-warning yesAlertInput omitStrains">
-        {% translate 'Omit Strains' %}
-      </button>
-      <button type="button" class="btn btn-danger dontAllowError noOmitStrains">
-        {% translate 'Cancel' %}
-      </button>
-    </div>
+  <div id="iceError" role="alert" class="alert alert-warning alert-dismissible d-none">
+    <h4></h4>
+    <button type="button" class="btn btn-warning omitStrains">
+      {% translate 'Omit Strains' %}
+    </button>
+    <button type="button" class="btn btn-danger noOmitStrains">
+      {% translate 'Cancel' %}
+    </button>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate 'Close' %}"
+      data-bs-dismiss="alert"
+    ></button>
+  </div>
+  <div class="alert alert-danger alert-dismissible d-none" id="edd-500">
+    <h4>{% translate "EDD encountered an unknown error" %}</h4>
+    <p>
+      {% blocktranslate %}
+      EDD had an unexpected error processing your upload. Please try again
+      later, or contact support.
+      {% endblocktranslate %}
+    </p>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate 'Close' %}"
+      data-bs-dismiss="alert"
+    ></button>
+  </div>
+  <div class="alert alert-danger alert-dismissible d-none" id="edd-504">
+    <h4>{% translate "EDD failed to respond" %}</h4>
+    <p>
+      {% blocktranslate %}
+      EDD is taking to long to respond to your upload. Please reload the page
+      and try again.
+      {% endblocktranslate %}
+    </p>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate 'Close' %}"
+      data-bs-dismiss="alert"
+    ></button>
   </div>
 </div>

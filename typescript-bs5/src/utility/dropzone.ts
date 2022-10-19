@@ -162,12 +162,10 @@ export class DescriptionDropzone {
         const p = $("<p>").text(`Success! ${response.lines_created} lines added!`);
         $("#linesAdded").removeClass("off").append(p);
         // enable button to accept warnings
-        const acceptButton = $("#acceptWarnings")
-            .find("button.acceptWarnings")
-            .on("click", (event: JQueryMouseEventObject): boolean => {
-                DescriptionDropzone.redirect(response);
-                return false;
-            });
+        const acceptButton = $("#acceptWarnings").on("click", "button", (): boolean => {
+            DescriptionDropzone.redirect(response);
+            return false;
+        });
 
         // add alerts to the placeholder area
         const alerts = DescriptionDropzone.showAlerts(
@@ -224,6 +222,7 @@ export class DescriptionDropzone {
     static clearAlerts(): JQuery {
         const parent = $("#alert_placeholder");
         parent.children(".alert:visible").remove();
+        $("#dismissAll").addClass("d-none");
         return parent;
     }
 
@@ -250,34 +249,35 @@ export class DescriptionDropzone {
                 $("#iceError"),
             );
             // handle clicks on Cancel button(s)
-            parent.find(".noDuplicates, .noOmitStrains").on("click", () => {
-                window.location.reload();
+            parent.find(".noOmitStrains").on("click", () => {
+                DescriptionDropzone.clearAlerts();
                 return false;
             });
             // handle clicks on Omit Strains button
-            parent.find(".omitStrains").on("click", (event: JQueryMouseEventObject) => {
+            parent.find(".omitStrains").on("click", () => {
                 if (typeof dropzone.options.url !== "string") {
                     throw new Error("Cannot omit strains with callback URL");
                 }
                 const url = relativeURL(dropzone.options.url);
                 // remove alert from DOM so this can't be clicked again
-                $(event.currentTarget).closest(".alert").remove();
+                DescriptionDropzone.clearAlerts();
                 // re-submit with parameter to ignore strain access errors
                 url.searchParams.append("IGNORE_ICE_ACCESS_ERRORS", "true");
                 dropzone.options.url = url.toString();
                 dropzone.addFile(file);
+                return false;
             });
         } else {
             // if any errors are not in accessing ICE, show all errors
             DescriptionDropzone.showAlerts(parent, messages, "danger");
+            // if more than two errors, show the dismissAll button
+            $("#dismissAll")
+                .removeClass("d-none")
+                .one("click", "button", () => {
+                    DescriptionDropzone.clearAlerts();
+                    return false;
+                });
         }
-    }
-
-    private static faultTitle(
-        category: string,
-        alertType: "danger" | "warning",
-    ): string {
-        return alertType === "warning" ? `Warning! ${category}` : `Error! ${category}`;
     }
 
     private static redirect(response: DescriptionResponse): void {
@@ -287,19 +287,9 @@ export class DescriptionDropzone {
         }, 1000);
     }
 
-    private static show504Alert(parent: JQuery): JQuery[] {
-        return DescriptionDropzone.showAlerts(
-            parent,
-            [
-                {
-                    "category": "",
-                    "details": `EDD is taking to long to respond to your
-                        upload. Please reload the page and try again.`,
-                    "summary": "EDD failed to respond",
-                },
-            ],
-            "danger",
-        );
+    private static show504Alert(parent: JQuery): void {
+        const template = parent.find("#edd-504").clone();
+        template.appendTo(parent).removeClass("d-none");
     }
 
     /**
@@ -318,30 +308,19 @@ export class DescriptionDropzone {
         return Array.from(grouped.entries()).map(([category, items]): JQuery => {
             const alert = template.clone();
             alert
-                .children("span.alertSubject")
-                .text(DescriptionDropzone.faultTitle(category, alertType));
-            items.forEach((fault) => {
-                $("<p>")
-                    .addClass("alertWarning")
-                    .text(`${fault.summary}: ${fault.details}`)
-                    .appendTo(alert);
-            });
-            return alert.appendTo(parent).removeClass("off").show();
+                .children("h4")
+                .text(category)
+                .after(
+                    items.map((fault) =>
+                        $("<p>").text(`${fault.summary}: ${fault.details}`),
+                    ),
+                );
+            return alert.appendTo(parent).removeClass("d-none");
         });
     }
 
-    private static showUnknownAlert(parent: JQuery): JQuery[] {
-        return DescriptionDropzone.showAlerts(
-            parent,
-            [
-                {
-                    "category": "",
-                    "details": `EDD had an unexpected error processing your upload.
-                        Please try again later or contact support.`,
-                    "summary": "EDD encountered an unknown error",
-                },
-            ],
-            "danger",
-        );
+    private static showUnknownAlert(parent: JQuery): void {
+        const template = parent.find("#edd-500").clone();
+        template.appendTo(parent).removeClass("d-none");
     }
 }
