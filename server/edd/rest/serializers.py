@@ -15,18 +15,24 @@ class UpdateSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    display = serializers.CharField(
+        allow_blank=True,
+        required=False,
+        source="profile.display_name",
+    )
     initials = serializers.CharField(
-        allow_blank=True, required=False, source="profile.initials"
+        allow_blank=True,
+        required=False,
+        source="profile.initials",
     )
 
     class Meta:
         depth = 0
         fields = (
+            "display",
             "email",
-            "first_name",
             "initials",
             "is_active",
-            "last_name",
             "pk",
             "username",
         )
@@ -141,7 +147,9 @@ class StudySerializer(EDDObjectSerializer):
 
 class LineSerializer(EDDObjectSerializer):
     replicate = serializers.CharField(
-        allow_blank=True, required=False, source="replicate_key",
+        allow_blank=True,
+        required=False,
+        source="replicate_key",
     )
     strains = StrainSerializer(many=True, read_only=True)
 

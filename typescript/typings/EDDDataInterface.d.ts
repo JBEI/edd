@@ -152,13 +152,12 @@ interface StrainRecord {
 }
 
 interface UserRecord {
+    display?: string;
+    email: string;
+    initials?: string;
+    is_active: boolean;
     pk: number;
     username: string;
-    initials?: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-    is_active: boolean;
 }
 
 interface EDDData {
