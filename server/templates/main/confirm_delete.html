@@ -1,12 +1,12 @@
 {% extends "main/study.html" %}
-{% load static %}
-{% load i18n %}
+{% load i18n static %}
 
 {% comment %}
 This file works as a generic deletion confirm page. The context variables used
 directly in this template are:
   - cancel_link: a string for the reverse() URL to cancel the delete and return
     to previous page
+  - confirm_action: a token used to validate the delete operation (deprecated)
   - form: a Django Form holding fields defining the objects to delete
   - item_names: a list of names for items to be deleted (may not be complete)
   - item_count: a count of items to be deleted
@@ -41,6 +41,8 @@ the {{ typename }} "{{ name }}"
 <form action="" method="POST">
   {% csrf_token %}
   {{ form }}
+  <!-- for older pre-Bootstrap5 views -->
+  <input type="hidden" name="action" value="{{ confirm_action }}"/>
   <button
     class="btn btn-danger"
     name="confirm"

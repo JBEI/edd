@@ -10,6 +10,7 @@ from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.template.loader import get_template
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views import generic
@@ -564,7 +565,27 @@ class StudyLinesView(StudyDetailBaseView):
     def handle_delete_line(self, request, context, *args, **kwargs):
         """Sends to a view to confirm deletion."""
         self.check_write_permission(request)
-        return StudyDeleteView.as_view()
+        study = self.get_object()
+        form = export_forms.ExportSelectionForm(
+            data=request.POST,
+            exclude_disabled=False,
+            user=request.user,
+        )
+        if form.is_valid():
+            template = get_template("main/confirm_delete.html")
+            qs = form.selection.lines.filter(study_id=study.pk)
+            c = super().get_context_data(
+                cancel_link=reverse("main:lines", kwargs={"slug": study.slug}),
+                confirm_action="disable_confirm",
+                form=form,
+                item_count=qs.count(),
+                item_names=qs[:10].values_list("name", flat=True),
+                measurement_count=form.selection.measurements.count(),
+                typename=_("Line"),
+                **kwargs,
+            )
+            return TemplateResponse(request, template, c)
+        return self.handle_unknown(request, context, *args, **kwargs)
 
     def handle_disable(self, request, context, *args, **kwargs):
         return self.handle_enable_disable(request, False, **kwargs)
@@ -572,7 +593,9 @@ class StudyLinesView(StudyDetailBaseView):
     def handle_enable_disable(self, request, active, **kwargs):
         self.check_write_permission(request)
         form = export_forms.ExportSelectionForm(
-            data=request.POST, user=request.user, exclude_disabled=False
+            data=request.POST,
+            exclude_disabled=False,
+            user=request.user,
         )
         if form.is_valid():
             with transaction.atomic():
@@ -756,7 +779,27 @@ class StudyDetailView(StudyDetailBaseView):
 
     def handle_assay_delete(self, request, context, *args, **kwargs):
         self.check_write_permission(request)
-        return StudyDeleteView.as_view()
+        study = self.get_object()
+        form = export_forms.ExportSelectionForm(
+            data=request.POST,
+            exclude_disabled=False,
+            user=request.user,
+        )
+        if form.is_valid():
+            template = get_template("main/confirm_delete.html")
+            qs = form.selection.assays.filter(study_id=study.pk)
+            c = super().get_context_data(
+                cancel_link=reverse("main:detail", kwargs={"slug": study.slug}),
+                confirm_action="disable_assay_confirm",
+                form=form,
+                item_count=qs.count(),
+                item_names=qs[:10].values_list("name", flat=True),
+                measurement_count=form.selection.measurements.count(),
+                typename=_("Assay"),
+                **kwargs,
+            )
+            return TemplateResponse(request, template, c)
+        return self.handle_unknown(request, context, *args, **kwargs)
 
     def handle_assay_edit(self, request, context, *args, **kwargs):
         self.check_write_permission(request)
@@ -876,100 +919,3 @@ class StudyDetailView(StudyDetailBaseView):
                 reverse("main:lines", kwargs={"slug": instance.slug})
             )
         return super().get(request, *args, **kwargs)
-
-
-class StudyDeleteView(StudyLinesView):
-    """Confirmation view for deleting objects from a Study."""
-
-    template_name = "main/confirm_delete.html"
-
-    def get_actions(self):
-        """Return a dict mapping action names to functions performing the action."""
-        action_lookup = collections.defaultdict(lambda: self.handle_unknown)
-        action_lookup.update(
-            disable=self.handle_line_delete,
-            disable_assay=self.handle_assay_measurement_delete,
-            study_delete=self.handle_study_delete,
-        )
-        return action_lookup
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        request = kwargs.get("request")
-        form = export_forms.ExportSelectionForm(
-            data=request.POST, user=request.user, exclude_disabled=False
-        )
-        if form.is_valid():
-            count = form.selection.measurements.count()
-        else:
-            count = 0
-        context.update(
-            cancel_link=request.path, delete_select=form, measurement_count=count
-        )
-        return context
-
-    def handle_assay_measurement_delete(self, request, context, *args, **kwargs):
-        self.check_write_permission(request)
-        form = context["delete_select"]
-        study = self.get_object()
-        if form.is_valid():
-            # valid form means at least the IDs match correct things
-            # filter out selected items to do permission checks
-            if "assayId" in form.cleaned_data:
-                # if passed in assay IDs, report on assays and ignore measurements
-                qs = form.cleaned_data["assayId"].filter(study_id=study.pk)
-                context.update(
-                    confirm_action="disable_assay_confirm",
-                    item_count=qs.count(),
-                    item_names=qs[:10].values_list("name", flat=True),
-                    typename=_("Assay"),
-                )
-            # TODO: uncovered
-            elif "measurementId" in form.cleaned_data:
-                # if passed in measurement IDs, report on measurements
-                qs = form.cleaned_data["measurementId"].filter(study_id=study.pk)
-                context.update(
-                    confirm_action="disable_assay_confirm",
-                    item_count=qs.count(),
-                    item_names=qs[:10].values_list("name", flat=True),
-                    typename=_("Measurement"),
-                )
-            else:
-                # anything else is an error
-                return False
-            # END uncovered
-            return self.render_to_response(context)
-        # TODO: uncovered
-        return False
-        # END uncovered
-
-    def handle_line_delete(self, request, context, *args, **kwargs):
-        self.check_write_permission(request)
-        # use only Line IDs from export_forms.ExportSelectionForm; ignore everything else
-        form = context["delete_select"]
-        study = self.get_object()
-        if form.is_valid():
-            if "lineId" in form.cleaned_data:
-                # limit to items in this study, which is known to have write permission
-                qs = form.cleaned_data["lineId"].filter(study_id=study.pk)
-                context.update(
-                    confirm_action="disable_confirm",
-                    item_count=qs.count(),
-                    item_names=qs[:10].values_list("name", flat=True),
-                    typename=_("Line"),
-                )
-                return self.render_to_response(context)
-        # TODO: uncovered
-        return False
-        # END uncovered
-
-    def handle_study_delete(self, request, context, *args, **kwargs):
-        self.check_write_permission(request)
-        # don't use anything from export_forms.ExportSelectionForm, just get study from URL
-        context.update(
-            confirm_action="delete_confirm",
-            item_count=1,
-            item_names=[self.get_object().name],
-            typename=_("Study"),
-        )
-        return self.render_to_response(context)
