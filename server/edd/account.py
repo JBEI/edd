@@ -1,8 +1,7 @@
 import logging
 
 from allauth import account, exceptions, socialaccount
-from allauth.account.forms import ResetPasswordForm as BaseResetPasswordForm
-from allauth.account.forms import SignupForm as BaseSignupForm
+from allauth.account import forms
 from django.conf import settings
 from django.contrib import auth, messages, sites
 from django.contrib.auth.password_validation import password_validators_help_text_html
@@ -164,10 +163,24 @@ class EDDSocialAccountAdapter(socialaccount.adapter.DefaultSocialAccountAdapter)
             raise exceptions.ImmediateHttpResponse(redirect("/accounts/login"))
 
 
-class ResetPasswordForm(BaseResetPasswordForm):
+def make_a11y_form(form):
+    for visible in form.visible_fields():
+        # class required to be styled by Bootstrap
+        visible.field.widget.attrs["class"] = "form-control"
+        # prevent fields from being announced as invalid when form is first displayed
+        visible.field.widget.attrs["aria-invalid"] = "false"
+        # don't use placeholders, favor explicit labels and help texts
+        del visible.field.widget.attrs["placeholder"]
+
+
+class ResetPasswordForm(forms.ResetPasswordForm):
 
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        make_a11y_form(self)
 
     def clean_email(self):
         # base class will raise a user-visible error if no matching email found
@@ -189,7 +202,7 @@ class ResetPasswordForm(BaseResetPasswordForm):
         return super().save(request, **kwargs)
 
 
-class SignupForm(BaseSignupForm):
+class SignupForm(forms.SignupForm):
 
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
@@ -199,9 +212,50 @@ class SignupForm(BaseSignupForm):
         self.fields["password1"].help_text = password_validators_help_text_html()
         self.fields["password1"].widget.attrs["aria-describedby"] = "id_password1_help"
         self.fields["password2"].label = _("Re-enter password")
-        for visible in self.visible_fields():
-            # class required to be styled by Bootstrap
-            visible.field.widget.attrs["class"] = "form-control"
-            # prevent fields from being announced as invalid when form is first displayed
-            visible.field.widget.attrs["aria-invalid"] = "false"
-            del visible.field.widget.attrs["placeholder"]
+        make_a11y_form(self)
+
+
+class AddEmailForm(forms.AddEmailForm):
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/simple_bootstrap.html"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        make_a11y_form(self)
+
+
+class ChangePasswordForm(forms.ChangePasswordForm):
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/simple_bootstrap.html"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        make_a11y_form(self)
+
+
+class SetPasswordForm(forms.SetPasswordForm):
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/simple_bootstrap.html"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["password1"].help_text = password_validators_help_text_html()
+        self.fields["password1"].widget.attrs["aria-describedby"] = "id_password1_help"
+        self.fields["password2"].label = _("Re-enter password")
+        make_a11y_form(self)
+
+
+class ResetPasswordKeyForm(forms.ResetPasswordKeyForm):
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/simple_bootstrap.html"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["password1"].help_text = password_validators_help_text_html()
+        self.fields["password1"].widget.attrs["aria-describedby"] = "id_password1_help"
+        self.fields["password2"].label = _("Re-enter password")
+        make_a11y_form(self)
