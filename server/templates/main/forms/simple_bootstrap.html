@@ -8,6 +8,9 @@
     <div class="mb-3">
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field }}
+      {% if field.help_text %}
+      <div class="form-text" id="{{ field.id_for_label }}_help">{{ field.help_text }}</div>
+      {% endif %}
       {% for error in field.errors %}
       <div class="invalid-feedback">{{ error }}</div>
       {% endfor %}

@@ -5,7 +5,7 @@
 
 {% block content %}
   <form
-    class="centered-form"
+    class="centered-form{% if form.errors %} was-validated{% endif %}"
     id="signup_form"
     method="POST"
     action="{% url 'account_signup' %}"
@@ -17,24 +17,15 @@
       Already have an account? Then please <a href="{{ login_url }}">sign in</a>.
       {% endblocktranslate %}
     </p>
-
-    {% for field in form.visible_fields %}
-      <div class="form-group{% if field.errors %} has-error{% endif %}">
-        {{ field.label_tag }}
-        {{ field }}
-        <div id="id_{{field.name}}_help" class="help-block">
-          {{ f.errors }}
-          {% if field.help_text %}
-            <p>{{ field.help_text }}</p>
-          {% endif %}
-        </div>
-      </div>
-    {% endfor %}
-
+    {{ form }}
     {% if redirect_field_value %}
-    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+    <input
+      name="{{ redirect_field_name }}"
+      type="hidden"
+      value="{{ redirect_field_value }}"
+    />
     {% endif %}
-    <button type="submit" class="btn btn-primary">
+    <button class="btn btn-primary" type="submit">
       {% translate "Sign Up" %}
       <span role="presentation">&raquo;</span>
     </button>

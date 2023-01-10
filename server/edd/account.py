@@ -165,6 +165,10 @@ class EDDSocialAccountAdapter(socialaccount.adapter.DefaultSocialAccountAdapter)
 
 
 class ResetPasswordForm(BaseResetPasswordForm):
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/simple_bootstrap.html"
+
     def clean_email(self):
         # base class will raise a user-visible error if no matching email found
         # we should not be confirming/denying any email exists via web
@@ -186,6 +190,10 @@ class ResetPasswordForm(BaseResetPasswordForm):
 
 
 class SignupForm(BaseSignupForm):
+
+    error_css_class = "is-invalid"
+    template_name = "main/forms/simple_bootstrap.html"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["password1"].help_text = password_validators_help_text_html()
