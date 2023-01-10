@@ -1220,7 +1220,8 @@ class CombinatorialCreationImporter:
         formatted_lines = traceback.format_exc().splitlines()
         traceback_str = _ADMIN_EMAIL_TRACEBACK_DELIMITER.join(formatted_lines)
 
-        subject = "Unexpected Error during Experiment Description processing"
+        prefix = getattr(settings, "EMAIL_SUBJECT_PREFIX", "")
+        subject = f"{prefix} Unexpected Error during Experiment Description processing"
         message = base_email_format % {
             "study_pk": self.study.pk,
             "study_name": self.study.name,
