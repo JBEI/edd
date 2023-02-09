@@ -66,9 +66,11 @@ interface DescriptionResponse {
     success_redirect?: string;
 }
 
+type dzClickOption = boolean | string | HTMLElement | (string | HTMLElement)[];
+
 interface DZOptions {
     /** ID of the element to be set up as a Dropzone. */
-    elementId: string;
+    element: JQuery<HTMLElement>;
     /** URL target for upload requests. */
     url: string;
     /** Preprocess callback for import. */
@@ -84,7 +86,7 @@ interface DZOptions {
     /** Callback for warning result returned from server. */
     processWarningFn?: (file: Dropzone.DropzoneFile, response: any) => void;
     /** Assign false to prevent clicking; otherwise defaults to clickable Dropzone. */
-    clickable?: boolean | string | HTMLElement | (string | HTMLElement)[];
+    clickable?: dzClickOption;
 }
 
 function tryJSON(text: string): any {
@@ -99,19 +101,17 @@ function tryJSON(text: string): any {
  * Sets up a Dropzone element, with event handlers attached per the options.
  */
 export function createDropzone(options: DZOptions): void {
-    const element = document.getElementById(options.elementId);
     const clickable = options.clickable === undefined ? true : options.clickable;
-    if (element) {
-        $(element).addClass("dropzone");
+    if (options?.element?.length === 1) {
+        options.element.addClass("dropzone");
         const csrftoken = findCSRFToken();
-        const dropzone = new Dropzone(element, {
+        const dropzone = new Dropzone(options.element[0], {
             "url": options.url,
             "params": { "csrfmiddlewaretoken": csrftoken },
             "maxFilesize": 2,
             "acceptedFiles": ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
             "clickable": clickable,
         });
-        $(element).addClass("dropzone");
         dropzone.on("sending", (file, xhr, formData) => {
             options.fileInitFn?.(file, formData);
         });
@@ -140,90 +140,44 @@ export function createDropzone(options: DZOptions): void {
  */
 export class DescriptionDropzone {
     /**
-     * Callback handler for successful uploads via Dropzone for Description files.
+     * Remove all visible (non-template) alerts from the DOM.
      */
-    static success(file: Dropzone.DropzoneFile, response: DescriptionResponse): void {
-        DescriptionDropzone.clearAlerts();
-
-        // display success message
-        const p = $("<p>").text(`Success! ${response.lines_created} lines added!`);
-        $("#linesAdded").removeClass("off").append(p);
-        // redirect to the URL indicated in response
-        DescriptionDropzone.redirect(response);
-    }
-
-    /**
-     * Callback handler for uploads with warnings via Dropzone for Description files.
-     */
-    static warning(file: Dropzone.DropzoneFile, response: DescriptionResponse): void {
-        const parent = DescriptionDropzone.clearAlerts();
-
-        // display success message
-        const p = $("<p>").text(`Success! ${response.lines_created} lines added!`);
-        $("#linesAdded").removeClass("off").append(p);
-        // enable button to accept warnings
-        const acceptButton = $("#acceptWarnings").on("click", "button", (): boolean => {
-            DescriptionDropzone.redirect(response);
-            return false;
-        });
-
-        // add alerts to the placeholder area
-        const alerts = DescriptionDropzone.showAlerts(
-            parent,
-            response.warnings,
-            "warning",
-        );
-        // place button in alert if there's only one, otherwise place above all alerts
-        if (alerts.length === 1) {
-            alerts[0].append(acceptButton);
-        } else {
-            parent.prepend(acceptButton);
-        }
-        acceptButton.removeClass("off").show();
-    }
-
-    /**
-     * Callback handler for uploads with errors via Dropzone for Description files.
-     */
-    static error(
-        dropzone: Dropzone,
-        file: Dropzone.DropzoneFile,
-        response?: DescriptionResponse,
-    ): void {
-        const parent = DescriptionDropzone.clearAlerts();
-        // handle errors based on HTTP status code
-        const status = file.xhr.status;
-        switch (status) {
-            case 504: // Gateway Timeout
-                DescriptionDropzone.show504Alert(parent);
-                break;
-            default:
-                if (response) {
-                    // normal response, show error and warning alerts
-                    DescriptionDropzone.checkForStrainError(
-                        parent,
-                        response.errors || [],
-                        dropzone,
-                        file,
-                    );
-                    DescriptionDropzone.showAlerts(
-                        parent,
-                        response.warnings || [],
-                        "warning",
-                    );
-                } else {
-                    // if not a normal response, show unknown error alert
-                    DescriptionDropzone.showUnknownAlert(parent);
-                }
-        }
-    }
-
-    // remove all visible (non-template) alerts from the DOM
     static clearAlerts(): JQuery {
         const parent = $("#alert_placeholder");
         parent.children(".alert:visible").remove();
         $("#dismissAll").addClass("d-none");
         return parent;
+    }
+
+    /**
+     * Helper method to run setup on the dropzone and messages elements.
+     */
+    static initialize(dropElement: JQuery, clickable?: dzClickOption): void {
+        const url = dropElement.data("url");
+        createDropzone({
+            "element": dropElement,
+            "fileInitFn": DescriptionDropzone.clearAlerts,
+            "url": url,
+            "clickable": clickable,
+            "processResponseFn": DescriptionDropzone.success,
+            "processErrorFn": DescriptionDropzone.error,
+            "processWarningFn": DescriptionDropzone.warning,
+        });
+    }
+
+    /**
+     * Displays an alert message in the dropzone messages area.
+     */
+    static showMessage(
+        title: string,
+        message: string,
+        alertType: "danger" | "warning",
+    ): JQuery {
+        const parent = $("#alert_placeholder");
+        const template = parent.find(`.alert-${alertType}`).first();
+        const alert = template.clone();
+        alert.children("h4").text(title).after($("<p>").text(message));
+        return alert.appendTo(parent).removeClass("d-none");
     }
 
     private static checkForStrainError(
@@ -280,6 +234,42 @@ export class DescriptionDropzone {
         }
     }
 
+    /**
+     * Callback handler for uploads with errors via Dropzone for Description files.
+     */
+    private static error(
+        dropzone: Dropzone,
+        file: Dropzone.DropzoneFile,
+        response?: DescriptionResponse,
+    ): void {
+        const parent = DescriptionDropzone.clearAlerts();
+        // handle errors based on HTTP status code
+        const status = file.xhr.status;
+        switch (status) {
+            case 504: // Gateway Timeout
+                DescriptionDropzone.show504Alert(parent);
+                break;
+            default:
+                if (response) {
+                    // normal response, show error and warning alerts
+                    DescriptionDropzone.checkForStrainError(
+                        parent,
+                        response.errors || [],
+                        dropzone,
+                        file,
+                    );
+                    DescriptionDropzone.showAlerts(
+                        parent,
+                        response.warnings || [],
+                        "warning",
+                    );
+                } else {
+                    // if not a normal response, show unknown error alert
+                    DescriptionDropzone.showUnknownAlert(parent);
+                }
+        }
+    }
+
     private static redirect(response: DescriptionResponse): void {
         // wait for one second, then change the window location to the redirect URL
         window.setTimeout(() => {
@@ -322,5 +312,54 @@ export class DescriptionDropzone {
     private static showUnknownAlert(parent: JQuery): void {
         const template = parent.find("#edd-500").clone();
         template.appendTo(parent).removeClass("d-none");
+    }
+
+    /**
+     * Callback handler for successful uploads via Dropzone for Description files.
+     */
+    private static success(
+        file: Dropzone.DropzoneFile,
+        response: DescriptionResponse,
+    ): void {
+        DescriptionDropzone.clearAlerts();
+
+        // display success message
+        const p = $("<p>").text(`Success! ${response.lines_created} lines added!`);
+        $("#linesAdded").removeClass("off").append(p);
+        // redirect to the URL indicated in response
+        DescriptionDropzone.redirect(response);
+    }
+
+    /**
+     * Callback handler for uploads with warnings via Dropzone for Description files.
+     */
+    private static warning(
+        file: Dropzone.DropzoneFile,
+        response: DescriptionResponse,
+    ): void {
+        const parent = DescriptionDropzone.clearAlerts();
+
+        // display success message
+        const p = $("<p>").text(`Success! ${response.lines_created} lines added!`);
+        $("#linesAdded").removeClass("off").append(p);
+        // enable button to accept warnings
+        const acceptButton = $("#acceptWarnings").on("click", "button", (): boolean => {
+            DescriptionDropzone.redirect(response);
+            return false;
+        });
+
+        // add alerts to the placeholder area
+        const alerts = DescriptionDropzone.showAlerts(
+            parent,
+            response.warnings,
+            "warning",
+        );
+        // place button in alert if there's only one, otherwise place above all alerts
+        if (alerts.length === 1) {
+            alerts[0].append(acceptButton);
+        } else {
+            parent.prepend(acceptButton);
+        }
+        acceptButton.removeClass("off").show();
     }
 }

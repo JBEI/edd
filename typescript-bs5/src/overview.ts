@@ -2,20 +2,11 @@
 
 import "jquery";
 
-import { createDropzone, DescriptionDropzone } from "./utility/dropzone";
+import { DescriptionDropzone } from "./utility/dropzone";
 
 function setupDropzone(): void {
     const dropzoneDiv = $("#experimentDescDropZone");
-    const url = dropzoneDiv.attr("data-url");
-    createDropzone({
-        "elementId": "experimentDescDropZone",
-        "fileInitFn": DescriptionDropzone.clearAlerts,
-        "url": url,
-        "clickable": ".dz-browse-link",
-        "processResponseFn": DescriptionDropzone.success,
-        "processErrorFn": DescriptionDropzone.error,
-        "processWarningFn": DescriptionDropzone.warning,
-    });
+    DescriptionDropzone.initialize(dropzoneDiv, ".dz-browse-link");
     $(".dz-message,.dz-browse-link").removeClass("d-none");
 }
 
