@@ -263,35 +263,20 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
 
     filterset_class = filters.MeasurementTypesFilter
     permission_classes = [DjangoModelPermissions]
-
-    model_lookup = {
-        models.MeasurementType.Group.GENERIC: models.MeasurementType,
-        models.MeasurementType.Group.METABOLITE: models.Metabolite,
-        models.MeasurementType.Group.GENEID: models.GeneIdentifier,
-        models.MeasurementType.Group.PROTEINID: models.ProteinIdentifier,
-        models.MeasurementType.Group.PHOSPHOR: models.Phosphor,
-    }
-    serializer_lookup = {
-        models.MeasurementType.Group.GENERIC: serializers.MeasurementTypeSerializer,
-        models.MeasurementType.Group.METABOLITE: serializers.MetaboliteSerializer,
-        models.MeasurementType.Group.GENEID: serializers.GeneIdSerializer,
-        models.MeasurementType.Group.PROTEINID: serializers.ProteinIdSerializer,
-        models.MeasurementType.Group.PHOSPHOR: serializers.PhosphorSerializer,
-    }
+    serializer_class = serializers.MeasurementTypeSerializer
 
     def get_queryset(self):
-        group = self.request.query_params.get("type_group")
-        return self.model_lookup.get(group, models.MeasurementType).objects.order_by(
-            "pk"
-        )
-
-    def get_serializer_class(self):
-        """
-        Overrides the parent implementation to provide serialization
-        dynamically determined by the requested result type.
-        """
-        group = self.request.query_params.get("type_group")
-        return self.serializer_lookup.get(group, serializers.MeasurementTypeSerializer)
+        qs = models.MeasurementType.objects.all()
+        match self.request.query_params.get("type_group", None):
+            case None:
+                qs = qs.select_related("metabolite", "proteinidentifier")
+            case models.MeasurementType.Group.METABOLITE:
+                qs = qs.select_related("metabolite")
+            case models.MeasurementType.Group.PROTEINID:
+                qs = qs.select_related("proteinidentifier")
+            case _:
+                pass
+        return qs.order_by("pk")
 
 
 class CompartmentViewSet(viewsets.ReadOnlyModelViewSet):

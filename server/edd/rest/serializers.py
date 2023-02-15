@@ -187,45 +187,34 @@ class MetadataTypeSerializer(serializers.ModelSerializer):
 
 
 class MeasurementTypeSerializer(serializers.ModelSerializer):
+    accession = serializers.CharField(
+        read_only=True,
+        required=False,
+        source="proteinidentifier.accession_id",
+    )
+    cid = serializers.IntegerField(
+        read_only=True,
+        required=False,
+        source="metabolite.pubchem_cid",
+    )
     family = serializers.CharField(read_only=True, source="type_group")
     name = serializers.CharField(read_only=True, source="type_name")
+    url = serializers.SerializerMethodField()
 
     class Meta:
         model = models.MeasurementType
         depth = 0
-        fields = ("family", "name", "pk", "uuid")
+        fields = ("accession", "cid", "family", "name", "pk", "url", "uuid")
 
-
-class MetaboliteSerializer(MeasurementTypeSerializer):
-    cid = serializers.IntegerField(read_only=True, source="pubchem_cid")
-
-    class Meta:
-        model = models.Metabolite
-        depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields + ("cid",)
-
-
-class ProteinIdSerializer(MeasurementTypeSerializer):
-    accession = serializers.CharField(read_only=True, source="accession_id")
-
-    class Meta:
-        model = models.ProteinIdentifier
-        depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields + ("accession",)
-
-
-class GeneIdSerializer(MeasurementTypeSerializer):
-    class Meta:
-        model = models.GeneIdentifier
-        depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields
-
-
-class PhosphorSerializer(MeasurementTypeSerializer):
-    class Meta:
-        model = models.Phosphor
-        depth = 0
-        fields = MeasurementTypeSerializer.Meta.fields
+    def get_url(self, obj):
+        match obj.type_group:
+            case models.MeasurementType.Group.METABOLITE:
+                return f"https://pubchem.ncbi.nlm.nih.gov/compound/${obj.metabolite.pubchem_cid}"
+            case models.MeasurementType.Group.PROTEINID:
+                return f"https://www.uniprot.org/uniprot/${obj.proteinidentifier.accession_code}"
+            case _:
+                return
+        return obj.measurement_type.type_name
 
 
 class MeasurementUnitSerializer(serializers.ModelSerializer):

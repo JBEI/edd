@@ -747,9 +747,8 @@ class MetaboliteSection extends MeasurementFilterSection {
     valueToDisplay(value: MeasurementClass): string {
         const t = value.measurementType;
         let link = "";
-        if (t.cid) {
-            link = `<a href="https://pubchem.ncbi.nlm.nih.gov/compound/${t.cid}"
-                target="_blank">CID:${t.cid}</a>`;
+        if (t.cid && t.url) {
+            link = `<a href="${t.url}" target="_blank">CID:${t.cid}</a>`;
         }
         return `${value.compartment.code} ${t.name} ${link}`.trim();
     }
@@ -767,9 +766,8 @@ class ProteinSection extends MeasurementFilterSection {
     valueToDisplay(value: MeasurementClass): string {
         const t = value.measurementType;
         let link = "";
-        if (t.accession) {
-            link = `<a href="https://www.uniprot.org/uniprot/${t.accession}"
-                target="_blank">${t.accession}</a>`;
+        if (t.accession && t.url) {
+            link = `<a href="${t.url}" target="_blank">${t.accession}</a>`;
         }
         return `${value.compartment.code} ${t.name} ${link}`.trim();
     }
@@ -791,6 +789,6 @@ class OtherSection extends MeasurementFilterSection {
     }
 
     protected accept(value: MeasurementClass) {
-        return true;
+        return value?.measurementType?.pk !== undefined;
     }
 }

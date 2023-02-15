@@ -100,6 +100,8 @@ interface MeasurementTypeRecord {
     cid?: number;
     /** (optional) UniProt Accession ID, if available. */
     accession?: string;
+    /** (optional) URL to details of measurement type, if available. */
+    url?: string;
 }
 
 /**
