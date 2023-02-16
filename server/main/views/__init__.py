@@ -1,7 +1,9 @@
 """Module contains HTTP views for the main EDD functionality."""
 
 from .ajax import study_access, study_assay_table_data, study_edddata
-from .study import (
+from .index import StudyCreateView, StudyIndexView
+from .mixins import StudyObjectMixin
+from .overview import (
     CreateAttachmentView,
     CreateCommentView,
     DeleteStudyView,
@@ -9,13 +11,9 @@ from .study import (
     ModifyStudyView,
     RestoreStudyView,
     StudyAttachmentView,
-    StudyCreateView,
-    StudyDetailView,
-    StudyIndexView,
-    StudyLinesView,
-    StudyObjectMixin,
     StudyOverviewView,
 )
+from .study import StudyDetailView, StudyLinesView
 
 __all__ = [
     CreateAttachmentView,
