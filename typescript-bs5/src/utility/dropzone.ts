@@ -130,6 +130,17 @@ export function createDropzone(options: DZOptions): void {
                 options.processResponseFn?.(file, response);
             }
         });
+        // listen for alert closes
+        $(document).on("closed.bs.alert", "#alert_placeholder", (event) => {
+            const parent = $("#alert_placeholder");
+            const alert = $(event.target).closest(".alert");
+            // if there's a next alert, focus it
+            alert.next(".alert").focus();
+            // if no alerts left, call clearAlerts to hide dismiss all button
+            if (parent.children(".alert:visible").length === 0) {
+                DescriptionDropzone.clearAlerts();
+            }
+        });
     }
 }
 
