@@ -14,7 +14,29 @@
   {{ block.super }}
 
 {% if writable %}
-{% include 'main/include/dropzone_messages_bs5.html' %}
+  {% if edit_study.name.errors %}
+  <div class="alert alert-danger alert-dismissible my-2" role="alert">
+    <p>{{ edit_study.name.errors.as_text }}</p>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate 'Close' %}"
+      data-bs-dismiss="alert"
+    ></button>
+  </div>
+  {% endif %}
+  {% if edit_study.non_field_errors %}
+  <div class="alert alert-danger alert-dismissible" role="alert">
+    <p>{{ edit_study.non_field_errors.as_text }}</p>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate 'Close' %}"
+      data-bs-dismiss="alert"
+    ></button>
+  </div>
+  {% endif %}
+  {% include 'main/include/dropzone_messages_bs5.html' %}
 {% endif %}
 
 <div class="row mb-3">

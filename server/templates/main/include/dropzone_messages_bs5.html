@@ -1,25 +1,5 @@
 {% load i18n %}
 
-{% if edit_study.errors %}
-<div class="alert alert-danger alert-dismissible my-2" role="alert">
-  <p>{{ edit_study.name.errors.as_text }}</p>
-  <button
-    class="btn-close"
-    type="button"
-    aria-label="{% translate 'Close' %}"
-    data-bs-dismiss="alert"
-  ></button>
-</div>
-<div class="alert alert-danger alert-dismissible" role="alert">
-  <p>{{ edit_study.non_field_errors.as_text }}</p>
-  <button
-    class="btn-close"
-    type="button"
-    aria-label="{% translate 'Close' %}"
-    data-bs-dismiss="alert"
-  ></button>
-</div>
-{% endif %}
 <div id="linesAdded" class="alert alert-success alert-dismissible d-none" role="alert">
   <button
     class="btn-close"
@@ -76,7 +56,7 @@
     <h4>{% translate "EDD encountered an unknown error" %}</h4>
     <p>
       {% blocktranslate %}
-      EDD had an unexpected error processing your upload. Please try again
+      EDD had an unexpected error processing your submission. Please try again
       later, or contact support.
       {% endblocktranslate %}
     </p>
@@ -91,7 +71,7 @@
     <h4>{% translate "EDD failed to respond" %}</h4>
     <p>
       {% blocktranslate %}
-      EDD is taking to long to respond to your upload. Please reload the page
+      EDD is taking too long to respond to your submission. Please reload the page
       and try again.
       {% endblocktranslate %}
     </p>
