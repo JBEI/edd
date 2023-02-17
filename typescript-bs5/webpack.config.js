@@ -48,17 +48,6 @@ module.exports = {
     "resolve": {
         "modules": [path.resolve("node_modules")],
         "extensions": [".js", ".json", ".jsx", ".css", ".ts", ".tsx", ".vue"],
-        "alias": {
-            "handsontable": path.resolve(
-                "node_modules/handsontable/dist/handsontable.full.min.js",
-            ),
-            "handsontable.css": path.resolve(
-                "node_modules/handsontable/dist/handsontable.full.min.css",
-            ),
-            "react-stepzilla.css": path.resolve(
-                "node_modules/react-stepzilla/src/css/main.css",
-            ),
-        },
     },
     "module": {
         "rules": [
@@ -84,7 +73,6 @@ module.exports = {
                 "dependency": { "not": ["url"] },
             },
         ],
-        "noParse": [/handsontable\.full(\.min)?\.js/],
     },
     "devtool": "source-map",
     "plugins": [
