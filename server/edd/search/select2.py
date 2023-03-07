@@ -48,7 +48,7 @@ class Autocomplete:
             case "Protocol":
                 return self._protocol(request)
             case "Registry" | "Strain":
-                return self._registry(request)
+                return self._strain(request)
             case "SbmlExchange":
                 return self._sbml_exchange(request)
             case "SbmlSpecies":
@@ -147,7 +147,7 @@ class Autocomplete:
         found = edd_models.MetadataType.objects.filter(
             Q(type_name__iregex=term) | Q(group__group_name__iregex=term),
             type_filter,
-        )
+        ).order_by("type_name")
         found = found.annotate(
             group_name=F("group__group_name"),
             text=F("type_name"),
@@ -161,35 +161,21 @@ class Autocomplete:
         )
 
     def _metadata_filter(self, request):
-        match request.GET.get("type", ""):
-            case "Assay":
-                return Q(for_context=edd_models.MetadataType.ASSAY)
-            case "AssayForm":
-                return Q(
-                    for_context=edd_models.MetadataType.ASSAY,
-                    type_field__isnull=True,
-                )
-            case "AssayLine":
-                return Q(
-                    for_context__in=(
-                        edd_models.MetadataType.ASSAY,
-                        edd_models.MetadataType.LINE,
-                    )
-                )
-            case "Line":
-                return Q(for_context=edd_models.MetadataType.LINE)
-            case "LineForm":
-                return Q(
-                    for_context=edd_models.MetadataType.LINE,
-                    type_field__isnull=True,
-                )
-            case "Study":
-                return Q(for_context=edd_models.MetadataType.STUDY)
+        match request.GET.get("types", None):
+            case str(one_type) if one_type in edd_models.MetadataType.CONTEXT_VALUES:
+                q = Q(for_context=one_type)
+            case [*types]:
+                q = Q(for_context__in=types)
             case _:
-                logger.warning(
-                    "No type specified for metadata autocomplete, filtering on all metadata"
-                )
-                return Q()
+                logger.warning("No pattern match on metadata.types")
+                q = Q()
+        match request.GET.get("fields", ""):
+            case "true":
+                return q & Q(type_field__isnull=False)
+            case "false":
+                return q & Q(type_field__isnull=True)
+            case _:
+                return q
 
     def _permission(self, request):
         term = self.get_term(request)

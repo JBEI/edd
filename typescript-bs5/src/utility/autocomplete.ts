@@ -4,6 +4,13 @@ import "jquery";
 import "select2";
 
 /**
+ * Interface for extra parameters to send with autocomplete search requests.
+ */
+interface Params {
+    [key: string]: string | string[];
+}
+
+/**
  * Prepare any autocomplete inputs to use Select2 for querying the EDD backend
  * APIs for matching results. If no items to initialize are provided as an
  * argument, the function will setup any elements with the "autocomp2" class.
@@ -25,7 +32,6 @@ export function initSelect2(elements?: JQuery): void {
             },
             "templateResult": entryTemplate,
             "theme": "bootstrap-5",
-            "width": "100%",
         });
     });
 }
@@ -33,9 +39,20 @@ export function initSelect2(elements?: JQuery): void {
 /**
  * Define any additional parameters to send with autocomplete requests here.
  */
-function extraParams(select: JQuery) {
+function extraParams(select: JQuery): Params {
     const type = select.data("eddautocompletetype");
     switch (type) {
+        case "MetadataType":
+            const types = select.data("eddautoTypeFilter");
+            const fields = select.data("eddautoFieldTypes");
+            const params: Params = {};
+            if (types !== undefined) {
+                params.types = types;
+            }
+            if (fields !== undefined) {
+                params.fields = fields;
+            }
+            return params;
         case "SbmlExchange":
         case "SbmlSpecies":
             return { "template": select.data("eddautoTemplate") };

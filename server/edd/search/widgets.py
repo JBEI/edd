@@ -1,6 +1,8 @@
 from django import forms
 from django.urls import reverse
 
+from edd.utilities import JSONEncoder
+
 
 class Select2Widget(forms.widgets.Select):
     default_attrs = {}
@@ -59,7 +61,29 @@ class MetaboliteAutocomplete(Select2Widget):
 
 
 class MetadataAutocomplete(Select2Widget):
+    """
+    Autocomplete for metadata types.
+
+    :param attrs: same as Select widget attrs, see Django documentation.
+    :param includeField: set whether builtin fields should be included in
+        metadata search; default None will include all metadata, set to
+        True to search *only* builtin fields, or False to exclude builtins.
+    :param typeFilter: set to one of the context values on the MetadataType
+        model, or a sequence type of these values, to include only those
+        context types in results.
+    """
+
     kind = "MetadataType"
+
+    def __init__(self, *, attrs=None, includeField=None, typeFilter=None):
+        self.default_attrs = {}
+        if includeField is not None:
+            value = "true" if includeField else "false"
+            self.default_attrs["data-eddauto-field-types"] = value
+        if typeFilter is not None:
+            value = JSONEncoder.dumps(typeFilter)
+            self.default_attrs["data-eddauto-type-filter"] = value
+        super().__init__(attrs)
 
 
 class PermissionAutocomplete(Select2Widget):
@@ -78,13 +102,21 @@ class RegistryAutocomplete(Select2Widget):
     default_attrs = {"multiple": "multiple"}
     kind = "Registry"
 
+    def optgroups(self, name, value, attrs=None):
+        # don't try to display all options, only those currently selected
+        selected = [str(v) for v in value if v]
+        # filter queryset
+        self.choices.queryset = self.choices.queryset.filter(registry_id__in=selected)
+        # skipping over default implementation that assumes `id` field
+        return super(Select2Widget, self).optgroups(name, value, attrs)
+
 
 class SbmlExchange(Select2Widget):
     kind = "SbmlExchange"
 
     def __init__(self, template_id, *, attrs=None):
         self.default_attrs = {"data-eddauto-template": template_id}
-        super().__init__(self, attrs)
+        super().__init__(attrs)
 
 
 class SbmlSpecies(Select2Widget):
@@ -92,7 +124,7 @@ class SbmlSpecies(Select2Widget):
 
     def __init__(self, template_id, *, attrs=None):
         self.default_attrs = {"data-eddauto-template": template_id}
-        super().__init__(self, attrs)
+        super().__init__(attrs)
 
 
 class UnitAutocomplete(Select2Widget):

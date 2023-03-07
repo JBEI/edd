@@ -68,7 +68,9 @@ class MetadataType(models.Model, EDDSerialize):
     STUDY = "S"
     LINE = "L"
     ASSAY = "A"
-    CONTEXT_SET = ((STUDY, _("Study")), (LINE, _("Line")), (ASSAY, _("Assay")))
+    CONTEXT_LABELS = (_("Study"), _("Line"), _("Assay"))
+    CONTEXT_VALUES = (STUDY, LINE, ASSAY)
+    CONTEXT_SET = tuple(zip(CONTEXT_VALUES, CONTEXT_LABELS))
 
     # pre-defined values that should always exist in the system
     _SYSTEM_TYPES = (
@@ -223,7 +225,9 @@ class MetadataType(models.Model, EDDSerialize):
         verbose_name=_("Input Type"),
     )
     description = VarCharField(
-        blank=True, help_text=_("Description for this Metadata Type"), null=True,
+        blank=True,
+        help_text=_("Description for this Metadata Type"),
+        null=True,
     )
 
     # a default value to use if the field is left blank
