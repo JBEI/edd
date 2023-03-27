@@ -1,9 +1,37 @@
+configs:
+  schema_measurement:
+    file: ./solr/measurements.xml
+  schema_studies:
+    file: ./solr/studies.xml
+  schema_users:
+    file: ./solr/users.xml
+  solr_config:
+    file: ./solr/solrconfig.xml
+  solr_entrypoint:
+    file: ./solr/entrypoint.sh
 services:
   http:
     environment:
       SEARCH_URL: solr://solr:8983/solr/
   solr:
-    image: jbei/solr:8
+    configs:
+      - source: schema_measurement
+        target: /opt/solr/configset.d/measurement/conf/schema.xml
+      - source: solr_config
+        target: /opt/solr/configset.d/measurement/conf/solrconfig.xml
+      - source: schema_studies
+        target: /opt/solr/configset.d/studies/conf/schema.xml
+      - source: solr_config
+        target: /opt/solr/configset.d/studies/conf/solrconfig.xml
+      - source: schema_users
+        target: /opt/solr/configset.d/users/conf/schema.xml
+      - source: solr_config
+        target: /opt/solr/configset.d/users/conf/solrconfig.xml
+      - source: solr_entrypoint
+        target: /bin/solr_entrypoint.sh
+        mode: 0555
+    entrypoint: "/bin/solr_entrypoint.sh"
+    image: library/solr:8
     logging:
       driver: json-file
       options:

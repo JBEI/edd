@@ -6,7 +6,7 @@ services:
       RABBITMQ_DEFAULT_VHOST: edd
       RABBITMQ_NODENAME: rabbit@rabbitmq
     hostname: rabbitmq
-    image: jbei/rabbitmq:3.7-management-alpine
+    image: library/rabbitmq:3-management-alpine
     logging:
       driver: json-file
       options:
