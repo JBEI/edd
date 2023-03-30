@@ -4,7 +4,7 @@ import logging
 from uuid import UUID
 
 from django.contrib.auth import get_user_model
-from django.db.models import CharField, F, Func, IntegerField, Q, Value
+from django.db.models import CharField, F, Func, Q, Value
 from django.db.models.functions import Cast, Coalesce, Concat, NullIf
 from django.utils.translation import gettext as _
 from django_filters import filters as django_filters
@@ -509,16 +509,9 @@ class MetadataTypesFilter(filters.FilterSet):
         # lines and assays in the study
         lines = filter_in_study(models.Line.objects.all(), name, value)
         assays = filter_in_study(models.Assay.objects.all(), name, value)
-        # define the keys used in metadata
-        keys_field = Func(F("metadata"), function="jsonb_object_keys")
-        # make sure the keys are integers
-        keys = Cast(keys_field, IntegerField())
-        # get the distinct keys used
-        line_keys_qs = lines.values_list(keys, flat=True).distinct()
-        assay_keys_qs = assays.values_list(keys, flat=True).distinct()
-        keys_qs = line_keys_qs.union(assay_keys_qs)
-        # get all keys used in the study
-        return queryset.filter(pk__in=keys_qs)
+        line_meta_qs = models.MetadataType.all_types_on_queryset(lines)
+        assay_meta_qs = models.MetadataType.all_types_on_queryset(assays)
+        return line_meta_qs.union(assay_meta_qs)
 
 
 class MeasurementUnitFilter(filters.FilterSet):

@@ -5,6 +5,7 @@ import logging
 
 from django.db import models
 from django.db.models import F, Func
+from django.db.models.functions import Cast
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
@@ -273,6 +274,16 @@ class MetadataType(models.Model, EDDSerialize):
         return MetadataType.objects.filter(pk__in=ids).order_by(
             Func(F("type_name"), function="LOWER")
         )
+
+    @classmethod
+    def all_types_on_queryset(cls, queryset):
+        # define the keys used in metadata
+        keys_field = Func(F("metadata"), function="jsonb_object_keys")
+        # make sure the keys are integers
+        keys = Cast(keys_field, models.IntegerField())
+        # get the distinct keys used
+        keys_qs = queryset.values_list(keys, flat=True).distinct()
+        return cls.objects.filter(pk__in=keys_qs)
 
     @classmethod
     def system(cls, name):
