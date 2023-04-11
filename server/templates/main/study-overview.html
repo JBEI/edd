@@ -1,7 +1,5 @@
 {% extends "main/study_bs5.html" %}
-{% load describe %}
-{% load static %}
-{% load i18n %}
+{% load describe i18n static %}
 
 
 {% block js_css %}
@@ -10,34 +8,38 @@
 {% endblock js_css %}
 
 
+{% block status %}
+  {{ block.super }}
+  {% if writable %}
+    {% if edit_study.name.errors %}
+    <div class="alert alert-danger alert-dismissible my-2" role="alert">
+      <p>{{ edit_study.name.errors.as_text }}</p>
+      <button
+        class="btn-close"
+        type="button"
+        aria-label="{% translate 'Close' %}"
+        data-bs-dismiss="alert"
+      ></button>
+    </div>
+    {% endif %}
+    {% if edit_study.non_field_errors %}
+    <div class="alert alert-danger alert-dismissible" role="alert">
+      <p>{{ edit_study.non_field_errors.as_text }}</p>
+      <button
+        class="btn-close"
+        type="button"
+        aria-label="{% translate 'Close' %}"
+        data-bs-dismiss="alert"
+      ></button>
+    </div>
+    {% endif %}
+    {% include 'main/include/dropzone_messages_bs5.html' %}
+  {% endif %}
+{% endblock status %}
+
+
 {% block content %}
   {{ block.super }}
-
-{% if writable %}
-  {% if edit_study.name.errors %}
-  <div class="alert alert-danger alert-dismissible my-2" role="alert">
-    <p>{{ edit_study.name.errors.as_text }}</p>
-    <button
-      class="btn-close"
-      type="button"
-      aria-label="{% translate 'Close' %}"
-      data-bs-dismiss="alert"
-    ></button>
-  </div>
-  {% endif %}
-  {% if edit_study.non_field_errors %}
-  <div class="alert alert-danger alert-dismissible" role="alert">
-    <p>{{ edit_study.non_field_errors.as_text }}</p>
-    <button
-      class="btn-close"
-      type="button"
-      aria-label="{% translate 'Close' %}"
-      data-bs-dismiss="alert"
-    ></button>
-  </div>
-  {% endif %}
-  {% include 'main/include/dropzone_messages_bs5.html' %}
-{% endif %}
 
 <div class="row mb-3">
   <div class="col-9" id="edd-studyinfo-readonly">
