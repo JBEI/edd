@@ -1,0 +1,361 @@
+{% extends "main/study_bs5.html" %}
+{% load describe i18n static %}
+
+
+{% block js_css %}
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'bs5/description.js' %}"></script>
+{% endblock js_css %}
+
+
+{% block status %}
+  {{ block.super }}
+  {% if writable %}
+    {% if show_table_dropzone_help %}
+      <div class="alert alert-info alert-dismissible my-2" role="alert">
+        <p>
+          {% blocktranslate trimmed %}
+          Drag-and-drop an Experiment Description file on the table below to add more lines.
+          {% endblocktranslate %}
+        </p>
+        <p>
+          <a
+            class="btn btn-sm btn-secondary"
+            href="{% describe_example_file %}"
+          >
+            <span class="fas fa-download"></span>
+            {% translate 'Example File' %}
+          </a>
+          <a
+            class="btn btn-sm btn-secondary"
+            href="{% url 'main:describe:help' slug=study.slug %}"
+            target="_blank"
+            title="{% translate 'Click to open help in a new tab' %}"
+          >
+            {% translate 'Help' %}
+          </a>
+        </p>
+        <button
+          class="btn-close"
+          type="button"
+          aria-label="{% translate 'Close' %}"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
+    {% endif %}
+    {% include 'main/include/dropzone_messages_bs5.html' %}
+  {% endif %}
+{% endblock status %}
+
+
+{% block content %}
+  {{ block.super }}
+
+{% if writable %}
+<div
+  class="d-none position-absolute vh-100 vw-100 bg-secondary"
+  id="edd-studydesc-dropzone"
+  style="--bs-bg-opacity:.75;z-index:100;"
+  data-url="{% url 'main:describe:describe' slug=study.slug %}"
+>
+  <div class="dz-message my-5 text-center text-light" data-dz-message="">
+    <h3>{% translate 'Drop file here to upload' %}</h3>
+    <img
+      alt="{% translate 'Example description file preview' %}"
+      class="my-2"
+      id="describeExampleImage"
+      src="{% describe_preview_img %}"
+    />
+  </div>
+</div>
+{% endif %}
+<div class="row" id="edd-studydesc-controls">
+  <div class="col-auto">
+    <div class="btn-group">
+      {% comment %}
+      Note, cannot simply switch icons; doing so will remove the "regular"
+      style and force the "solid" style. Instead, making individual buttons
+      and only allowing one to be visible at a time.
+      {% endcomment %}
+      <button
+        class="btn btn-light edd-select-lines"
+        id="edd-select-lines-none"
+        title="{% translate 'Select This Page' %}"
+        type="button"
+        data-edd-next="page"
+      >
+        <i class="far fa-square"></i>
+      </button>
+      <button
+        class="btn btn-light d-none edd-select-lines"
+        id="edd-select-lines-some"
+        title="{% translate 'Select This Page' %}"
+        type="button"
+        data-edd-next="page"
+      >
+        <i class="far fa-square-minus"></i>
+      </button>
+      <button
+        class="btn btn-light d-none edd-select-lines"
+        id="edd-select-lines-page"
+        title="{% translate 'Select All Lines' %}"
+        type="button"
+        data-edd-next="all"
+      >
+        <i class="far fa-square-check"></i>
+      </button>
+      <button
+        class="btn btn-light d-none edd-select-lines"
+        id="edd-select-lines-all"
+        title="{% translate 'Select None' %}"
+        type="button"
+        data-edd-next="none"
+      >
+        <i class="far fa-square-plus"></i>
+      </button>
+      <button
+        class="btn btn-light dropdown-toggle dropdown-toggle-split"
+        type="button"
+        aria-expanded="false"
+        data-bs-toggle="dropdown"
+      >
+        <span class="visually-hidden">{% translate "Toggle Dropdown" %}</span>
+      </button>
+      <ul class="dropdown-menu">
+        <li>
+          <button
+            class="dropdown-item"
+            type="button"
+            data-edd-next="all"
+          >{% translate "All" %}</button>
+        </li>
+        <li>
+          <button
+            class="dropdown-item"
+            type="button"
+            data-edd-next="page"
+          >{% translate "This Page" %}</button>
+        </li>
+        <li>
+          <button
+            class="dropdown-item"
+            type="button"
+            data-edd-next="none"
+          >{% translate "None" %}</button>
+        </li>
+      </ul>
+    </div>
+    {% if writable %}
+    <div class="vr"></div>
+    <button
+      class="btn btn-secondary edd-needs-lines"
+      disabled="disabled"
+      id="edd-lines-edit"
+      title="{% translate 'Edit' %}"
+      type="button"
+      data-edd-action="edit"
+      data-edd-form="{% url 'main:line_start' slug=study.slug %}"
+    >
+      <i class="fas fa-pencil-alt"></i>
+    </button>
+    <button
+      class="btn btn-secondary edd-needs-lines"
+      disabled="disabled"
+      id="edd-lines-remove"
+      title="{% translate 'Remove' %}"
+      type="button"
+      data-edd-action="remove"
+      data-edd-form="{% url 'main:line_delete' slug=study.slug %}"
+    >
+      <i class="fas fa-trash-alt"></i>
+    </button>
+    <button
+      class="btn btn-secondary edd-needs-lines d-none"
+      disabled="disabled"
+      id="edd-lines-restore"
+      title="{% translate 'Restore' %}"
+      type="button"
+      data-edd-action="restore"
+      data-edd-form="{% url 'main:line_restore' slug=study.slug %}"
+    >
+      <i class="fas fa-sync-alt"></i>
+    </button>
+    <button
+      class="btn btn-secondary edd-needs-lines"
+      disabled="disabled"
+      id="edd-lines-group"
+      title="{% translate 'Group Replicates' %}"
+      type="button"
+      data-edd-action="group"
+      data-edd-form="{% url 'main:line_group' slug=study.slug %}"
+    >
+      <i class="fas fa-link"></i>
+    </button>
+    <button
+      class="btn btn-secondary edd-needs-lines"
+      disabled="disabled"
+      id="edd-lines-ungroup"
+      title="{% translate 'Ungroup Replicates' %}"
+      type="button"
+      data-edd-action="ungroup"
+      data-edd-form="{% url 'main:line_ungroup' slug=study.slug %}"
+    >
+      <i class="fas fa-unlink"></i>
+    </button>
+    <div class="vr"></div>
+    <button
+      class="btn btn-secondary"
+      id="edd-lines-add"
+      title="{% translate 'Add Line' %}"
+      type="button"
+      data-edd-action="add"
+      data-edd-form="{% url 'main:new_line_ajax' slug=study.slug %}"
+    >
+      <i class="fas fa-plus"></i>
+    </button>
+    <button
+      class="btn btn-secondary edd-needs-lines"
+      disabled="disabled"
+      id="edd-lines-clone"
+      title="{% translate 'Clone Line' %}"
+      type="button"
+      data-edd-action="clone"
+      data-edd-form="{% url 'main:line_clone' slug=study.slug %}"
+    >
+      <i class="fas fa-copy"></i>
+    </button>
+    <button
+      class="btn btn-secondary edd-needs-lines"
+      disabled="disabled"
+      id="edd-lines-assay"
+      title="{% translate 'Add Assay' %}"
+      type="button"
+      data-edd-action="assay"
+      data-edd-form="{% url 'main:assay_start' slug=study.slug %}"
+    >
+      <i class="fas fa-microscope"></i>
+    </button>
+    {% endif %}
+    <div class="vr"></div>
+    <div class="btn-group">
+      <button
+        class="btn btn-secondary dropdown-toggle"
+        type="button"
+        aria-expanded="false"
+        data-bs-toggle="dropdown"
+      >
+        <i class="fas fa-ellipsis-vertical"></i>
+      </button>
+      <ul class="dropdown-menu" id="edd-filter-line-menu">
+        <li>
+          <button
+            class="dropdown-item"
+            type="button"
+            data-edd-filter="replicates"
+            data-edd-filter-off="{% translate "Show Replicates" %}"
+            data-edd-filter-on="{% translate "Hide Replicates" %}"
+          >{% translate "Show Replicates" %}</button>
+        </li>
+        <li>
+          <button
+            class="dropdown-item"
+            type="button"
+            data-edd-filter="active"
+            data-edd-filter-off="{% translate "Hide Deleted" %}"
+            data-edd-filter-on="{% translate "Show Deleted" %}"
+          >{% translate "Show Deleted" %}</button>
+        </li>
+        <li>
+          <a class="dropdown-item" href="{% url 'main:lines_old' slug=study.slug %}">
+            {% translate "Switch to Legacy Table" %}
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="col-auto ms-auto">
+    {% if writable %}
+    <a
+      class="btn btn-primary"
+      href="{% url "main:load:wizard" slug=study.slug %}"
+      role="button"
+    >
+      <i class="fas fa-cloud-upload-alt"></i>
+      {% translate "Import Data" %}
+    </a>
+    {% endif %}
+    <div class="btn-group" id="edd-export-group">
+      <button
+        class="btn btn-primary"
+        type="button"
+        data-edd-form="{% url 'export:export' %}"
+      >
+        <i class="fas fa-cloud-download-alt"></i>
+        {% translate "Export Data" %}
+      </button>
+      <button
+        class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+        type="button"
+        aria-expanded="false"
+        data-bs-toggle="dropdown"
+      >
+        <span class="visually-hidden">{% translate "Toggle Dropdown" %}</span>
+      </button>
+      <ul class="dropdown-menu">
+        <li>
+          <button
+            class="dropdown-item"
+            type="button"
+            data-edd-form="{% url 'main:create_study' %}"
+          >{% translate "to New Study" %}</button>
+        </li>
+        <li>
+          <button
+            class="dropdown-item"
+            type="button"
+            data-edd-form="{% url 'export:worklist' %}"
+          >{% translate "Generate Worklist" %}</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% if writable %}
+<div class="collapse edd-collapse-form" id="edd-inline-form"></div>
+{% endif %}
+<form action="" id="edd-studydesc-form" method="POST">
+  {% csrf_token %}
+  <table
+    class="table table-hover table-striped"
+    data-i18n-aria-sort-ascending="{% translate ': activate to sort column ascending' %}"
+    data-i18n-aria-sort-descending="{% translate ': activate to sort column descending' %}"
+    data-i18n-empty-table="{% translate 'No Lines available to display.' %}"
+    data-i18n-info="{% translate 'Showing _START_ to _END_ of _TOTAL_ Lines' %}"
+    data-i18n-info-empty="{% translate 'Showing 0 to 0 of 0 Lines' %}"
+    data-i18n-info-filtered="{% translate '(filtered from _MAX_ total Lines)' %}"
+    data-i18n-length-menu="{% translate 'Display _MENU_' %}"
+    data-i18n-loading-records="{% translate 'Loading …' %}"
+    data-i18n-paginate-first="{% translate 'First' context 'pagination' %}"
+    data-i18n-paginate-last="{% translate 'Last' context 'pagination' %}"
+    data-i18n-paginate-next="{% translate 'Next' context 'pagination' %}"
+    data-i18n-paginate-previous="{% translate 'Previous' context 'pagination' %}"
+    data-i18n-processing="{% translate 'Processing …' %}"
+    data-i18n-search="{% translate 'Search' %}"
+    data-i18n-zero-records="{% translate 'No Lines matching search.' %}"
+    id="edd-studydesc-lines"
+  >
+    <thead>
+      <tr>
+        <th></th>
+        <th>{% translate "Name" %}</th>
+        <th>{% translate "Description" %}</th>
+        <th>{% translate "Strain" %}</th>
+        <!-- inserting metadata here -->
+        <th>{% translate "Experimenter" %}</th>
+        <th>{% translate "Last Modified" %}</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</form>
+{% endblock content %}

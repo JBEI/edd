@@ -26,6 +26,7 @@ from .mixins import StudyObjectMixin
 logger = logging.getLogger(__name__)
 
 
+# DEPRECATED
 class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
     """Study details page, displays line/assay data."""
 
@@ -85,6 +86,7 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             )
 
 
+# DEPRECATED
 class StudyLinesView(StudyDetailBaseView):
     """Study details displays line data."""
 
@@ -320,6 +322,7 @@ class StudyLinesView(StudyDetailBaseView):
         return False
 
 
+# DEPRECATED
 class StudyDetailView(StudyDetailBaseView):
     """Study details page, displays graph/assay data."""
 

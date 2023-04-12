@@ -25,6 +25,7 @@ module.exports = {
             path.resolve("node_modules/@fortawesome/fontawesome-free/css/all.min.css"),
             path.resolve(__dirname, "./src/common.ts"),
         ],
+        "description": path.resolve(__dirname, "./src/description.ts"),
         "index": path.resolve(__dirname, "./src/index.ts"),
         "login": path.resolve(__dirname, "./src/login.ts"),
         "overview": path.resolve(__dirname, "./src/overview.ts"),

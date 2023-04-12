@@ -6,6 +6,12 @@ from .forms import (
     MeasurementValueForm,
     MeasurementValueFormSet,
 )
+from .study_description import (
+    AddAssayForm,
+    MetadataSelectForm,
+    MetadataUpdateForm,
+    ModifyLineForm,
+)
 from .study_overview import (
     CreateAttachmentForm,
     CreateCommentForm,
@@ -30,6 +36,7 @@ from .widgets import (
 )
 
 __all__ = [
+    AddAssayForm,
     AssayForm,
     AutocompleteWidget,
     CreateAttachmentForm,
@@ -43,7 +50,10 @@ __all__ = [
     MeasurementValueForm,
     MeasurementValueFormSet,
     MetadataTypeAutocompleteWidget,
+    ModifyLineForm,
     ModifyStudyForm,
+    MetadataSelectForm,
+    MetadataUpdateForm,
     MultiAutocompleteWidget,
     MultiRegistryAutocompleteWidget,
     PermissionForm,

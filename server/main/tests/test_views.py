@@ -449,13 +449,14 @@ class StudyOverviewViewTests(StudyViewTestCase):
         self.assertEqual(response.status_code, codes.bad_request)
 
 
+# DEPRECATED
 class StudyDescriptionViewTests(StudyViewTestCase):
     """Tests for the behavior of the Study view(s)."""
 
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.url = reverse("main:lines", kwargs={"slug": cls.target_study.slug})
+        cls.url = reverse("main:lines_old", kwargs={"slug": cls.target_study.slug})
 
     def test_empty_post(self):
         """An empty POST request should just act like a GET."""

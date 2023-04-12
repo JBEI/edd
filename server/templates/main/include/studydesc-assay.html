@@ -1,0 +1,36 @@
+{% load i18n %}
+<form
+  action="{% url 'main:assay_add' slug=study.slug %}"
+  {% if assay_form.errors %}class="was-validated"{% endif %}
+  id="edd-assay-add-form"
+  method="POST"
+  data-action-inline="{% url 'main:assay_add_ajax' slug=study.slug %}"
+>
+  {% csrf_token %}
+  {{ select_form }}
+  {{ assay_form }}
+  <button
+    class="btn btn-primary edd-save-btn"
+    id="edd-assay-add-update"
+    type="submit"
+  >
+    <i class="fas fa-check"></i>
+    {% translate "Add Assays" %}
+  </button>
+  <button
+    class="btn btn-primary d-none edd-saving-btn"
+    id="edd-assay-add-saving"
+    type="button"
+  >
+    <span aria-hidden="true" class="spinner-border spinner-border-sm" role="status"></span>
+    {% translate "Saving" %}
+  </button>
+  <button
+    class="btn btn-outline-secondary"
+    id="edd-assay-add-cancel"
+    type="reset"
+  >
+    <i class="fas fa-xmark"></i>
+    {% translate "Cancel" %}
+  </button>
+</form>

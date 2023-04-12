@@ -1,0 +1,66 @@
+{% load i18n %}
+{% for error in errors %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endfor %}
+{% if not fields %}
+  {% for field in hidden_fields %}{{ field }}{% endfor %}
+{% else %}
+  {% if form.name %}
+  <div class="mb-3">
+    <label for="{{ form.name.id_for_label }}">
+      {{ form.name.label }}
+    </label>
+    {{ form.name }}
+    {% for error in form.name.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="mb-3">{% translate "Bulk editing Line Name is disabled." %}</div>
+  {% endif %}
+  <div class="mb-3">
+    <label for="{{ form.description.id_for_label }}">
+      {{ form.description.label }}
+    </label>
+    {{ form.description }}
+    {% for error in form.description.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+  <div class="mb-3 form-check">
+    {{ form.control }}
+    <label class="form-check-label" for="{{ form.control.id_for_label }}">
+      {{ form.control.label }}
+    </label>
+    {% for error in form.control.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+  <div class="mb-3">
+    <label for="{{ form.contact.id_for_label }}">
+      {{ form.contact.label }}
+    </label>
+    {{ form.contact }}
+    {% for error in form.contact.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+  <div class="mb-3">
+    <label for="{{ form.experimenter.id_for_label }}">
+      {{ form.experimenter.label }}
+    </label>
+    {{ form.experimenter }}
+    {% for error in form.experimenter.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+  <div class="mb-3">
+    <label for="{{ form.strains.id_for_label }}">
+      {{ form.strains.label }}
+    </label>
+    {{ form.strains }}
+    {% for error in form.strains.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+{% endif %}

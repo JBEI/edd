@@ -408,7 +408,6 @@ export class ReplicateFilter {
         // track the names, IDs, and selection state
         updated.replicate_ids = [...previous.replicate_ids, line.pk];
         updated.replicate_names = [...previous.replicate_names, line.name];
-        updated.selected = false;
         // keep the updated object
         this.replicates[match_index] = updated;
     }

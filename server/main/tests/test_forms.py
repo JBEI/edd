@@ -63,3 +63,27 @@ def test_LineForm_boolean_toggle_off(db):
     form.save()
     # verify the saved line is now NOT a control
     assert not line.control
+
+
+def test_ModifyLineForm_boolean_toggle_on(db):
+    line = factory.LineFactory(control=False)
+    # default form to existing data
+    data = forms.ModifyLineForm.initial_from_lines([line])
+    # flip the checkbox for control
+    data["control"] = True
+    form = forms.ModifyLineForm(data=data, instance=line, study=line.study)
+    form.save()
+    # verify the saved line is now a control
+    assert line.control
+
+
+def test_ModifyLineForm_boolean_toggle_off(db):
+    line = factory.LineFactory(control=True)
+    # default form to existing data
+    data = forms.ModifyLineForm.initial_from_lines([line])
+    # remove field for control
+    del data["control"]
+    form = forms.ModifyLineForm(data=data, instance=line, study=line.study)
+    form.save()
+    # verify the saved line is now NOT a control
+    assert not line.control

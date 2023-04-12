@@ -1,0 +1,10 @@
+{% load i18n %}
+<div class="alert alert-danger alert-dismissible my-2" role="alert">
+  <p>{{ message }}</p>
+  <button
+    class="btn-close"
+    type="button"
+    aria-label="{% translate 'Close' %}"
+    data-dismiss="alert"
+  ></button>
+</div>

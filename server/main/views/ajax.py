@@ -7,10 +7,12 @@ from django.db.models import Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.views.generic.base import TemplateView
+from requests import codes
 
 from edd import utilities
 
-from .. import models, query
+from .. import forms, models, query
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +98,29 @@ def study_access(request, pk=None, slug=None):
         },
         encoder=utilities.JSONEncoder,
     )
+
+
+class InlineMetadataPartialView(TemplateView):
+    """Handle inline updates to metadata edit/selection forms."""
+
+    http_method_names = ["head", "post"]
+    template_name = "main/forms/metadata_select.html"
+
+    def post(self, request, *args, **kwargs):
+        init_form = forms.MetadataSelectForm(
+            data=self.request.POST,
+            includeField=False,
+            typeFilter=models.MetadataType.LINE,
+        )
+        if init_form.is_valid():
+            form = forms.MetadataUpdateForm(
+                data=init_form.data,
+                includeField=False,
+                typeFilter=models.MetadataType.LINE,
+                types=init_form.selection,
+            )
+            return self.render_to_response(self.get_context_data(form=form))
+        return self.render_to_response(
+            self.get_context_data(form=init_form),
+            status=codes.bad_request,
+        )

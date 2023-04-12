@@ -69,10 +69,10 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
 
     def test_add_line_adds_entry(self):
         study = self._writable_study()
-        url = reverse("main:lines", kwargs={"slug": study.slug})
-        form = {"action": "line", "line-name": factory.fake.catch_phrase()}
+        url = reverse("main:new_line", kwargs={"slug": study.slug})
+        form = {"name": factory.fake.catch_phrase()}
 
-        self.client.post(url, data=form, follow=True)
+        self.client.post(url, data=form)
 
         qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
         assert qs.count() == 1
@@ -82,10 +82,10 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
     def test_enable_line_adds_entry(self):
         study = self._writable_study()
         line = factory.LineFactory(active=False, study=study)
-        url = reverse("main:lines", kwargs={"slug": study.slug})
-        form = {"action": "enable", "lineId": [line.id]}
+        url = reverse("main:line_restore", kwargs={"slug": study.slug})
+        form = {"lineId": [line.id]}
 
-        self.client.post(url, data=form, follow=True)
+        self.client.post(url, data=form)
 
         qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
         assert qs.count() == 1
@@ -95,10 +95,10 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
     def test_disable_line_adds_entry(self):
         study = self._writable_study()
         line = factory.LineFactory(study=study)
-        url = reverse("main:lines", kwargs={"slug": study.slug})
-        form = {"action": "disable_confirm", "lineId": [line.id]}
+        url = reverse("main:line_delete", kwargs={"slug": study.slug})
+        form = {"lineId": [line.id]}
 
-        self.client.post(url, data=form, follow=True)
+        self.client.post(url, data=form)
 
         qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
         assert qs.count() == 1
@@ -108,10 +108,10 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
     def test_clone_line_adds_entry(self):
         study = self._writable_study()
         line = factory.LineFactory(study=study)
-        url = reverse("main:lines", kwargs={"slug": study.slug})
-        form = {"action": "clone", "lineId": [line.id]}
+        url = reverse("main:line_clone", kwargs={"slug": study.slug})
+        form = {"lineId": [line.id]}
 
-        self.client.post(url, data=form, follow=True)
+        self.client.post(url, data=form)
 
         qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
         assert qs.count() == 1
@@ -122,10 +122,10 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
         study = self._writable_study()
         to_clone = 4
         lines = [factory.LineFactory(study=study) for _ in range(to_clone)]
-        url = reverse("main:lines", kwargs={"slug": study.slug})
-        form = {"action": "clone", "lineId": [line.id for line in lines]}
+        url = reverse("main:line_clone", kwargs={"slug": study.slug})
+        form = {"lineId": [line.id for line in lines]}
 
-        self.client.post(url, data=form, follow=True)
+        self.client.post(url, data=form)
 
         qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
         assert qs.count() == 1

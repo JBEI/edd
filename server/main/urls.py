@@ -22,7 +22,7 @@ study_url_patterns = [
     ),
     path(
         "description/",
-        login_required(views.StudyLinesView.as_view()),
+        login_required(views.StudyDescriptionView.as_view()),
         name="lines",
     ),
     path(
@@ -37,7 +37,7 @@ study_url_patterns = [
     # no longer generating URLs like this, so no `name` kwarg
     path(
         "experiment-description/",
-        login_required(views.StudyLinesView.as_view()),
+        login_required(views.StudyDescriptionView.as_view()),
     ),
     # deprecating these *data/ URLs in favor of access/ and REST API links
     path(
@@ -125,6 +125,77 @@ study_url_patterns = [
         login_required(views.CreateCommentView.as_view(inline=True)),
         name="comment_ajax",
     ),
+    path(
+        "new-line/",
+        login_required(views.CreateLineView.as_view()),
+        name="new_line",
+    ),
+    path(
+        "new-line-ajax/",
+        login_required(views.CreateLineView.as_view(inline=True)),
+        name="new_line_ajax",
+    ),
+    path(
+        "line/",
+        login_required(views.InitialModifyLineView.as_view()),
+        name="line_start",
+    ),
+    path(
+        "save-line/",
+        login_required(views.ModifyLineView.as_view()),
+        name="line_edit",
+    ),
+    path(
+        "save-line-ajax/",
+        login_required(views.ModifyLineView.as_view(inline=True)),
+        name="line_edit_ajax",
+    ),
+    path(
+        "assay/",
+        login_required(views.InitialAddAssayView.as_view()),
+        name="assay_start",
+    ),
+    path(
+        "save-assay/",
+        login_required(views.AddAssayView.as_view()),
+        name="assay_add",
+    ),
+    path(
+        "save-assay-ajax/",
+        login_required(views.AddAssayView.as_view(inline=True)),
+        name="assay_add_ajax",
+    ),
+    path(
+        "clone/",
+        login_required(views.CloneLineView.as_view()),
+        name="line_clone",
+    ),
+    path(
+        "group/",
+        login_required(views.GroupLineView.as_view()),
+        name="line_group",
+    ),
+    path(
+        "ungroup/",
+        login_required(views.GroupLineView.as_view(ungroup=True)),
+        name="line_ungroup",
+    ),
+    path(
+        "line-delete/",
+        login_required(views.RemoveLineView.as_view()),
+        name="line_delete",
+    ),
+    path(
+        "line-restore/",
+        login_required(views.RemoveLineView.as_view(restore=True)),
+        name="line_restore",
+    ),
+    # DEPRECATED
+    path(
+        "description-old/",
+        login_required(views.StudyLinesView.as_view()),
+        name="lines_old",
+    ),
 ]
 
 urlpatterns = [
@@ -150,5 +221,11 @@ urlpatterns = [
     path(
         "s/<slug:slug>/",
         include(study_url_patterns),
+    ),
+    # inline updates of forms editing metadata
+    path(
+        "meta/",
+        login_required(views.InlineMetadataPartialView.as_view()),
+        name="metadata_ajax",
     ),
 ]

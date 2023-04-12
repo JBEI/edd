@@ -1,0 +1,46 @@
+{% load i18n %}
+<form
+  action="{{ url_action }}"
+  class="container-sm ms-0 my-2 text-bg-light{% if line_form.errors %} was-validated{% endif %}"
+  id="edd-line-edit-form"
+  method="POST"
+  data-action-inline="{{ url_inline }}"
+>
+  {% csrf_token %}
+  {{ select_form }}
+  {{ line_form }}
+  {{ meta_form }}
+  <button
+    class="btn btn-primary edd-save-btn"
+    id="edd-line-edit-commit"
+    type="submit"
+  >
+    {% if count == 0 %}
+    <i class="fas fa-plus"></i>
+    {% translate "Add Line" %}
+    {% else %}
+    <i class="fas fa-check"></i>
+    {% blocktranslate count count=count %}
+    Update Line
+    {% plural %}
+    Update {{ count }} Lines
+    {% endblocktranslate %}
+    {% endif %}
+  </button>
+  <button
+    class="btn btn-primary d-none edd-saving-btn"
+    id="edd-line-edit-saving"
+    type="button"
+  >
+    <span aria-hidden="true" class="spinner-border spinner-border-sm" role="status"></span>
+    {% translate "Saving" %}
+  </button>
+  <button
+    class="btn btn-outline-secondary"
+    id="edd-line-edit-cancel"
+    type="reset"
+  >
+    <i class="fas fa-xmark"></i>
+    {% translate "Cancel" %}
+  </button>
+</form>

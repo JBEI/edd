@@ -1,0 +1,43 @@
+{% load i18n %}
+<fieldset>
+  <legend>{% translate "Metadata" %}</legend>
+  {{ form.selected_meta }}
+  {% for set, remove in form.type_fields %}
+  <div class="mb-3">
+    <label for="{{ set.id_for_label }}">{{ set.label }}</label>
+    <div class="input-group">
+      {{ set }}
+      <div class="input-group-text">
+        <div class="form-check">
+          {{ remove }}
+          <label
+            class="form-check-label"
+            for="{{ remove.id_for_label }}"
+            aria-label="{{ remove.help_text }}"
+          >
+            {{ remove.label }}
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  <div class="input-group mb-3">
+    <label
+      class="input-group-text"
+      for="{{ form.metatype.id_for_label }}"
+    >{{ form.metatype.label }}</label>
+    {{ form.metatype }}
+    <button
+      class="btn btn-outline-secondary edd-metadata-add"
+      type="button"
+      data-update-url="{{ form.updateUrl }}"
+    >
+      <i class="fas fa-plus"></i>
+      {% translate "Add Field" %}
+    </button>
+  </div>
+  {% for error in form.metatype.errors %}
+  <div class="invalid-feedback">{{ error }}</div>
+  {% endfor %}
+</fieldset>
