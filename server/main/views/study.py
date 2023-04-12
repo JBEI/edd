@@ -1,4 +1,4 @@
-"""Views dealing with displaying and manipulating Study records."""
+"""Views for Study records, before Bootstrap 5 conversion."""
 
 import collections
 import logging
@@ -417,7 +417,10 @@ class StudyDetailView(StudyDetailBaseView):
         saved = 0
         for assay in selectForm.selection.assays:
             form = edd_forms.AssayForm(
-                request.POST, instance=assay, prefix="assay", study=study
+                data=request.POST,
+                instance=assay,
+                prefix="assay",
+                study=study,
             )
             # removes fields having disabled bulk edit checkbox
             form.check_bulk_edit()
@@ -447,7 +450,7 @@ class StudyDetailView(StudyDetailBaseView):
             )
             return False
         form = edd_forms.MeasurementForm(
-            request.POST,
+            data=request.POST,
             assays=selectForm.selection.assays,
             prefix="measurement",
             study=study,
@@ -481,7 +484,7 @@ class StudyDetailView(StudyDetailBaseView):
         with transaction.atomic():
             for m in measures:
                 m.form = edd_forms.MeasurementValueFormSet(
-                    form_payload,
+                    data=form_payload,
                     instance=m,
                     prefix=str(m.id),
                     queryset=m.measurementvalue_set.order_by("x"),

@@ -1,13 +1,15 @@
 from . import mixins
 from .forms import (
     AssayForm,
-    CreateAttachmentForm,
-    CreateCommentForm,
-    CreateStudyForm,
     LineForm,
     MeasurementForm,
     MeasurementValueForm,
     MeasurementValueFormSet,
+)
+from .study_overview import (
+    CreateAttachmentForm,
+    CreateCommentForm,
+    CreateStudyForm,
     ModifyStudyForm,
     PermissionForm,
 )

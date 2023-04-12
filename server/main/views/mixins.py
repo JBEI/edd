@@ -3,6 +3,7 @@
 import logging
 
 from django.core.exceptions import PermissionDenied
+from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views import generic
 
@@ -51,3 +52,6 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
             return qs
         access = models.Study.access_filter(self.request.user)
         return qs.filter(access, active=True).distinct()
+
+    def study_reverse(self, name):
+        return reverse(name, kwargs={"slug": self.get_object().slug})

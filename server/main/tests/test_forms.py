@@ -39,6 +39,7 @@ def test_MetadataEditMixin_process_removal():
     assert "2" in removing
 
 
+# DEPRECATED
 def test_LineForm_boolean_toggle_on(db):
     line = factory.LineFactory(control=False)
     # default form to existing data
@@ -51,6 +52,7 @@ def test_LineForm_boolean_toggle_on(db):
     assert line.control
 
 
+# DEPRECATED
 def test_LineForm_boolean_toggle_off(db):
     line = factory.LineFactory(control=True)
     # default form to existing data

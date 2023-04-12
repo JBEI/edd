@@ -10,14 +10,16 @@ from django.urls import reverse
 
 from edd import utilities
 
-from .. import models as edd_models
-from .. import query
+from .. import models, query
 
 logger = logging.getLogger(__name__)
 
 
 def load_study(
-    request, pk=None, slug=None, permission_type=edd_models.StudyPermission.CAN_VIEW
+    request,
+    pk=None,
+    slug=None,
+    permission_type=models.StudyPermission.CAN_VIEW,
 ):
     """
     Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
@@ -30,16 +32,12 @@ def load_study(
     """
     permission = Q()
     if not request.user.is_superuser:
-        permission = edd_models.Study.access_filter(
-            request.user, access=permission_type
-        )
+        permission = models.Study.access_filter(request.user, access=permission_type)
     if pk is not None:
-        return get_object_or_404(
-            edd_models.Study.objects.distinct(), permission, Q(pk=pk)
-        )
+        return get_object_or_404(models.Study.objects.distinct(), permission, Q(pk=pk))
     elif slug is not None:
         return get_object_or_404(
-            edd_models.Study.objects.distinct(), permission, Q(slug=slug)
+            models.Study.objects.distinct(), permission, Q(slug=slug)
         )
     raise Http404()
 
@@ -60,9 +58,9 @@ def study_assay_table_data(request, pk=None, slug=None):
     model = load_study(request, pk=pk, slug=slug)
     active_param = request.GET.get("active", None)
     active_value = "true" == active_param if active_param in ("true", "false") else None
-    active = edd_models.common.qfilter(value=active_value, fields=["active"])
+    active = models.common.qfilter(value=active_value, fields=["active"])
     existingLines = model.line_set.filter(active)
-    existingAssays = edd_models.Assay.objects.filter(active, line__study=model)
+    existingAssays = models.Assay.objects.filter(active, line__study=model)
     return JsonResponse(
         {
             "ATData": {

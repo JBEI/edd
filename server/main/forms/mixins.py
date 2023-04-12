@@ -2,9 +2,11 @@ import collections
 import json
 
 from django import forms
+from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 
 
+# DEPRECATED
 class BulkEditMixin:
     """Mixin class adds methods to inject bulk-edit checkboxes and filter out before saves."""
 
@@ -12,20 +14,23 @@ class BulkEditMixin:
     def initial_from_model(cls, instance, prefix=None):
         """Builds a dict of initial form values from a Line model"""
         initial = {}
-        for fieldname in cls._meta.fields:
-            widget = cls._meta.widgets.get(fieldname, None)
-            value = getattr(instance, fieldname)
-            fieldkey = f"{prefix}-{fieldname}" if prefix else fieldname
+        for name, field in cls.base_fields.items():
+            widget = field.widget
+            value = getattr(instance, name)
+            fieldkey = f"{prefix}-{name}" if prefix else name
             # need to split MultiWidget values into each widget value
             if isinstance(widget, forms.widgets.MultiWidget):
                 for i, part in enumerate(widget.decompress(value)):
                     initial[f"{fieldkey}_{i}"] = part
+            # handle related fields
+            elif isinstance(value, BaseManager):
+                initial[fieldkey] = field.prepare_value(value.all())
             # JSONField gives back a dict; must serialize to json
             elif isinstance(value, dict):
                 initial[fieldkey] = json.dumps(value)
             # everything else shove value into fieldname
-            else:
-                initial[fieldkey] = str(value)
+            elif value is not None:
+                initial[fieldkey] = widget.format_value(value)
         return initial
 
     def check_bulk_edit(self):
@@ -51,6 +56,7 @@ class BulkEditMixin:
             )
 
 
+# DEPRECATED
 class MetadataEditMixin:
     """Mixin class adds methods to handle processing values for MetadataType."""
 
