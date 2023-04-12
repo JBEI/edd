@@ -1,6 +1,6 @@
 {% load i18n %}
 
-<div id="linesAdded" class="alert alert-success alert-dismissible d-none" role="alert">
+<div id="linesAdded" class="alert alert-success alert-dismissible d-none my-2" role="alert">
   <button
     class="btn-close"
     type="button"
@@ -19,7 +19,7 @@
   </button>
 </div>
 <div id="alert_placeholder">
-  <div class="alert alert-danger alert-dismissible d-none">
+  <div class="alert alert-danger alert-dismissible d-none my-2">
     <h4></h4>
     <button
       class="btn-close"
@@ -28,7 +28,7 @@
       data-bs-dismiss="alert"
     ></button>
   </div>
-  <div class="alert alert-warning alert-dismissible d-none">
+  <div class="alert alert-warning alert-dismissible d-none my-2">
     <h4></h4>
     <button
       class="btn-close"
@@ -37,7 +37,7 @@
       data-bs-dismiss="alert"
     ></button>
   </div>
-  <div id="iceError" role="alert" class="alert alert-warning alert-dismissible d-none">
+  <div id="iceError" role="alert" class="alert alert-warning alert-dismissible d-none my-2">
     <h4></h4>
     <button type="button" class="btn btn-warning omitStrains">
       {% translate 'Omit Strains' %}
@@ -52,7 +52,7 @@
       data-bs-dismiss="alert"
     ></button>
   </div>
-  <div class="alert alert-danger alert-dismissible d-none" id="edd-500">
+  <div class="alert alert-danger alert-dismissible d-none my-2" id="edd-500">
     <h4>{% translate "EDD encountered an unknown error" %}</h4>
     <p>
       {% blocktranslate %}
@@ -67,7 +67,7 @@
       data-bs-dismiss="alert"
     ></button>
   </div>
-  <div class="alert alert-danger alert-dismissible d-none" id="edd-504">
+  <div class="alert alert-danger alert-dismissible d-none my-2" id="edd-504">
     <h4>{% translate "EDD failed to respond" %}</h4>
     <p>
       {% blocktranslate %}
