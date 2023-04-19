@@ -7,7 +7,7 @@ services:
       - redis-server
       - --appendonly
       - "yes"
-    image: library/redis:5
+    image: library/redis:6
     logging:
       driver: json-file
       options:
