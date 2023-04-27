@@ -1,4 +1,9 @@
 ---
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-file: "5"
+    max-size: 1m
 networks:
   backnet:
 services:
@@ -22,11 +27,7 @@ services:
       timeout: 5s
       retries: 5
     image: jbei/edd-core:latest
-    logging:
-      driver: "json-file"
-      options:
-        max-size: 1m
-        max-file: "5"
+    logging: *default-logging
     networks:
       - backnet
     volumes:
@@ -52,11 +53,7 @@ services:
       timeout: 5s
       retries: 5
     image: jbei/edd-core:latest
-    logging:
-      driver: "json-file"
-      options:
-        max-size: 1m
-        max-file: "5"
+    logging: *default-logging
     networks:
       - backnet
     volumes:
@@ -87,11 +84,7 @@ services:
       timeout: 20s
       retries: 3
     image: jbei/edd-core:latest
-    logging:
-      driver: "json-file"
-      options:
-        max-size: 1m
-        max-file: "5"
+    logging: *default-logging
     networks:
       - backnet
     volumes:

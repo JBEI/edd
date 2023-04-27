@@ -2,19 +2,16 @@
 
 set -eo pipefail
 
-EDD_ROOT="$(cd "$(dirname "$0")"; cd ..; pwd)"
+EDD_DIR="$(cd "$(dirname "$(dirname $0)")" && pwd)"
 
-cd "${EDD_ROOT}"
 DOCKER_BUILDKIT=1 docker build \
     --pull \
     --build-arg "EDD_VERSION=development" \
     --target edd-node \
-    -f ./docker/edd/core/Dockerfile \
     -t jbei/edd-node \
-    .
+    "${EDD_DIR}"
 DOCKER_BUILDKIT=1 docker build \
     --pull \
     --build-arg "EDD_VERSION=development" \
-    -f ./docker/edd/core/Dockerfile \
     -t jbei/edd-core \
-    .
+    "${EDD_DIR}"

@@ -3,15 +3,23 @@ import collections
 import os
 from distutils.util import strtobool
 
-import environ
 import invoke
 
-env = environ.Env()
+novalue = object()
 
 # what this file should help do:
 # - make sure there is a ./secrets directory with appropriate passwords set
 # - make sure there is a docker-compose.override.yml
 # - choose external connections for services or bundled
+
+
+def env(key, *, default=novalue):
+    try:
+        return os.environ[key]
+    except KeyError:
+        if default is novalue:
+            raise
+        return default
 
 
 def prompt_yesno(prompt):
@@ -353,7 +361,9 @@ class ServiceComposer:
         to_merge = " ".join(configured)
         override_file = f"{output_dir}/docker-compose.override.yml"
         self.context.run(
-            f"yq m -a {to_merge} > {override_file}", echo=True, echo_stdin=False,
+            f"yq m -a {to_merge} > {override_file}",
+            echo=True,
+            echo_stdin=False,
         )
         return self
 
@@ -442,7 +452,9 @@ def offline(
     # TODO: maybe configuration with doing tarball output?
     result = f"{output_dir}.tgz"
     context.run(
-        f"tar -czf {result} -C {output_dir} .", echo=True, echo_stdin=False,
+        f"tar -czf {result} -C {output_dir} .",
+        echo=True,
+        echo_stdin=False,
     )
 
 

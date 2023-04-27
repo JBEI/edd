@@ -3,8 +3,6 @@ services:
     build:
       args:
         EDD_VERSION: development
-      context: .
-      dockerfile: ./docker/edd/core/Dockerfile
     environment:
       EDD_CONTAINER: http
 version: "3.7"

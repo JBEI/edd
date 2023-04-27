@@ -9,6 +9,7 @@ services:
       - icenet
   ice:
     environment:
+      ICE_DATA_HOME: /usr/local/ice-data
       VIRTUAL_STATIC: "true"
     healthcheck:
       test:
@@ -27,11 +28,12 @@ services:
     volumes:
       - ice_index:/var/lib/ice/lucene
       - ice_local:/usr/local/tomcat/data
+      - ./secrets/edd_ice_key:/usr/local/ice-data/rest-auth/edd:ro
   ice_db:
     environment:
       POSTGRES_DB: ice
       POSTGRES_USER: iceuser
-    image: library/postgres:11
+    image: library/postgres:14
     networks:
       - icenet
     volumes:

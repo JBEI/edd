@@ -4,27 +4,11 @@ def result = buildRepo([
     "email": ["to": "edd-dev@lbl.gov", "cc": "edd-dev@lbl.gov"],
     "build": [
         // core image
-        [
-            "docker": [
-                "dockerfile": "./docker/edd/core/Dockerfile",
-                "repo": "jbei/edd-core",
-            ],
-        ],
+        ["docker": ["repo": "jbei/edd-core"]],
         // typescript build
-        [
-            "docker": [
-                "dockerfile": "./docker/edd/core/Dockerfile",
-                "repo": "jbei/edd-node",
-                "target": "typescript",
-            ],
-        ],
+        ["docker": ["repo": "jbei/edd-node", "target": "typescript"]],
         // documentation
-        [
-            "docker": [
-                "dockerfile": "./docker/edd/docs/Dockerfile",
-                "repo": "jbei/edd-docs",
-            ],
-        ],
+        ["docker": ["repo": "jbei/edd-docs", "target": "docs"]],
     ],
     "test": [
         "scriptFile": "./bin/unittest.sh",

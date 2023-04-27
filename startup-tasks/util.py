@@ -110,7 +110,7 @@ def retry(predicate, limit):
         if predicate():
             break
         else:
-            time.sleep(min(1.5 ** i, 60) + jitter)
+            time.sleep(min(1.5**i, 60) + jitter)
             continue
     else:
         raise StartupError

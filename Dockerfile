@@ -8,7 +8,7 @@ FROM node:lts-alpine as edd-node
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
-COPY ./docker/edd/core/package.json /run/
+COPY ./package.json /run/package.json
 
 WORKDIR /run/
 
@@ -24,7 +24,7 @@ FROM node:lts-alpine as edd-node-bs5
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
-COPY ./docker/edd/core/package.bs5.json /run/package.json
+COPY ./package.bs5.json /run/package.json
 
 WORKDIR /run/
 
@@ -41,8 +41,6 @@ FROM library/python:3.10-slim-bullseye as pybase
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
 
-WORKDIR /tmp
-
 RUN set -ex \
  && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade \
@@ -53,25 +51,52 @@ RUN set -ex \
     mime-support \
     netcat-openbsd \
     tini \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# ---
+
+FROM pybase as setup
+
+WORKDIR /usr/local/edd-config
+
+RUN set -ex \
+ # grab yq binary
+ && curl -fSL "https://github.com/mikefarah/yq/releases/download/2.4.1/yq_linux_amd64" \
+    -o /usr/local/bin/yq \
+ && chmod +x /usr/local/bin/yq \
+ # install invoke
+ && pip install --no-cache-dir invoke \
+ && rm -rf /root/.cache \
+ && find /usr/local/lib/ -name __pycache__ | xargs rm -rf
+
+COPY ./setup/ /usr/local/edd-config
+
+ENTRYPOINT ["invoke"]
+CMD ["--help"]
+
+# ---
+
+FROM pybase as pynumpy
+
+RUN set -ex \
  && pip install \
     numpy \
     pipenv \
     python-libsbml \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/* \
  && rm -rf /root/.cache \
  && find /usr/local/lib/ -name __pycache__ | xargs rm -rf
 
 # ---
 
-FROM pybase as preinstall
+FROM pynumpy as preinstall
 ARG TARGET
 
 WORKDIR /install
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
 
-COPY ./docker/edd/core/Pipfile* /install/
-COPY ./docker/edd/core/bin/* /usr/local/bin/
+COPY ./Pipfile* /install/
+COPY ./container-bin/* /usr/local/bin/
 
 RUN set -ex \
 # update package index from base file
@@ -93,6 +118,31 @@ RUN set -ex \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && rm -rf /root/.cache
+
+# ---
+
+FROM library/python:3.10-slim-bullseye as docs-build
+
+RUN pip install \
+    mkdocs \
+    mkdocs-bootswatch \
+    pygments \
+    pymdown-extensions
+
+WORKDIR /usr/local/edd
+
+COPY . /usr/local/edd/
+
+RUN mkdir -p /usr/local/css \
+ && pygmentize -f html -S friendly -a .highlight > /usr/local/css/pygments.css \
+ && mkdocs build
+
+# -----
+
+FROM nginx:mainline-alpine as docs
+
+COPY --from=docs-build /usr/local/edd/site /usr/share/nginx/html
+COPY --from=docs-build /usr/local/css /usr/share/nginx/html/css
 
 # ---
 
@@ -150,11 +200,11 @@ ENV EDD_VERSION="${EDD_VERSION}"
 WORKDIR /code
 
 # Copy in invoke config
-COPY ./docker/edd/core/invoke.yaml /etc/invoke.yaml
+COPY ./invoke.yaml /etc/invoke.yaml
 # Copy in invoke scripts
-COPY ./docker/edd/core/tasks /usr/local/edd-invoke/tasks
+COPY ./startup-tasks /usr/local/edd-invoke/tasks
 # Copy in entrypoint
-COPY ./docker/edd/core/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 # Copy in python code
 COPY --from=staticfiles /usr/local/edd /usr/local/edd
 # Copy in static assets

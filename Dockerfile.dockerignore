@@ -2,14 +2,26 @@
 *
 
 # then allow specific parts back
-# allow the Docker-specific stuff in
-!docker/edd/core/*
+# allow the docs
+!docs
+!Contributing.md
+!LEGAL.txt
+!LICENSE.txt
+!mkdocs.yml
+# allow the docker orchestration setup
+!setup
 # allow the server Python code
+!container-bin
+!entrypoint.sh
+!invoke.yaml
+!Pipfile
+!Pipfile.lock
 !server
+!startup-tasks
 # allow the typescript code for compiling
 !typescript
 !typescript-bs5
-# also allow prettier configs for compiling
+!package.*
 !.prettier*
 # allow these git files to grab commit hash during build
 !.git/HEAD
@@ -24,3 +36,4 @@ server/main/static/dist
 server/**/.DS_Store
 server/**/__pycache__
 server/**/.pytest_cache
+server/**/.ruff_cache

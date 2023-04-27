@@ -1,7 +1,7 @@
 # Docker Service Infrastructure
 
 This directory contains configuration and scripts relating to services used by the
-[Experiment Data Depot][1] (EDD). The EDD uses [Docker][2] containers as microservices to
+Experiment Data Depot (EDD). The EDD uses [Docker][2] containers as microservices to
 simplify deployments. While it is possible to install each of the services individually, there
 are better uses of time. Prior to our adoption of Docker, an experienced sysadmin could install
 and configure all service dependencies in about a day. Since then, more service dependencies were
@@ -26,22 +26,15 @@ merge the results producing the final configuration.
 
 ## Configuration Files and Generator Scripts
 
-A helper script exists in `./bin/init-config` that will generate configuration
-files automatically. A typical development environment would run
-`./bin/init-config offline --deploy=dev`. Using the defaults will create a
-`secrets` directory and `docker-compose.override.yml`. The user and email set
-in `git` will be configured as the EDD Administrator. A container running Nginx
-will be configured to launch and proxy requests to the domain `edd.lvh.me`
-(maps to `127.0.0.1`) to the EDD application.
+A helper script exists in `./bin/dev_quickstart.sh` that will generate configuration
+files automatically. This will create a `secrets` directory and
+`docker-compose.override.yml`. A container running Nginx will be configured to launch
+and proxy requests to the domain `edd.lvh.me` (maps to `127.0.0.1`) to the
+EDD application.
 
-Non-development deployments will run using at least some of the options to
-`init-config`. For example, a deployment to https://edd.example.org/ might use:
-
-    ./bin/init-config offline --deploy='edd.example.org'
-
-Running the above would set up the Nginx container to handle HTTP requests
-for edd.example.org and auto-request a TLS certificate using the [Let's
-Encrypt][18] service.
+Running the above would set up the [Nginx container][nginx] to handle HTTP requests
+for edd.example.org and auto-request a TLS certificate using the
+[Let's Encrypt][18] service.
 
 ## Docker Abstractions
 
@@ -113,16 +106,11 @@ a mix of "official" images from the [Docker Hub][4], and custom images defined b
 this repository. The bold links below point to the README documentation for each image. Custom
 images also include links to the README for the base image.
 
--   **[edd-core][5]**: custom Dockerfile, based on official Python alpine image
-    (via jbei/scikit-learn)
--   **[postgres][7]**: custom Dockerfile, based on official Postgres image, using version 9.6
--   **[redis][8]**: custom Dockerfile, based on official Redis image, using version 3.2
--   **[solr][9]**: custom Dockerfile, based on the [official Solr image][10] version 7.3
--   **[rabbitmq][11]**: custom Dockerfile, based on official RabbitMQ image, using version
-    3.7-management-alpine
--   **[nginx][14]**: based on [official Nginx image][15], using mainline version
--   **nginx-gen**: based on [jwilder/docker-gen][16], using a custom template file
--   **[jrcs/letsencrypt-nginx-proxy-companion][17]**: third-party image, using latest release
+-   **[edd-core][5]**: custom Dockerfile, based on official Python Debian image
+-   **[postgres][7]**: official Postgres image, using version 14
+-   **[redis][8]**: official Redis image, using version 6
+-   **[solr][10]**: official Solr image, using version 8
+-   **[rabbitmq][11]**: official RabbitMQ image, using version 3-management-alpine
 
 ### Services (Containers)
 
@@ -146,20 +134,14 @@ is a one-to-one relationship from images to services. The two exceptions both ma
 
 ---
 
-[1]: ../README.md
 [2]: https://docker.io
 [3]: https://docs.docker.com/compose/overview/
 [4]: https://hub.docker.com/explore/
-[5]: edd/README.md
+[5]: EDD-Core.md
 [6]: https://hub.docker.com/_/buildpack-deps/
 [7]: https://hub.docker.com/_/postgres/
 [8]: https://hub.docker.com/_/redis/
-[9]: solr/README.md
 [10]: https://hub.docker.com/_/solr/
 [11]: https://hub.docker.com/_/rabbitmq/
-[13]: smtp/README.md
-[14]: nginx/README.md
-[15]: https://hub.docker.com/_/nginx/
-[16]: https://github.com/jwilder/docker-gen
-[17]: https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion
 [18]: https://letsencrypt.org
+[nginx]: Nginx.md

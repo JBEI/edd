@@ -1,8 +1,0 @@
-# just ignore everything
-*
-
-# then only allow in the specific things we want
-!*.md
-!*.txt
-!mkdocs.yml
-!docs
