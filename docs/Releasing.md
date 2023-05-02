@@ -1,3 +1,12 @@
+!!! warning "Obsolete Document"
+
+    The maintainers of EDD are working with the application as a continuous
+    delivery project, and are not publishing explicit versioned packages or
+    Docker images. The last official release of EDD is `2.6.6` from November
+    2020. Any new users should work off the `trunk` branch of the repo, and
+    use their own release process for deployment. This document is kept as an
+    historical example on one way to do that release process.
+
 ## Release Process
 
 This document is an outline of the steps that should be taken to make a new

@@ -1,9 +1,11 @@
 # Python Package Requirements
 
-This document is based on specific pinned versions in the older [requirements.txt][1] for EDD.
-Current dependencies are managed via Pipfile and Pipfile.lock, but the information here provides
-some context on why specific packages are used. Dependencies for these packages can be generated
-using the [`pipdeptree`][2] tool.
+!!! warning "Obsolete Document"
+
+    This document is not current with all the packages used by EDD. It is kept
+    as a reference for items once included in the `requirements.txt` for the
+    project. All current direct dependencies are declared in `pyproject.toml`,
+    to be installed using `poetry`.
 
 ## Django
 
@@ -364,8 +366,6 @@ files, using Django's `collectstatic` command. [Source][24]
 
 ---
 
-[1]: ./requirements.txt
-[2]: https://pypi.python.org/pypi/pipdeptree
 [3]: https://www.djangoproject.com/
 [4]: https://arrow.readthedocs.io/en/latest/
 [5]: https://www.celeryproject.org/

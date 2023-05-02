@@ -28,6 +28,7 @@ or run separately:
 
 These additional services may be included as well:
 
+-   **ice**: strain registry used to track information on strains used in experiments
 -   **nginx**: webserver that proxies clients' HTTP requests to other Docker services
 -   **nginx-gen**: monitors container start/stop events to generate configs for `nginx`
 -   **letsencrypt**: generates TLS certificates for `nginx` through the Let's Encrypt service

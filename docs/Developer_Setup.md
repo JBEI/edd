@@ -34,21 +34,18 @@ script will:
 -   Copy sample configuration files
 -   Generate random passwords for use in autoconfiguring EDD's Docker services
 
-See the documentation inside `docker/edd/config` for more information. For
-development, you will most likely want to run the command as:
-
 ```bash
-./bin/init-config offline --deploy=dev
+./bin/dev_quickstart.sh
 ```
 
 #### Configure `settings`
 
 While optional, this step is highly recommended, if only to enable features
 like emailing yourself when errors occur, or making use of Django `DEBUG`
-features and the Django Debug Toolbar. Copy the file `settings/example` to
-`settings/__init__.py`, and make edits there.
+features and the Django Debug Toolbar. The script will place a file at
+`settings/__init__.py`, containing Django settings overrides.
 
-Some additional changes to aid in development can be made by changing the
+Some additional changes to aid in development can be made by changing these
 Django settings. Add support for the [Django debug toolbar][3] in the settings
 directory to run EDD with a helpful debug application. This will add an
 expandable toolbar to every page, showing information like request headers, SQL
@@ -56,7 +53,7 @@ queries run, template context, signals fired, etc.
 
 #### Configure `secrets`
 
-The `init-config` script will create a `secrets` directory, containing
+The `dev_quickstart.sh` script will create a `secrets` directory, containing
 generated passwords and connection URLs for services. These passwords are set
 in the service data volumes on first launch; to use alternate passwords or
 existing services (e.g. if you already have a Postgres cluster), edit the file
@@ -69,6 +66,10 @@ to the host prior to launching; however, it is sometimes useful to run this
 step manually. Building or pulling specific images, and tagging appropriately,
 allows more control over the images used to launch EDD.
 
+See the documentation on the [jbei/edd-core image][edd-core] for details on
+building and running the core application components. More details on all the
+components can be found in the [Docker Infrastructure][infra] documentation.
+
 ### Launch EDD
 
 You can run EDD either on a single Docker node with `docker compose up -d`, or
@@ -77,9 +78,9 @@ config file by running `docker compose config` and saving the output.
 
 ### Install ICE
 
-Running `bin/init-config` with `offline --deploy=dev` will configure EDD to
-launch with an ICE instance appropriate for local-only testing. An external
-instance may also be configured by creating a random key like so:
+Running `bin/dev_quickstart.sh` will configure EDD to launch with an ICE
+instance appropriate for local-only testing. An external instance may also be
+configured by creating a random key like so:
 
 ```bash
 openssl rand -base64 64 | tr -d '\n' > secrets/edd_ice_key
@@ -90,9 +91,9 @@ Then copy this shared secret to both the target ICE instance and EDD.
 ### Front-end Development
 
 The EDD makes use of Node.js packages for managing front-end code. All dev
-dependencies are contained in a Docker image, available under the tag
-`jbei/edd-node` on Docker Hub. It is used as part of the build of the
-`jbei/edd-core` image, to prepare front-end assets.
+dependencies are contained in a Docker image, in a build stage used to prepare
+front-end assets. You can build the `Dockerfile` with a `--target typescript`
+flag to get an image used for local development of the front-end code.
 
 EDD uses [TypeScript][1] for its client-side interface, and compiles JavaScript
 with third-party libraries using [Webpack][2]. The static asset files for the
@@ -106,7 +107,7 @@ deployed to a running EDD without a full build.
 This will typically be `docker compose up -d`, or `docker stack deploy`. The
 compose file used to launch should have an override to load code in from the
 host to a volume mounted at `/code`. This should already be in place when using
-the `--deploy=dev` flag to `bin/init-config`.
+the `bin/dev_quickstart.sh` script.
 
 #### Edit and Compile Typescript
 
@@ -130,3 +131,5 @@ identify the currently active static files.
 [4]: https://pre-commit.com/
 [5]: Developer_Setup_Mac.md
 [6]: Developer_Setup_Linux.md
+[edd-core]: EDD-Core.md
+[infra]: Docker.md

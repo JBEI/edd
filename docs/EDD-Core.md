@@ -55,5 +55,4 @@ similar to:
 
 ---
 
-[1]: ../../README.md
 [2]: http://docs.pyinvoke.org/en/stable/

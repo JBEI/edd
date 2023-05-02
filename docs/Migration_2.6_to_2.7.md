@@ -39,6 +39,9 @@ Storages][1], and set `EDD_ENABLE_S3_MIGRATE = True`.
 The local settings file should include a section looking something like this:
 
 ```python
+import environ
+env = environ.Env()
+# ...
 AWS_S3_ENDPOINT_URL = env("MINIO_URL")
 AWS_S3_CUSTOM_DOMAIN = env("MINIO_PROXY_DOMAIN")
 AWS_ACCESS_KEY_ID = env("MINIO_ACCESS_KEY")

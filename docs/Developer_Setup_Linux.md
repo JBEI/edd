@@ -36,9 +36,8 @@ For more examples and ideas, visit:
 
 The latter should print usage information about the `docker compose` command.
 
-Install [pre-commit][3], either directly with `pip install pre-commit` in the
-system Python or a development-specific virtualenv, or use the
-non-administrative install script:
+Install [pre-commit][3], either directly with `pipx install pre-commit`, or use
+the non-administrative install script:
 
 ```bash
 curl https://pre-commit.com/install-local.py | python -

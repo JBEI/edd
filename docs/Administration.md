@@ -66,7 +66,7 @@ pg_dump -h postgres.example.org -d edd -U jane -f dump.sql
         POSTGRES_DB: edd
         POSTGRES_USER: edduser
         POSTGRES_PASSWORD: ___
-      image: library/postgres:11
+      image: library/postgres:14
       networks:
       - backnet
       volumes:
