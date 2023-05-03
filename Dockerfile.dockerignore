@@ -7,6 +7,7 @@
 !Contributing.md
 !LEGAL.txt
 !LICENSE.txt
+!mkdocs.requirements.txt
 !mkdocs.yml
 # allow the docker orchestration setup
 !setup
@@ -14,8 +15,8 @@
 !container-bin
 !entrypoint.sh
 !invoke.yaml
-!Pipfile
-!Pipfile.lock
+!requirements.txt
+!requirements.dev.txt
 !server
 !startup-tasks
 # allow the typescript code for compiling

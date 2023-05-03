@@ -1,0 +1,79 @@
+[tool.poetry]
+name = "edd"
+version = "3.0.0.dev0"
+description = "Online repository of standardized biological experimental data and metadata."
+license = "BSD-3-Clause"
+authors = [
+    "William Morrell <WCMorrell@lbl.gov>",
+]
+maintainers = [
+    "William Morrell <WCMorrell@lbl.gov>",
+    "Steve Lane <SDLane@lbl.gov>",
+]
+readme = "README.md"
+homepage = "https://public-edd.jbei.org/"
+repository = "https://github.com/JBEI/EDD"
+documentation = "https://edd-docs.jbei.org/"
+packages = [
+    { from = "server", include = "edd" },
+    { from = "server", include = "main" },
+    { from = "server", include = "jbei" },
+]
+
+[tool.poetry.build]
+generate-setup-file = true
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+arrow = "*"
+boto3 = "*"
+celery = "==5.3.0b1"
+channels = "<4.0.0"
+channels-redis = "<4.0.0"
+chardet = "*"
+daphne = "<4.0.0"
+django = "<4.1.0"
+django-allauth = "*"
+django-auth-ldap = "*"
+django-debug-toolbar = "*"
+django-environ = "==0.9.0"
+django-extensions = "*"
+django-filter = "*"
+django-redis = "*"
+django-storages = "*"
+django-threadlocals = "*"
+djangorestframework = "*"
+djangorestframework-csv = "*"
+djangorestframework-simplejwt = "*"
+drf-nested-routers = "*"
+drf-yasg = "*"
+gevent = "*"
+graphene = "*"
+graphene-django = "==2.15.0"
+gunicorn = "*"
+invoke = "*"
+jsonpickle = "*"
+jsonschema = "*"
+numpy = "*"
+openpyxl = "<3.1"
+pillow = "*"
+psycopg2-binary = "*"
+python-libsbml = "*"
+rdflib = "*"
+service-identity = "*"
+sqlalchemy = "*"
+watchdog = "*"
+
+[tool.poetry.group.dev.dependencies]
+coverage = "*"
+factory-boy = "*"
+pytest-asyncio = "*"
+pytest-django = "*"
+pytest-parallel = "*"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "*"
+mkdocs-bootswatch = "*"
+pygments = "*"
+pymdown-extensions = "*"

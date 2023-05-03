@@ -77,25 +77,23 @@ CMD ["--help"]
 
 # ---
 
-FROM pybase as pynumpy
+FROM pybase as generate-requirements
+
+WORKDIR /install
 
 RUN set -ex \
- && pip install \
-    numpy \
-    pipenv \
-    python-libsbml \
- && rm -rf /root/.cache \
- && find /usr/local/lib/ -name __pycache__ | xargs rm -rf
+# install pipx and poetry
+ && python -m pip install pipx \
+ && pipx install poetry
 
 # ---
 
-FROM pynumpy as preinstall
+FROM pybase as preinstall
 ARG TARGET
 
 WORKDIR /install
-ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
 
-COPY ./Pipfile* /install/
+COPY ./requirements.* /install/
 COPY ./container-bin/* /usr/local/bin/
 
 RUN set -ex \
@@ -106,16 +104,20 @@ RUN set -ex \
     build-essential \
     libldap2-dev \
     libsasl2-dev \
+# install EDD dependencies
  && if [ "${TARGET}" = "dev" ]; \
-    then pipenv install --dev --system --deploy --verbose; \
-    else pipenv install       --system --deploy --verbose; \
+    then python -m pip install -r requirements.dev.txt; \
+    else python -m pip install -r requirements.txt; \
     fi \
+# remove build tools
  && DEBIAN_FRONTEND=noninteractive apt-get -y purge \
     build-essential \
     libldap2-dev \
     libsasl2-dev \
+# cleanup apt
  && apt autoremove -y \
  && apt-get clean \
+# cleanup pip
  && rm -rf /var/lib/apt/lists/* \
  && rm -rf /root/.cache
 
@@ -123,17 +125,11 @@ RUN set -ex \
 
 FROM library/python:3.10-slim-bullseye as docs-build
 
-RUN pip install \
-    mkdocs \
-    mkdocs-bootswatch \
-    pygments \
-    pymdown-extensions
-
 WORKDIR /usr/local/edd
-
 COPY . /usr/local/edd/
 
-RUN mkdir -p /usr/local/css \
+RUN python -m pip install -r mkdocs.requirements.txt \
+ && mkdir -p /usr/local/css \
  && pygmentize -f html -S friendly -a .highlight > /usr/local/css/pygments.css \
  && mkdocs build
 
