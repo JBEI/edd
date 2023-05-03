@@ -5,8 +5,8 @@ import itertools
 import logging
 import numbers
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Dict, List, Sequence, Set, Tuple
 from uuid import UUID
 
 from django.utils.translation import gettext_lazy as _
@@ -40,14 +40,14 @@ class ColLayoutDetectionState:
     """
 
     # maps canonical column name -> col index where it was detected
-    layout: Dict[str, int] = field(init=False)
+    layout: dict[str, int] = field(init=False)
     # non-column-header values read from file before any valid column header was found
-    non_header_vals: List[str] = field(init=False)
+    non_header_vals: list[str] = field(init=False)
     # maps canonical names of any required columns observed in this row to the list of indexes of
     # columns where they were detected
-    obs_req_cols: Dict[str, List[int]] = field(init=False)
+    obs_req_cols: dict[str, list[int]] = field(init=False)
     # canonical names of optional columns observed in this row
-    obs_opt_cols: Dict[str, List[int]] = field(init=False)
+    obs_opt_cols: dict[str, list[int]] = field(init=False)
 
     def __post_init__(self):
         self.layout = {}
@@ -74,7 +74,11 @@ class TableParser:
     """
 
     def __init__(
-        self, req_cols: List[str], import_uuid: UUID, opt_cols=None, numeric_cols=None,
+        self,
+        req_cols: list[str],
+        import_uuid: UUID,
+        opt_cols=None,
+        numeric_cols=None,
     ):
         """
         Initializes the parser using client-provided lists of required and optional column headers.
@@ -93,7 +97,7 @@ class TableParser:
         # TODO: add support for vector input
         # TODO: add optional column aliases?
         # keep inputs to use as keys and as human-readable for use in err messages
-        self.req_cols: List[str] = req_cols
+        self.req_cols: list[str] = req_cols
         self.opt_cols = opt_cols if opt_cols is not None else set()
         self.numeric_cols = numeric_cols if numeric_cols is not None else set()
 
@@ -209,7 +213,6 @@ class TableParser:
         self.column_layout = None
         # loop over rows
         for row_index, cols_list in enumerate(rows_iter):
-
             # identify columns of interest first by looking for required header labels
             if not self.column_layout:
                 self.column_layout = self._parse_col_layout(cols_list, row_index)
@@ -462,14 +465,13 @@ class TableParser:
         layout_state: ColLayoutDetectionState,
         required_col: bool,
     ):
-
-        obs_cols_dict: Dict[str, List[int]] = (
+        obs_cols_dict: dict[str, list[int]] = (
             layout_state.obs_req_cols if required_col else layout_state.obs_opt_cols
         )
 
         # if column name is already observed, build a helpful error message
         if canonical_name in obs_cols_dict:
-            cols: List[int] = obs_cols_dict[canonical_name]
+            cols: list[int] = obs_cols_dict[canonical_name]
             subcategory = f'"{canonical_name}"'
 
             # add entries for both the first and current instance
@@ -540,13 +542,13 @@ class MeasurementParseRecord:
     loa_name: str
     mtype_name: str
     value_format: str
-    data: List[List[numbers.Number]]
+    data: list[list[numbers.Number]]
     x_unit_name: str
     y_unit_name: str
     # data source(s) within the file for this measurement...for tabular data, an iterable of
     # int row nums or string ranges, e.g. ('1-3', 5, 24). Used to construct helpful / precise
     # error messages
-    src_ids: [Tuple[str, ...]]
+    src_ids: [tuple[str, ...]]
 
 
 @dataclass(eq=False)
@@ -573,13 +575,13 @@ class ParseResult:
     has_all_times: bool
 
     # set of unique line or assay names found in the file
-    line_or_assay_names: Set[str] = field(init=False)
+    line_or_assay_names: set[str] = field(init=False)
     # True if every record parsed from file had associated units
     has_all_units: bool = field(init=False)
     # set of unique mtype identifiers (strings) found in the file
-    mtypes: Set[str] = field(init=False)
+    mtypes: set[str] = field(init=False)
     # set of unique unit names (strings) found in the file or implicit in the format
-    units: Set[str] = field(init=False)
+    units: set[str] = field(init=False)
 
     def __post_init__(self):
         # compute unique line / assay names, units, measurement types from the parse records

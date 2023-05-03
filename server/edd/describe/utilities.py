@@ -2,9 +2,8 @@ import copy
 import logging
 import uuid
 from collections import defaultdict
-from collections.abc import Iterable as IterableObj
-from collections.abc import Sequence
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 from arrow import utcnow
 
@@ -268,7 +267,7 @@ class LineAndAssayCreationVisitor(NewLineAndAssayVisitor):
         return line
 
     def visit_assay(
-        self, protocol_pk, line, assay_name, assay_metadata_dict: Dict[int, list]
+        self, protocol_pk, line, assay_name, assay_metadata_dict: dict[int, list]
     ):
         protocol_to_assays_list = self.line_to_protocols_to_assays_list[line.name]
         assays_list = protocol_to_assays_list[protocol_pk]
@@ -312,7 +311,6 @@ class LineAndAssayNamingVisitor(NewLineAndAssayVisitor):
         self.lines = []
 
     def visit_line(self, line_name, description, line_metadata_dict):
-
         self.line_names.append(line_name)
 
         # cache the line name (it's a defaultdict, so this line has an effect)
@@ -368,19 +366,18 @@ class ExperimentDescriptionContext:
     """
 
     def __init__(self):
-
         # build up a dictionary of protocols
-        self.protocols: Dict[int, Protocol] = {
+        self.protocols: dict[int, Protocol] = {
             protocol.pk: protocol for protocol in Protocol.objects.all()
         }
 
         # build up dictionaries of Line and Assay metadata types
         line_metadata_qs = MetadataType.objects.filter(for_context=MetadataType.LINE)
-        self.line_meta_types: Dict[int, MetadataType] = {
+        self.line_meta_types: dict[int, MetadataType] = {
             meta_type.pk: meta_type for meta_type in line_metadata_qs
         }
 
-        self.assay_meta_types: Dict[int, MetadataType] = {
+        self.assay_meta_types: dict[int, MetadataType] = {
             meta_type.pk: meta_type
             for meta_type in MetadataType.objects.filter(for_context=MetadataType.ASSAY)
         }
@@ -392,25 +389,25 @@ class ExperimentDescriptionContext:
         relation_mtypes = self.query_related_object_types(self.line_meta_types)
 
         # pk -> MetadataType for all Line relations (including M2M below)
-        self.related_object_mtypes: Dict[int, MetadataType] = relation_mtypes[0]
+        self.related_object_mtypes: dict[int, MetadataType] = relation_mtypes[0]
 
         # pk -> MetadataType for M2M Line relations with a MetadataType analog
-        self.many_related_mtypes: Dict[int, MetadataType] = relation_mtypes[1]
+        self.many_related_mtypes: dict[int, MetadataType] = relation_mtypes[1]
 
         # maps mtype pk -> related object pk -> related object
-        self.related_objects: Dict[int, Dict[int, EDDObject]] = {}
+        self.related_objects: dict[int, dict[int, EDDObject]] = {}
 
     @staticmethod
     def query_related_object_types(
-        line_meta_types: Dict[int, MetadataType]
-    ) -> Tuple[Dict[int, MetadataType], Dict[int, MetadataType]]:
+        line_meta_types: dict[int, MetadataType]
+    ) -> tuple[dict[int, MetadataType], dict[int, MetadataType]]:
         """
         Inspects the provided line metadata types to find those correspond to
         ManyRelatedFields (e.g. Strain) that may also be used in line naming
         or needed to set foreign key relations
         """
-        many_related_mtypes: Dict[int, MetadataType] = {}
-        related_object_mtypes: Dict[int, MetadataType] = {}
+        many_related_mtypes: dict[int, MetadataType] = {}
+        related_object_mtypes: dict[int, MetadataType] = {}
         for meta_pk, meta_type in line_meta_types.items():
             if meta_type.type_field:
                 line_attr = Line._meta.get_field(meta_type.type_field)
@@ -438,7 +435,7 @@ class ExperimentDescriptionContext:
                 yield key, meta.encode_value(value)
 
     def get_related_objects(
-        self, mtype_pk, value_pks: Union[Union[int, str], Iterable[int]], subset=False
+        self, mtype_pk, value_pks: int | str | Iterable[int], subset=False
     ):
         """
         Gets Line-related model objects from the in-memory cache
@@ -655,7 +652,6 @@ class AutomatedNamingStrategy(NamingStrategy):
 
         abbreviation = values.get(raw_value)
         if abbreviation:
-
             # tolerate values that may have been provided as ints, for example
             return str(abbreviation)
         return raw_value
@@ -705,7 +701,7 @@ class CombinatorialDescriptionInput:
         self.replicate_meta = MetadataType.system("Replicate")
 
         self.common_line_metadata = kwargs.pop("common_line_metadata", {})
-        self.combinatorial_line_metadata: Dict[int, List[Any]] = defaultdict(list)
+        self.combinatorial_line_metadata: dict[int, list[Any]] = defaultdict(list)
         self.combinatorial_line_metadata.update(
             kwargs.pop("combinatorial_line_metadata", {})
         )
@@ -717,7 +713,7 @@ class CombinatorialDescriptionInput:
         self.unique_protocols = set(protocol_to_assay_meta)
 
         # optional. maps protocol pk -> { MetadataType.pk -> [values] }
-        self.protocol_to_assay_metadata: Dict[int, Dict[int, Any]] = defaultdict(
+        self.protocol_to_assay_metadata: dict[int, dict[int, Any]] = defaultdict(
             lambda: defaultdict(list)
         )
 
@@ -726,8 +722,8 @@ class CombinatorialDescriptionInput:
 
         # maps protocol_pk -> assay metadata pk -> list of values
         p_to_combo = kwargs.pop("protocol_to_combinatorial_metadata", {})
-        self.protocol_to_combinatorial_meta_dict: Dict[
-            int, Dict[int, List]
+        self.protocol_to_combinatorial_meta_dict: dict[
+            int, dict[int, list]
         ] = defaultdict(lambda: defaultdict(list))
         if p_to_combo:
             self.protocol_to_combinatorial_meta_dict.update(p_to_combo)
@@ -760,7 +756,7 @@ class CombinatorialDescriptionInput:
         # common metadata will at most be a list of identifiers
         values = self.common_line_metadata.get(line_meta_pk)
         if values:
-            if isinstance(values, IterableObj) and not isinstance(values, str):
+            if isinstance(values, Iterable) and not isinstance(values, str):
                 result.update(values)
             else:
                 result.add(values)
@@ -771,9 +767,9 @@ class CombinatorialDescriptionInput:
         if not values:
             return result
 
-        if isinstance(values, IterableObj) and not isinstance(values, str):
+        if isinstance(values, Iterable) and not isinstance(values, str):
             for elt in values:
-                if isinstance(elt, IterableObj) and not isinstance(elt, str):
+                if isinstance(elt, Iterable) and not isinstance(elt, str):
                     for val in elt:
                         # can't do result.update(list)
                         result.add(val)
@@ -890,7 +886,7 @@ class CombinatorialDescriptionInput:
         self.common_line_metadata[line_metadata_pk] = value
 
     def add_combinatorial_line_metadata(self, line_metadata_pk, value):
-        values: List = self.combinatorial_line_metadata[line_metadata_pk]
+        values: list = self.combinatorial_line_metadata[line_metadata_pk]
         values.append(value)
 
     def set_common_assay_metadata(self, protocol_pk, assay_metadata_pk, value):
@@ -898,7 +894,7 @@ class CombinatorialDescriptionInput:
         self.unique_protocols.add(protocol_pk)
 
     def add_combinatorial_assay_metadata(self, protocol_pk, assay_metadata_pk, value):
-        values: List = self.protocol_to_combinatorial_meta_dict[protocol_pk][
+        values: list = self.protocol_to_combinatorial_meta_dict[protocol_pk][
             assay_metadata_pk
         ]
         values.append(value)
@@ -1022,7 +1018,6 @@ class CombinatorialDescriptionInput:
         return visitor
 
     def _visit_study(self, visitor, cache):
-
         # pass cached database values to the naming strategy, if relevant.
         self.naming_strategy.cache = cache
         self._cache = cache
@@ -1046,7 +1041,6 @@ class CombinatorialDescriptionInput:
         self._visit_new_lines_helper(line_metadata, unvisited_meta_pks, visitor)
 
     def _visit_new_lines_helper(self, line_metadata, unvisited_meta_pks, visitor):
-
         # if we've reached the end of the recursion, line_metadata has one value per
         # combinatorial line metadata type. Now drill down into assays if needed.
         if not unvisited_meta_pks:
@@ -1079,7 +1073,7 @@ class CombinatorialDescriptionInput:
 
     def _visit_new_for_protocol(self, visitor, line, protocol_pk):
         # get common assay metadata for this protocol
-        assay_metadata: Dict[int, List] = copy.copy(
+        assay_metadata: dict[int, list] = copy.copy(
             self.protocol_to_assay_metadata[protocol_pk]
         )
 

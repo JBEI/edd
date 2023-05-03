@@ -109,15 +109,15 @@ class ImportResolver:
         self._assay_time_metatype = models.MetadataType.system("Time")
 
         # maps type identifier strings to model objects
-        self._mtype_name_to_type: typing.Dict[str, models.MeasurementType] = {}
+        self._mtype_name_to_type: dict[str, models.MeasurementType] = {}
         # maps line or assay name to the model object pk
-        self._loa_name_to_pk: typing.Dict[str, int] = {}
+        self._loa_name_to_pk: dict[str, int] = {}
         # maps assay name to existing line pk, only if file contained assay names
-        self._assay_name_to_line_pk: typing.Dict[str, int] = {}
+        self._assay_name_to_line_pk: dict[str, int] = {}
         # maps assay pk -> time read from assay metadata (Skyline workflow). Only used when
         # matched_assays is True. Using vector time to match MeasurementValue.x.
-        self._assay_pk_to_time: typing.Dict[int, typing.List[float]] = {}
-        self._unit_name_to_unit: typing.Dict[str, int] = {}
+        self._assay_pk_to_time: dict[int, list[float]] = {}
+        self._unit_name_to_unit: dict[str, int] = {}
 
     def resolve(self, type_resolver):
         """
@@ -178,7 +178,7 @@ class ImportResolver:
 
         return context
 
-    def _verify_assay_times(self) -> typing.Dict[int, typing.List[float]]:
+    def _verify_assay_times(self) -> dict[int, list[float]]:
         """
         Validates that assay time metadata is consistent.
 
@@ -210,7 +210,7 @@ class ImportResolver:
 
         # query in batches for the number of assays consistent with the file in terms of having
         # time metadata (or not)
-        assay_times: typing.Dict[int, typing.List[float]] = {}
+        assay_times: dict[int, list[float]] = {}
         first_inconsistent_batch = None
         for batch_index, batch in enumerate(assay_pk_batches):
             consistent_time_qs = models.Assay.objects.filter(
@@ -429,9 +429,7 @@ class ImportResolver:
                 exceptions.UnsupportedUnitsError(details=missing_units),
             )
 
-    def _save_resolved_records(
-        self, matched_assays: bool
-    ) -> typing.Dict[str, typing.Any]:
+    def _save_resolved_records(self, matched_assays: bool) -> dict[str, typing.Any]:
         # Does some final error checking,
         # then resolves parse results into records
         # that can be easily inserted into the database in a follow-on task
@@ -467,13 +465,13 @@ class ImportCacheCreator:
         self.load = load
         self.parsed: ParseResult = None
         self.assay_time_err: bool = False
-        self.loa_name_to_pk: typing.Dict[str, int] = None
+        self.loa_name_to_pk: dict[str, int] = None
         self.matched_assays: bool = None
         # self.matched_assays: bool = None
         # self.loa_name_to_pk: typing.Dict[str, int] = None
-        self.assay_pk_to_time: typing.Dict[int, typing.List[float]] = None
-        self.mtype_name_to_type: typing.Dict[str, models.MeasurementType] = None
-        self.unit_name_to_unit: typing.Dict[str, int] = None
+        self.assay_pk_to_time: dict[int, list[float]] = None
+        self.mtype_name_to_type: dict[str, models.MeasurementType] = None
+        self.unit_name_to_unit: dict[str, int] = None
         self.assay_name_to_line_pk = None
 
     def save_resolved_import_records(self):
@@ -588,8 +586,7 @@ class ImportCacheCreator:
             }
 
             # build up a list of unique x-values (each of which may be an array)
-            x: typing.List[float]
-            y: typing.List[float]
+            x: list[float]
             for x, _y in item["data"]:
                 # never runs for line name input
                 # since it won't get this far
@@ -628,7 +625,7 @@ class ImportCacheCreator:
             from_study=conflicted_from_study, from_import=conflicted_from_import
         )
 
-    def _build_import_records(self) -> typing.List[typing.Dict]:
+    def _build_import_records(self) -> list[dict]:
         # Builds records for the final import
         # from MeasurementParseRecords read by the parser.
         # Merges import parse records,
@@ -671,7 +668,7 @@ class ImportCacheCreator:
             # merge parse records that match the same ID (but should have different times)
             import_record = import_records.get(ident, None)
             if not import_record:
-                import_record: typing.Dict = self._build_import_record(parse_record)
+                import_record: dict = self._build_import_record(parse_record)
                 import_records[ident] = import_record
             else:
                 # merge data in this parse record with others for the same loa/mtype/unit
@@ -702,7 +699,7 @@ class ImportCacheCreator:
 
         return [*import_records.values()]
 
-    def _build_import_record(self, parse_record) -> typing.Dict:
+    def _build_import_record(self, parse_record) -> dict:
         # Builds a record to be used in the final import...
         # essentially a variant of the parse record
         # with string identifiers (e.g. for MeasurementTypes, Units, etc)

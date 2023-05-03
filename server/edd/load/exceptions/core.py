@@ -38,8 +38,8 @@ class MessagingMixin:
     def __init__(
         self,
         category: str,
-        summary: typing.Optional[str] = "",
-        subcategory: typing.Optional[str] = "",
+        summary: str | None = "",
+        subcategory: str | None = "",
         details: DetailValue = None,
         resolution: str = "",
         docs_link: str = "",
@@ -62,11 +62,11 @@ class MessagingMixin:
         super().__init__()
         self.category: str = category
         self.summary: str = summary
-        self.subcategory: typing.Optional[str] = subcategory
-        self.resolution: typing.Optional[str] = resolution
-        self.docs_link: typing.Optional[str] = docs_link
+        self.subcategory: str | None = subcategory
+        self.resolution: str | None = resolution
+        self.docs_link: str | None = docs_link
 
-        self.details: typing.List[str] = []
+        self.details: list[str] = []
         if details:
             if isinstance(details, str):
                 self.details = [details]
@@ -117,7 +117,9 @@ class MessagingMixin:
         limit = getattr(settings, "EDD_IMPORT_ERR_REPORTING_LIMIT", 0)
         if limit and len(self.details) >= limit:
             warnings.warn(
-                "Passed error reporting limit", category=ReportingLimitWarning
+                "Passed error reporting limit",
+                category=ReportingLimitWarning,
+                stacklevel=2,
             )
 
     def merge(self, other: "MessagingMixin") -> None:

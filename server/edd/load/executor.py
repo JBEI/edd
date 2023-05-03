@@ -37,12 +37,12 @@ class ImportExecutor:
 
         # lookups for line/assay by pk
         # unique line or assay pks for the entire import
-        self.loa_pks: typing.Set[int] = set()
+        self.loa_pks: set[int] = set()
 
         # lookup assay by whichever pk was used to find / create them.
         # it'll consistently be either line or assay pk as defined by matched_assays
-        self._assays_by_loa_pk: typing.Dict[int, models.Assay] = {}
-        self._assays_by_pk: typing.Dict[int, models.Assay] = {}
+        self._assays_by_loa_pk: dict[int, models.Assay] = {}
+        self._assays_by_pk: dict[int, models.Assay] = {}
 
         self._use_assay_time_meta: bool = False
         self.assay_time_mtype = models.MetadataType.system("Time")
@@ -69,7 +69,7 @@ class ImportExecutor:
         if not self.load.transition(LoadRequest.Status.PROCESSING):
             raise exceptions.IllegalTransitionError()
 
-    def parse_context(self, context: typing.Dict[str, typing.Any]):
+    def parse_context(self, context: dict[str, typing.Any]):
         """Parses context for this import from a dict."""
         self._use_assay_time_meta = context["use_assay_times"]
         self.matched_assays = context["matched_assays"]
@@ -171,7 +171,8 @@ class ImportExecutor:
             if len(lookup_dict) != len(self.loa_pks):
                 not_found = self.loa_pks - lookup_dict.keys()
                 reporting.raise_errors(
-                    self.load.request, exceptions.UnmatchedLineError(details=not_found),
+                    self.load.request,
+                    exceptions.UnmatchedLineError(details=not_found),
                 )
             self.loa_pks = set()
             self._create_assays(lookup_dict)

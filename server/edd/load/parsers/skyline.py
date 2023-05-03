@@ -1,6 +1,5 @@
 import collections
 import decimal
-from typing import List
 from uuid import UUID
 
 from main.models import Measurement
@@ -59,7 +58,7 @@ class BaseSkylineParser(TableParser):
     @property
     def _parse_result(self):
         raise_errors(self.import_uuid)
-        measurements: List[MeasurementParseRecord] = []
+        measurements: list[MeasurementParseRecord] = []
         time = None  # this format doesn't include time
         for (line_or_assay_name, protein_id), area in self._summed_areas.items():
             sources = self._build_src_summary(line_or_assay_name, protein_id)

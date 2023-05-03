@@ -11,14 +11,14 @@ from .signals import errors_reported, warnings_reported
 logger = logging.getLogger(__name__)
 
 # type aliases
-StrTriple = typing.Tuple[str, str, str]
-Aggregate = typing.Dict[StrTriple, MessagingMixin]
+StrTriple = tuple[str, str, str]
+Aggregate = dict[StrTriple, MessagingMixin]
 MaybeError = typing.Optional[exceptions.EDDImportError]
-MaybeErrorType = typing.Optional[typing.Type[exceptions.EDDImportError]]
-MaybeWarningType = typing.Optional[typing.Type[exceptions.EDDImportWarning]]
-MaybeTrackedType = typing.Optional[typing.Type[MessagingMixin]]
+MaybeErrorType = typing.Optional[type[exceptions.EDDImportError]]
+MaybeWarningType = typing.Optional[type[exceptions.EDDImportWarning]]
+MaybeTrackedType = typing.Optional[type[MessagingMixin]]
 TrackingId = typing.Union["uuid.UUID", str]
-MessageSummary = typing.Dict[str, typing.List[typing.Any]]
+MessageSummary = dict[str, list[typing.Any]]
 
 
 class MessageAggregator:
@@ -115,7 +115,7 @@ class MessageAggregator:
             result["warnings"] = self._to_json(self._warnings)
         return result
 
-    def _to_json(self, src: Aggregate) -> typing.List[typing.Any]:
+    def _to_json(self, src: Aggregate) -> list[typing.Any]:
         summary = []
         for _key, msg in src.items():
             summary.append(msg.to_json())
@@ -229,7 +229,7 @@ def tracker(key: TrackingId):
 # when the current thread is finished with it
 # (e.g. before replying to the current HTTP request or ending the current Celery task).
 # Using the tracker() context manager handles this automagically
-_tracked_msgs: typing.Dict[str, MessageAggregator] = {}
+_tracked_msgs: dict[str, MessageAggregator] = {}
 
 
 def error_count(key: TrackingId, err_class: MaybeErrorType = None) -> int:

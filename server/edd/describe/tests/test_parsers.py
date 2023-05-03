@@ -1,5 +1,3 @@
-from typing import List
-
 from edd import TestCase
 from edd.profile.factory import UserFactory
 from main import models
@@ -20,7 +18,7 @@ class ExperimentDescriptionParseTests(TestCase):
         cls.targeted_proteomics = factory.ProtocolFactory(name="Targeted Proteomics")
 
     def test_ed_file_parse_err_detection(self):
-        """"
+        """
         Tests for Experiment Description file errors that can be caught during
         parsing. Error detection includes catching column headers that don't
         match any of:
@@ -118,7 +116,7 @@ class ExperimentDescriptionParseTests(TestCase):
 
         importer = CombinatorialCreationImporter(study, self.testuser, cache)
         parser = ExperimentDescFileParser(cache, importer)
-        parsed: List[CombinatorialDescriptionInput] = parser.parse_csv(lines_iter)
+        parsed: list[CombinatorialDescriptionInput] = parser.parse_csv(lines_iter)
 
         time_meta_type = models.MetadataType.system("Time")
         self.assertDictEqual(
@@ -143,7 +141,7 @@ class ExperimentDescriptionParseTests(TestCase):
 
         importer = CombinatorialCreationImporter(study, self.testuser, cache)
         parser = ExperimentDescFileParser(cache, importer)
-        parsed: List[CombinatorialDescriptionInput] = parser.parse_excel(ed_file)
+        parsed: list[CombinatorialDescriptionInput] = parser.parse_excel(ed_file)
         combo_input: CombinatorialDescriptionInput = parsed[0]
 
         time_meta_type = models.MetadataType.system("Time")

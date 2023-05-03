@@ -6,7 +6,7 @@ import traceback
 from collections import OrderedDict, defaultdict
 from io import BytesIO
 from pprint import pformat
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -211,7 +211,6 @@ class ExperimentDescriptionOptions:
 
     @staticmethod
     def of(request):
-
         dry_run = request.GET.get(DRY_RUN_PARAM, False)
         allow_duplicate_names = request.GET.get(ALLOW_DUPLICATE_NAMES_PARAM, False)
         ignore_ice_access_errs = request.GET.get(IGNORE_ICE_ACCESS_ERRORS_PARAM, False)
@@ -652,7 +651,6 @@ class IcePartResolver:
 
 class CombinatorialCreationImporter:
     def __init__(self, study, user, cache=None):
-
         self.performance = CombinatorialCreationPerformance()
 
         # maps title -> subtitle ->  occurrence details
@@ -785,7 +783,7 @@ class CombinatorialCreationImporter:
 
     def parse_input(
         self, stream, filename: str, file_extension: str, encoding: str
-    ) -> List[CombinatorialDescriptionInput]:
+    ) -> list[CombinatorialDescriptionInput]:
         """
         Parses the input and returns a list of combinatorial line/assay creations that need to
         be performed
@@ -840,7 +838,6 @@ class CombinatorialCreationImporter:
         required_meta_pks = set()
         required_naming_meta_pks = set()
         for line_def_input in line_def_inputs:
-
             # get line metadata types pks required for naming
             pks = line_def_input.get_required_naming_meta_pks()
             required_naming_meta_pks.update(pks)
@@ -936,7 +933,7 @@ class CombinatorialCreationImporter:
 
     def _define_study(
         self, line_def_inputs, options, strains_required_for_naming
-    ) -> Tuple[int, Dict[str, Any]]:
+    ) -> tuple[int, dict[str, Any]]:
         """
         Queries EDD and ICE to verify that the required ICE strains have an entry in EDD's
         database. If not, creates them.  Once strains are created, combinatorially creates lines

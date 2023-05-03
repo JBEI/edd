@@ -3,8 +3,8 @@ import json
 import logging
 import re
 from collections import defaultdict
-from collections.abc import Sequence
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 from jsonschema import Draft4Validator
 from openpyxl import load_workbook
@@ -188,14 +188,14 @@ class ColumnLayout:
     """
 
     def __init__(self, importer):
-        self.line_name_col: Optional[int] = None
-        self.line_description_col: Optional[int] = None
-        self.line_control_col: Optional[int] = None
-        self.replicate_count_col: Optional[int] = None
-        self.strain_ids_col: Optional[int] = None
-        self.col_index_to_line_meta_pk: Dict[int, int] = {}
+        self.line_name_col: int | None = None
+        self.line_description_col: int | None = None
+        self.line_control_col: int | None = None
+        self.replicate_count_col: int | None = None
+        self.strain_ids_col: int | None = None
+        self.col_index_to_line_meta_pk: dict[int, int] = {}
         # maps col index -> (Protocol, MetadataType)
-        self.col_index_to_assay_data: Dict[int, Tuple[Any, Any]] = {}
+        self.col_index_to_assay_data: dict[int, tuple[Any, Any]] = {}
 
         # indices of all *any* columns for combinatorial creation (both metadata AND strains!)
         self.combinatorial_col_indices = []
@@ -203,7 +203,7 @@ class ColumnLayout:
         self.importer = importer
 
         # primary keys of line metadata types whose cols have already been detected in the file
-        self.obs_line_meta_pks: Set[int] = set()
+        self.obs_line_meta_pks: set[int] = set()
 
     def register_protocol(self, protocol):
         self.unique_assay_protocols[protocol.pk] = True
@@ -237,7 +237,6 @@ class ColumnLayout:
         )
 
     def register_assay_meta_col(self, col_index, protocol, metatype, is_combinatorial):
-
         self.register_protocol(protocol)
         self.col_index_to_assay_data[col_index] = (protocol, metatype)
         if is_combinatorial:
@@ -457,7 +456,6 @@ class _ExperimentDescNamingStrategy(NamingStrategy):
         logger.debug(f"Combinatorial assay column order: {col_order}")
 
         try:
-
             # iterate over combinatorial assay metadata columns and construct assay name in the
             # same order that name-relevant elements were listed in columns in the input file.
             # We have to include values for the combinatorial metadata so that assay names will
@@ -626,11 +624,11 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         self.max_fractional_time_digits = 0
 
         # first empty line encountered in a sequence
-        self.first_empty_row: Optional[int] = None
+        self.first_empty_row: int | None = None
 
     # TODO: revisit to unify IO use & exception API across excel / csv methods.  At this point at
     # least, we have both working, if not as abstract/consistent as possible
-    def parse_excel(self, stream) -> List[CombinatorialDescriptionInput]:
+    def parse_excel(self, stream) -> list[CombinatorialDescriptionInput]:
         """
         Parses an XLSX-format Excel file.
 
@@ -658,15 +656,15 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         worksheet = wb.worksheets[0]
         return self._parse(worksheet.iter_rows())
 
-    def parse_csv(self, lines: Iterable[str]) -> List[CombinatorialDescriptionInput]:
+    def parse_csv(self, lines: Iterable[str]) -> list[CombinatorialDescriptionInput]:
         self._is_excel = False
         reader = csv.reader(lines)
         return self._parse(reader)
 
     def _preparse(
         self, rows_iter: Iterable[str]
-    ) -> List[CombinatorialDescriptionInput]:
-        parsed_row_inputs: List[_ExperimentDescriptionFileRow] = []
+    ) -> list[CombinatorialDescriptionInput]:
+        parsed_row_inputs: list[_ExperimentDescriptionFileRow] = []
 
         # loop over rows
         row_index = -1
@@ -784,7 +782,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
                                 f"row {combo.row_number}",
                             )
 
-    def _parse(self, rows_iter) -> List[_ExperimentDescriptionFileRow]:
+    def _parse(self, rows_iter) -> list[_ExperimentDescriptionFileRow]:
         # Clear out state from any previous use of this parser instance
         self.column_layout = None
         parsed_row_inputs = self._preparse(rows_iter)
@@ -859,7 +857,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
             if not layout.is_known_column(
                 std_content, col_index, self.cache, self.importer, cell_content
             ):
-
                 # test whether this column is protocol-prefixed assay metadata
                 assay_meta_type = self._parse_assay_metadata_header(
                     layout, std_content, cell_content, col_index
@@ -910,7 +907,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         ########################################################################################
         for upper_protocol_name, protocol in self.protocols_by_name.items():
             if upper_content.startswith(upper_protocol_name):
-
                 # pull out the column header suffix following the protocol.
                 # it should match the name of an assay metadata type
                 start_index = len(upper_protocol_name)
@@ -1019,7 +1015,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # if we didn't find the singular form of the column header as line metadata, look
         # for a pluralized version that we'll treat as combinatorial line creation input
         for std_type_name, meta_type in self.line_mtypes_by_name.items():
-
             # check whether column header matches the type name with an optional unit suffix
             if meta_type.postfix:
                 singular_regex = _TYPE_NAME_REGEX % {
@@ -1062,7 +1057,7 @@ class ExperimentDescFileParser(CombinatorialInputParser):
 
         return None
 
-    def _parse_row(self, row, row_index) -> Optional[_ExperimentDescriptionFileRow]:
+    def _parse_row(self, row, row_index) -> _ExperimentDescriptionFileRow | None:
         """
         Reads a single spreadsheet row to find line creation inputs. The row is read even if errors
         occur, logging errors in the 'errors' parameter so that multiple user input errors can be
@@ -1371,7 +1366,6 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         # loop over per-protocol assay metadata columns
         assay_mtype_cols = layout.col_index_to_assay_data
         for col_index, (protocol, assay_mtype) in assay_mtype_cols.items():
-
             str_cell_content = self._get_str_cell_content(
                 row, row_index, col_index, convert_to_string=True
             )
@@ -1500,9 +1494,8 @@ class JsonInputParser(CombinatorialInputParser):
         self.parsed_json = None
 
     def parse(
-        self, raw_json: Union[str, bytes, bytearray]
-    ) -> List[CombinatorialDescriptionInput]:
-
+        self, raw_json: str | bytes | bytearray
+    ) -> list[CombinatorialDescriptionInput]:
         combinatorial_inputs = []
         max_decimal_digits = 0
 
@@ -1578,7 +1571,7 @@ class JsonInputParser(CombinatorialInputParser):
 
         return combinatorial_inputs
 
-    def _validate_parsed_json(self, raw_json: Union[str, bytes, bytearray]):
+    def _validate_parsed_json(self, raw_json: str | bytes | bytearray):
         if self.aggregator.errors:
             return None
 
@@ -1659,7 +1652,6 @@ def _copy_to_numeric_elts(input_list):
 def _copy_to_numeric_keys(input_dict):
     converted_dict = {}
     for key, value in input_dict.items():
-
         # if value is a nested dict, do the same work on it
         if isinstance(value, dict):
             value = _copy_to_numeric_keys(value)

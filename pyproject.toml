@@ -24,7 +24,7 @@ packages = [
 generate-setup-file = true
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 
 arrow = "*"
 boto3 = "*"
