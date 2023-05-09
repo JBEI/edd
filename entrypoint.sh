@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-# run the invoke setup
+# run the invoke setup -- use the '-de' flags for *way* more debugging info
 invoke "$@"
 
 # invoke should generate script to exec for ultimate container process

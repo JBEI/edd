@@ -20,6 +20,9 @@ fi
 
 echo 'Setting up quickstart environment'
 export EDD_DIR="$(cd "$(dirname "$(dirname $0)")" && pwd)"
+WHOAMI="$(whoami)"   # returns an empty string if whoami doesn't exist
+export EDD_ADMIN_USER=$WHOAMI
+export EDD_ADMIN_EMAIL=$( ${GIT} config user.email )
 DOCKER_BUILDKIT=1 ${DOCKER} build -t jbei/edd-config --target setup "${EDD_DIR}"
 echo 'Creating initial configration scripts'
 # sanity check logs
@@ -31,6 +34,8 @@ fi
 # make config container
 # TODO: handle interactive and pass docker.sock for auto-launch
 container_id="$("${DOCKER}" create \
+    --env EDD_ADMIN_EMAIL \
+    --env EDD_ADMIN_USER \
     --env EDD_DIR \
     --env EDD_DOMAIN \
     "jbei/edd-config:${EDD_VERSION:-latest}" \

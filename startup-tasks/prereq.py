@@ -200,3 +200,31 @@ def owner(context):
     ]
     for directory in dirs:
         util.ensure_dir_owner(context, directory)
+
+
+# checkuser: check to see if an initial admin account exists, and
+#            create it if it doesn't
+@invoke.task(pre=[migrations])
+def checkuser(context):
+    # this is touching things that are shared between containers
+    # must grab a lock before proceeding
+    cache = util.get_redis()
+    adminuser = util.env("EDD_ADMIN_USER", default=None)
+    adminemail = util.env("EDD_ADMIN_EMAIL", default=None)
+    if not adminuser or not adminemail:
+        print(
+            "EDD_ADMIN_USER or EDD_ADMIN_EMAIL not found -- "
+            "admin account existence not checked"
+        )
+        return
+    try:
+        create_command = (
+            "/code/manage.py edd_create_user --noinput --admin "
+            f"--email {adminemail} --username {adminuser}"
+        )
+        prefix = "edd.startup.checkuser"
+        with cache.lock(prefix.encode("utf-8"), timeout=60):
+            context.run(create_command, warn=True)
+    except Exception as e:
+        print(e)
+        raise invoke.exceptions.Exit("Initial admin account creation failed") from e

@@ -190,6 +190,8 @@ class ServiceComposer:
             websocket.proxy(domain, 8000, contact)
         if dev:
             home = env("EDD_DIR")
+            http.write_env("EDD_ADMIN_EMAIL", env("EDD_ADMIN_EMAIL", default=""))
+            http.write_env("EDD_ADMIN_USER", env("EDD_ADMIN_USER", default=""))
             http.volume(f"{home}/server:/code")
             websocket.volume(f"{home}/server:/code")
             worker.volume(f"{home}/server:/code")
