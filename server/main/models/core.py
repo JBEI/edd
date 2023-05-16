@@ -792,8 +792,8 @@ class Line(EDDObject):
 
     objects = LineManager()
     # Line names should start and end with an alphanumeric or underscore
-    # character. Any intervening characters may also be space or a hyphen.
-    strict_name_pattern = r"^\w[\w -]*\w*$"
+    # character. Any intervening characters may also be a hyphen.
+    strict_name_pattern = r"^\w(?:[\w-]*\w)*$"
 
     study = models.ForeignKey(
         Study,
