@@ -77,20 +77,12 @@
       <aside>
         <p>
           {% blocktranslate %}
-          EDD supports a limited number of pre-defined layouts, and also
-          supports user-defined tabular inputs. The tool on this page supports
-          pre-defined layouts only. Use the legacy import tool to upload
-          custom-formatted data. The capability to interpret custom layouts
-          will also eventually be ported to this loading tool. You can also
-          contact EDD administrators to request support for a new layout.
+          Please contact EDD administrators to request support for new layouts.
           {% endblocktranslate %}
           <a
             href="{% url 'load_flat:wizard_help' %}#layout"
             target="_blank"
           >{% translate "Click here for more information on layouts." %}</a>
-          <a
-            href="{% url 'main:load:table' slug=study.slug %}"
-          >{% translate "Click here for the legacy import tool." %}</a>
         </p>
       </aside>
       <span class="_placeholder">
