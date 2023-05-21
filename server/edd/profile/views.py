@@ -12,12 +12,17 @@ from edd import utilities
 
 # /profile/ AND /profile/~<username>/
 class ProfileView(TemplateView):
-
     template_name = "edd/profile/profile.html"
 
     def get_context_data(self, **kwargs):
         user = self._get_user(self.request, **kwargs)
-        return {"profile_user": user, "profile": user.profile}
+        profile = user.profile
+        institutions = profile.institutionid_set.select_related("institution")
+        return {
+            "institutions": institutions.order_by("sort_key"),
+            "profile_user": user,
+            "profile": profile,
+        }
 
     def _get_user(self, request, **kwargs):
         username = kwargs.get("username", None)

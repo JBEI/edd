@@ -51,7 +51,8 @@ class InstitutionID(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["profile", "sort_key"], name="profile_institution_ordering_idx"
+                fields=["profile", "sort_key"],
+                name="profile_institution_ordering_idx",
             ),
         ]
         db_table = "profile_institution_user"
