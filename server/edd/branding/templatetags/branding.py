@@ -10,8 +10,26 @@ register = template.Library()
 
 
 class EnvironmentLabelNode(Node):
+    def __init__(self, *, use_bootstrap5=False):
+        self.use_bootstrap5 = use_bootstrap5
+
     def render(self, context):
         env = getattr(settings, "EDD_DEPLOYMENT_ENVIRONMENT", "")
+        if self.use_bootstrap5:
+            return self._bootstrap5_format(context, env)
+        else:
+            return self._legacy_format(context, env)
+
+    def _bootstrap5_format(self, context, env):
+        if env[:11] == "DEVELOPMENT":
+            return format_html('<span class="navbar-text text-danger">{}</span>', env)
+        elif env[:4] == "TEST":
+            return format_html('<span class="navbar-text text-warning">{}</span>', env)
+        elif env[:11] == "INTEGRATION":
+            return format_html('<span class="navbar-text text-warning">{}</span>', env)
+        return format_html("")
+
+    def _legacy_format(self, context, env):
         if env[:11] == "DEVELOPMENT":
             return format_html('<span class="dev">{}</span>', env)
         elif env[:4] == "TEST":
@@ -93,6 +111,11 @@ def env_background_color():
 @register.tag
 def env_label(parser, token):
     return EnvironmentLabelNode()
+
+
+@register.tag
+def env_label_bs5(parser, token):
+    return EnvironmentLabelNode(use_bootstrap5=True)
 
 
 @register.tag

@@ -22,6 +22,7 @@ body > .navbar {
     margin-bottom: inherit;
 }
 .navbar-brand {
+    display: inline;
     padding: 0 !important;
 }
 .navbar-brand > img.eddLogo,
@@ -33,9 +34,6 @@ body > .navbar {
 .navbar-default .navbar-text,
 .navbar-default .navbar-nav > li > a {
     color: #727272;
-}
-.navbar .navbar-collapse {
-    text-align: center;
 }
 #notification-list {
     width: 30em;

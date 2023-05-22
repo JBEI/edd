@@ -1,7 +1,5 @@
 <!doctype html>
-{% load static %}
-{% load branding %}
-{% load i18n %}
+{% load branding i18n static %}
 <html
   dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}"
   lang="{{ LANGUAGE_CODE }}"
@@ -60,9 +58,7 @@
               {% translate 'Experiment Data Depot' context 'Top of page title' %}
               {% endblock body_title %}
             </h1>
-          </li>
-          <li class="nav-item">
-            <span class="navbar-text text-warning">{% env_label %}</span>
+            {% env_label_bs5 %}
           </li>
         </ul>
         <ul class="navbar-nav mb-2 mb-lg-0 d-flex">
