@@ -77,3 +77,10 @@ mkdocs = "*"
 mkdocs-bootswatch = "*"
 pygments = "*"
 pymdown-extensions = "*"
+
+[tool.ruff]
+fix = true
+line-length = 99
+select = ["E", "F", "W", "C90", "I"]
+src = ["server", "setup", "startup-tasks"]
+target-version = "py311"

@@ -8,6 +8,9 @@ from . import exceptions
 from .exceptions.core import MessagingMixin
 from .signals import errors_reported, warnings_reported
 
+if typing.TYPE_CHECKING:
+    import uuid
+
 logger = logging.getLogger(__name__)
 
 # type aliases

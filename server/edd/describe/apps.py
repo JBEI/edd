@@ -12,5 +12,7 @@ class DescribeConfig(AppConfig):
         # to make certain signal handlers are defined at the correct time
 
         # make sure to load/register all the signal handlers
-        from . import signals  # noqa: F401
-        from . import reporting  # noqa: F401
+        from . import (
+            reporting,  # noqa: F401
+            signals,  # noqa: F401
+        )

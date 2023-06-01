@@ -27,7 +27,7 @@ class ImportTableView(StudyObjectMixin, generic.DetailView):
     template_name = "edd/load/load.html"
 
     def get_context_data(self, **kwargs):
-        study = self.object = self.get_object()
+        self.object = self.get_object()
         # FIXME protocol display on import page should be an autocomplete
         protocols = edd_models.Protocol.objects.order_by("name")
         return super().get_context_data(
