@@ -73,19 +73,22 @@ def is_postgres_available():
 
 
 def is_rabbitmq_available():
-    with get_rabbitmq() as connection:
-        # NOTE: looks like using context does not call connect() automatically?
-        # though it does appear to call close() automatically
-        connection.connect()
-        return connection.connected
+    try:
+        with get_rabbitmq() as connection:
+            connection.connect()
+            return connection.connected
+    except Exception as e:
+        print(f"Connection to rabbitmq failed with {e}")
+    return False
 
 
 def is_redis_available():
-    cache = get_redis()
     try:
+        cache = get_redis()
         return cache.ping()
-    except Exception:
-        return False
+    except Exception as e:
+        print(f"Connection to redis failed with {e}")
+    return False
 
 
 def is_solr_available():
@@ -94,8 +97,9 @@ def is_solr_available():
         response = requests.get(f"{base_url}/admin/info/system")
         response.raise_for_status()
         return response.json()["responseHeader"]["status"] == 0
-    except Exception:
-        return False
+    except Exception as e:
+        print(f"Connection to solr failed with {e}")
+    return False
 
 
 def retry(predicate, limit):
