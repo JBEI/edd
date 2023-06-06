@@ -1,0 +1,35 @@
+[tool.coverage.run]
+branch = true
+source = [
+    ".",
+]
+
+[tool.coverage.report]
+omit = [
+    "*test*",
+    "*/commands/*",
+    "*/migrations/*",
+    "edd/settings/*",
+    "manage.py",
+]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+DJANGO_SETTINGS_MODULE = "edd.settings"
+python_files = "test.py tests.py test_*.py *_tests.py"
+filterwarnings = [
+    # all warnings emitted only once per call location
+    "default",
+    # ignore OpenPyXL warnings about unsupported (cell value) extensions
+    "ignore:Unknown extension is not supported and will be removed:UserWarning",
+]
