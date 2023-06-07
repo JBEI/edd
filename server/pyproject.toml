@@ -12,8 +12,7 @@ omit = [
     "edd/settings/*",
     "manage.py",
 ]
-exclude_lines = [
-    "pragma: no cover",
+exclude_also = [
     "def __repr__",
     "if self.debug:",
     "if settings.DEBUG:",
@@ -21,6 +20,7 @@ exclude_lines = [
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
+    "^\\s*\\.\\.\\.$"
 ]
 
 [tool.pytest.ini_options]
