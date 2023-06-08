@@ -3,6 +3,7 @@
 import json
 import mimetypes
 import re
+import warnings
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -101,6 +102,13 @@ class S3StaticStorage(storage.ManifestFilesMixin, s3boto3.S3Boto3Storage):
     location = "static"
     manifest_name = getattr(settings, "STATICFILES_MANIFEST", "staticfiles.json")
 
+    def hashed_name(self, name, content=None, filename=None):
+        try:
+            return super().hashed_name(name, content, filename)
+        except ValueError as e:
+            warnings.warn(f"Skipping hash: {e}")
+            return name
+
 
 class StaticFilesStorage(storage.ManifestStaticFilesStorage):
     """
@@ -110,6 +118,13 @@ class StaticFilesStorage(storage.ManifestStaticFilesStorage):
     """
 
     manifest_name = getattr(settings, "STATICFILES_MANIFEST", "staticfiles.json")
+
+    def hashed_name(self, name, content=None, filename=None):
+        try:
+            return super().hashed_name(name, content, filename)
+        except ValueError as e:
+            warnings.warn(f"Skipping hash: {e}")
+            return name
 
 
 class LBNLTemplate2Validator:

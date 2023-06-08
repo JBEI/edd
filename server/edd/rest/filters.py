@@ -511,7 +511,7 @@ class MetadataTypesFilter(filters.FilterSet):
         assays = filter_in_study(models.Assay.objects.all(), name, value)
         line_meta_qs = models.MetadataType.all_types_on_queryset(lines)
         assay_meta_qs = models.MetadataType.all_types_on_queryset(assays)
-        return line_meta_qs.union(assay_meta_qs)
+        return line_meta_qs.union(assay_meta_qs).order_by("pk")
 
 
 class MeasurementUnitFilter(filters.FilterSet):

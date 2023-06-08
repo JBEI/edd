@@ -94,12 +94,13 @@ class MetaboliteExchange(models.Model):
 
     class Meta:
         db_table = "measurement_type_to_exchange"
-        index_together = (
+        indexes = [
             # reactants not unique, but should be searchable
-            ("sbml_template", "reactant_name"),
+            models.Index(fields=("sbml_template", "reactant_name")),
             # index implied by unique, making explicit
-            ("sbml_template", "exchange_name"),
-        )
+            models.Index(fields=("sbml_template", "exchange_name")),
+            models.Index(fields=("sbml_template", "measurement_type")),
+        ]
         unique_together = (
             ("sbml_template", "exchange_name"),
             ("sbml_template", "measurement_type"),
@@ -133,14 +134,15 @@ class MetaboliteExchange(models.Model):
 
 
 class MetaboliteSpecies(models.Model):
-    """ Mapping for a metabolite to an species defined by a SBML template. """
+    """Mapping for a metabolite to an species defined by a SBML template."""
 
     class Meta:
         db_table = "measurement_type_to_species"
-        index_together = (
+        indexes = [
             # index implied by unique, making explicit
-            ("sbml_template", "species"),
-        )
+            models.Index(fields=("sbml_template", "species")),
+            models.Index(fields=("sbml_template", "measurement_type")),
+        ]
         unique_together = (
             ("sbml_template", "species"),
             ("sbml_template", "measurement_type"),

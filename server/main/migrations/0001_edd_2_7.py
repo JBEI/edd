@@ -466,7 +466,6 @@ def template_sync_species(apps, instance):
 
 
 class Migration(migrations.Migration):
-
     replaces = [
         ("main", "0001_edd-schema-init"),
         ("main", "0002_edd-data-bootstrap"),
@@ -2328,9 +2327,12 @@ class Migration(migrations.Migration):
                 ("sbml_template", "measurement_type"),
             },
         ),
-        migrations.AlterIndexTogether(
-            name="metabolitespecies",
-            index_together={("sbml_template", "species")},
+        migrations.AddIndex(
+            model_name="metabolitespecies",
+            index=models.Index(
+                fields=["sbml_template", "species"],
+                name="measurement_sbml_te_6bb3dd_idx",
+            ),
         ),
         migrations.AlterUniqueTogether(
             name="metaboliteexchange",
@@ -2339,12 +2341,19 @@ class Migration(migrations.Migration):
                 ("sbml_template", "measurement_type"),
             },
         ),
-        migrations.AlterIndexTogether(
-            name="metaboliteexchange",
-            index_together={
-                ("sbml_template", "reactant_name"),
-                ("sbml_template", "exchange_name"),
-            },
+        migrations.AddIndex(
+            model_name="metaboliteexchange",
+            index=models.Index(
+                fields=["sbml_template", "reactant_name"],
+                name="measurement_sbml_te_77cacd_idx",
+            ),
+        ),
+        migrations.AddIndex(
+            model_name="metaboliteexchange",
+            index=models.Index(
+                fields=["sbml_template", "exchange_name"],
+                name="measurement_sbml_te_d0fe29_idx",
+            ),
         ),
         migrations.RunPython(code=bootstrap, reverse_code=migrations.RunPython.noop),
     ]

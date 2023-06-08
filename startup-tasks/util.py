@@ -4,7 +4,7 @@ import time
 
 import environ
 import kombu
-import psycopg2
+import psycopg
 import redis
 import requests
 
@@ -45,9 +45,9 @@ def get_pending_migrations(context):
 def get_postgres():
     url = env("DATABASE_URL")
     # Django Environ accepts psql:// pgsql:// postgres:// postgresql://
-    # but psycopg2 only accepts postgresql://
+    # but psycopg only accepts postgresql://
     url = pg_url.sub("postgresql://", url)
-    return psycopg2.connect(url)
+    return psycopg.connect(url)
 
 
 def get_rabbitmq():

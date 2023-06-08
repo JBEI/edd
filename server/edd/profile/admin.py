@@ -71,7 +71,6 @@ class InstitutionAdmin(admin.ModelAdmin):
 
 
 class UserHasLocalLoginFilter(admin.SimpleListFilter):
-
     title = _("Has Local Login")
     parameter_name = "localauth"
 
@@ -90,13 +89,13 @@ class EDDUserAdmin(UserAdmin):
     """Definition for admin-edit of user accounts"""
 
     # actions is a list
-    actions = UserAdmin.actions + [
+    actions = UserAdmin.actions + (
         "solr_index",
         "update_groups_from_ldap",
         "search_ice_as_action",
         "deactivate_user_action",
         "migrate_local_to_ldap",
-    ]
+    )
     # list_display is a tuple
     list_display = UserAdmin.list_display + ("date_joined", "last_login")
     list_filter = UserAdmin.list_filter + (UserHasLocalLoginFilter,)

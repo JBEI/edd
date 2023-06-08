@@ -266,9 +266,6 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
                 status.HTTP_201_CREATED,
             )
 
-    def _put_payload_change_study(self):
-        return {"name": "Test study", "description": "Description goes here"}
-
     def _put_payload_change_study_contact(self):
         return {
             "name": "Updated study name",
@@ -280,7 +277,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.logout()
         self._check_status(
-            self.client.put(url, self._put_payload_change_study()),
+            self.client.put(url, self._put_payload_change_study_contact()),
             status.HTTP_403_FORBIDDEN,
         )
 
@@ -288,7 +285,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.unprivileged_user)
         self._check_status(
-            self.client.put(url, self._put_payload_change_study()),
+            self.client.put(url, self._put_payload_change_study_contact()),
             status.HTTP_404_NOT_FOUND,
         )
 
@@ -296,7 +293,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.readonly_user)
         self._check_status(
-            self.client.put(url, self._put_payload_change_study()),
+            self.client.put(url, self._put_payload_change_study_contact()),
             status.HTTP_403_FORBIDDEN,
         )
 
@@ -312,7 +309,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.group_readonly_user)
         self._check_status(
-            self.client.put(url, self._put_payload_change_study()),
+            self.client.put(url, self._put_payload_change_study_contact()),
             status.HTTP_403_FORBIDDEN,
         )
 

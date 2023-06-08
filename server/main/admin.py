@@ -439,8 +439,8 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         obj.type_source = source
         super().save_model(request, obj, form, change)
 
-    def study_list(self, instance):
-        relevant_study = Q(line__assay__measurement__measurement_type=instance)
+    def study_list(self, obj):
+        relevant_study = Q(measurement__measurement_type_id=obj.pk)
         qs = models.Study.objects.filter(relevant_study).distinct()
         return render_study_links(qs)
 

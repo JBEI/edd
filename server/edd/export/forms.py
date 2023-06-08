@@ -37,6 +37,8 @@ class ExportSelectionForm(forms.Form):
         widget=forms.MultipleHiddenInput,
     )
 
+    template_name = "django/forms/div.html"
+
     def __init__(
         self, user=None, exclude_disabled=True, fallback=None, *args, **kwargs
     ):

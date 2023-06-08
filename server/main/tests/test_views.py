@@ -881,7 +881,7 @@ class StudyDetailViewTests(StudyViewTestCase):
             follow=True,
         )
         self.assertTemplateUsed(response, "main/confirm_delete.html")
-        self.assertContains(response, f"the Assay &quot;{assay.name}&quot;")
+        self.assertContains(response, f'the Assay "{assay.name}"')
         assert self.target_study.assay_set.count() == 1
 
     def test_detail_assay_delete_with_invalid_id(self):
