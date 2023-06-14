@@ -181,6 +181,7 @@ COPY --from=configure /tmp/edd.hash /edd.hash
 
 RUN python manage.py collectstatic \
     --noinput \
+    --no-post-process \
     --settings "edd.settings.build_collectstatic" \
  && find /usr/local/edd/ -type d -name static -exec rm -rf \{\} \+ \
  && find /usr/local/edd/ -type d -name __pycache__ -exec rm -rf \{\} \+
