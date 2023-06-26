@@ -25,7 +25,7 @@ exclude_also = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-DJANGO_SETTINGS_MODULE = "edd.settings"
+DJANGO_SETTINGS_MODULE = "edd.settings.test"
 python_files = "test.py tests.py test_*.py *_tests.py"
 filterwarnings = [
     # all warnings emitted only once per call location
