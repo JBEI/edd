@@ -713,13 +713,13 @@ files = [
 
 [[package]]
 name = "django"
-version = "4.2.2"
+version = "4.2.3"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "Django-4.2.2-py3-none-any.whl", hash = "sha256:672b3fa81e1f853bb58be1b51754108ab4ffa12a77c06db86aa8df9ed0c46fe5"},
-    {file = "Django-4.2.2.tar.gz", hash = "sha256:2a6b6fbff5b59dd07bef10bcb019bee2ea97a30b2a656d51346596724324badf"},
+    {file = "Django-4.2.3-py3-none-any.whl", hash = "sha256:f7c7852a5ac5a3da5a8d5b35cc6168f31b605971441798dac845f17ca8028039"},
+    {file = "Django-4.2.3.tar.gz", hash = "sha256:45a747e1c5b3d6df1b141b1481e193b033fd1fdbda3ff52677dc81afdaacbaed"},
 ]
 
 [package.dependencies]
@@ -2201,6 +2201,7 @@ description = "LibSBML Python API"
 optional = false
 python-versions = "*"
 files = [
+    {file = "python-libsbml-5.20.1.tar.gz", hash = "sha256:43e6970433ee36990f707c3fe8d6cf23876d97fc6d4082350e5017440eb606e2"},
     {file = "python_libsbml-5.20.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:223661a29d205c3c5223621a8ddc2248cb6012a12b80d90cdbffcae173af1511"},
     {file = "python_libsbml-5.20.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:cbefc43c0641501382114ade5be07752c9f35f0c23e56052e094d8a15a33e6f7"},
     {file = "python_libsbml-5.20.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:44a3a81b8ab4295389988781e149446813057a06fbda9d8323cca7c92034ce27"},
@@ -2952,4 +2953,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d202931d4dcc553a44d28ecae5c8f0273ab2453d38be94df7fa552026efd39e4"
+content-hash = "e403174a49d1e4086855e41d8f120812c1ebf0564361d620f254fecdb98aa0df"
