@@ -59,10 +59,8 @@ class ParserMapping(models.Model):
             reporting.raise_errors(
                 uuid,
                 exceptions.BadParserError(
-                    details=_(
-                        "Unable to instantiate parser class {parser_class}. "
-                        "The problem was {problem}"
-                    ).format(parser_class=self.parser_class, problem=str(e))
+                    parser_class=self.parser_class,
+                    problem=str(e),
                 ),
             )
 

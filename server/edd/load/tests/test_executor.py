@@ -25,7 +25,7 @@ class ImportExecutorSetupTests(TestCase):
     def test_executor_setup_from_unsaved(self):
         load = LoadRequest(status=LoadRequest.Status.RESOLVED)
         # when the LoadRequest not in backend, transition will fail
-        with pytest.raises(exceptions.IllegalTransitionError):
+        with pytest.raises(exceptions.FailedTransitionError):
             executor = ImportExecutor(load, self.user)
             executor.start()
 
@@ -203,10 +203,14 @@ class ImportExecutorRunningTests(TestCase):
         x = 12
         y = 42
         assay_A = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: x}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: x},
+            protocol=self.protocol,
         )
         assay_B = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: x}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: x},
+            protocol=self.protocol,
         )
         executor = ImportExecutor(self.load, self.user)
         executor.start()
@@ -270,7 +274,9 @@ class ImportExecutorRunningTests(TestCase):
         time = models.MetadataType.system("Time")
         # has time
         assay_A = main_factory.AssayFactory(
-            line=self.BW1, metadata={time.pk: "12"}, protocol=self.protocol,
+            line=self.BW1,
+            metadata={time.pk: "12"},
+            protocol=self.protocol,
         )
         # missing time
         assay_B = main_factory.AssayFactory(line=self.BW1, protocol=self.protocol)

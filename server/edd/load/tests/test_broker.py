@@ -91,7 +91,7 @@ def test_LoadRecord_transition_comms_error_with_raise(stub_method):
     lr = LoadRequest()
     # simulate an error connecting
     stub_method.side_effect = Exception("Oops, couldn't connect")
-    with pytest.raises(exceptions.IllegalTransitionError):
+    with pytest.raises(exceptions.FailedTransitionError):
         lr.transition(LoadRequest.Status.ABORTED, raise_errors=True)
 
 

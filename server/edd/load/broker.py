@@ -7,14 +7,13 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.utils.module_loading import import_string
-from django.utils.translation import gettext as _
 from django_redis import get_redis_connection
 
 from edd.utilities import JSONEncoder
-from main import models, redis
+from main import models as edd_models
+from main.redis import ScratchStorage
 
-from . import exceptions, reporting
-from .models import ParserMapping
+from . import exceptions, models, reporting
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +34,8 @@ file_storage = create_file_storage()
 
 class ImportBroker:
     def __init__(self):
-        self.storage = redis.ScratchStorage(
-            key_prefix=f"{__name__}.{self.__class__.__name__}"
-        )
+        prefix = f"{__name__}.{self.__class__.__name__}"
+        self.storage = ScratchStorage(key_prefix=prefix)
 
     def _import_name(self, import_id):
         return f"{import_id}"
@@ -162,7 +160,7 @@ class LoadRequest:
             # convert string option to int, then Flag type
             self.options = LoadRequest.Options(int(self.options))
         if self.compartment is None:
-            self.compartment = models.Measurement.Compartment.UNKNOWN
+            self.compartment = edd_models.Measurement.Compartment.UNKNOWN
 
     @staticmethod
     def _connect():
@@ -173,6 +171,9 @@ class LoadRequest:
         # key is fully-qualified classname
         # plus str representation of request UUID
         return f"{__name__}.{cls.__name__}:{str(uuid)}"
+
+    def _subkey(self, sub):
+        return f"{self._key(self.request)}:{sub}"
 
     @classmethod
     def fetch(cls, request_uuid):
@@ -188,7 +189,7 @@ class LoadRequest:
             # adding the request_uuid along with the stored attributes
             values.update(request_uuid=request_uuid)
             return cls(**values)
-        except exceptions.LoadError:
+        except (exceptions.LoadError, exceptions.LoadWarning):
             raise
         except Exception as e:
             raise exceptions.CommunicationError() from e
@@ -204,9 +205,8 @@ class LoadRequest:
         """
         options = LoadRequest.Options.empty
         # flip option flag for every option in post
-        for o in ("email_when_complete", "allow_overwrite", "allow_duplication"):
-            if o in post:
-                options |= getattr(LoadRequest.Options, o)
+        for o in LoadRequest.Options:
+            options |= o if o.name in post else options
         load = LoadRequest(
             study_uuid=study.uuid,
             protocol_uuid=post["protocol"],
@@ -228,22 +228,22 @@ class LoadRequest:
     @property
     def study(self):
         """Queries the Study model object associated with the LoadRequest."""
-        return models.Study.objects.get(uuid=self.study_uuid)
+        return edd_models.Study.objects.get(uuid=self.study_uuid)
 
     @property
     def protocol(self):
         """Queries the Protocol model object associated with the LoadRequest."""
-        return models.Protocol.objects.get(uuid=self.protocol_uuid)
+        return edd_models.Protocol.objects.get(uuid=self.protocol_uuid)
 
     @property
     def x_units(self):
         """Queries the MeasurementUnit model associated with LoadRequest X-axis units."""
-        return models.MeasurementUnit.objects.get(unit_name=self.x_units_name)
+        return edd_models.MeasurementUnit.objects.get(unit_name=self.x_units_name)
 
     @property
     def y_units(self):
         """Queries the MeasurementUnit model associated with LoadRequest Y-axis units."""
-        return models.MeasurementUnit.objects.get(unit_name=self.y_units_name)
+        return edd_models.MeasurementUnit.objects.get(unit_name=self.y_units_name)
 
     @property
     def allow_duplication(self):
@@ -263,11 +263,8 @@ class LoadRequest:
         """Clears any persisted errors and warnings for the LoadRequest."""
         try:
             db = self._connect()
-            key = self._key(self.request)
-            errors_key = f"{key}:errors"
-            warnings_key = f"{key}:warnings"
-            db.delete(errors_key)
-            db.delete(warnings_key)
+            db.delete(self._subkey("errors"))
+            db.delete(self._subkey("warnings"))
         except Exception as e:
             logger.warning(f"Could not clear errors: {e!r}")
 
@@ -281,27 +278,21 @@ class LoadRequest:
 
     def parse_with_layout(self, layout_id):
         try:
-            mapping = ParserMapping.objects.get(
-                layout_id=layout_id, mime_type=self.mime_type
+            mapping = models.ParserMapping.objects.get(
+                layout_id=layout_id,
+                mime_type=self.mime_type,
             )
             parser = mapping.create_parser(self.request_uuid)
             with self.open() as file:
                 return parser.parse(file)
-        except ParserMapping.DoesNotExist:
-            qs = ParserMapping.objects.filter(layout_id=layout_id)
+        except models.ParserMapping.DoesNotExist:
+            qs = models.ParserMapping.objects.filter(layout_id=layout_id)
             supported = [*qs.values_list("mime_type", flat=True)]
             reporting.raise_errors(
                 self.request_uuid,
                 exceptions.UnsupportedMimeTypeError(
-                    details=_(
-                        "The upload you provided was sent with MIME type {mime}. "
-                        "However, EDD expected one of the following supported "
-                        "MIME types: {supported}."
-                    ).format(mime=self.mime_type, supported=supported),
-                    resolution=_(
-                        "Go back to Step 1 to select a layout supporting {mime}, "
-                        "or convert your upload to one of the supported types."
-                    ).format(mime=self.mime_type),
+                    mime_type=self.mime_type,
+                    supported=supported,
                 ),
             )
 
@@ -312,6 +303,8 @@ class LoadRequest:
             self.clear_stash()
             db = self._connect()
             db.delete(self._key(self.request))
+            for key in db.scan_iter(self._subkey("*")):
+                db.delete(key)
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
@@ -319,9 +312,8 @@ class LoadRequest:
         """Finds reported errors and warnings, then stores them."""
         try:
             db = self._connect()
-            key = self._key(self.request)
-            errors_key = f"{key}:errors"
-            warnings_key = f"{key}:warnings"
+            errors_key = self._subkey("errors")
+            warnings_key = self._subkey("warnings")
             summary = reporting.build_messages_summary(self.request)
             with db.pipeline() as pipe:
                 pipe.multi()
@@ -378,7 +370,10 @@ class LoadRequest:
         except Exception as e:
             logger.info(f"Transition failed: {e!r}")
             if raise_errors:
-                raise exceptions.IllegalTransitionError() from e
+                raise exceptions.FailedTransitionError(
+                    begin=str(self.status),
+                    end=str(new_status),
+                ) from e
         return False
 
     def unstash_errors(self):
@@ -386,9 +381,8 @@ class LoadRequest:
         summary = {}
         try:
             db = self._connect()
-            key = self._key(self.request)
-            errors_key = f"{key}:errors"
-            warnings_key = f"{key}:warnings"
+            errors_key = self._subkey("errors")
+            warnings_key = self._subkey("warnings")
             summary["errors"] = [
                 json.loads(item) for item in db.lrange(errors_key, 0, -1)
             ]

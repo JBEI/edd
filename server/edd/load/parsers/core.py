@@ -616,14 +616,12 @@ class ExcelParserMixin:
         wb = load_workbook(file, read_only=True, data_only=True)
         logger.debug("In parse(). workbook has %d sheets" % len(wb.worksheets))
         if len(wb.worksheets) > 1:
-            sheet_name = wb.sheetnames[0]
-            count = len(wb.worksheets) - 1
-            message = _(
-                'Only the first sheet in your workbook, "{sheet}", was processed. '
-                "All other sheets were ignored ({count})."
-            ).format(sheet=sheet_name, count=count)
             reporting.warnings(
-                self.import_uuid, exceptions.IgnoredWorksheetWarning(details=[message])
+                self.import_uuid,
+                exceptions.IgnoredWorksheetWarning(
+                    processed_title=wb.sheetnames[0],
+                    ignored_sheet_count=len(wb.worksheets) - 1,
+                ),
             )
         worksheet = wb.worksheets[0]
         return self._parse_rows(worksheet.iter_rows())

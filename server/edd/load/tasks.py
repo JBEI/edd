@@ -242,7 +242,11 @@ def wizard_execute_loading(request_uuid, user_id):
 
 @shared_task
 def wizard_parse_and_resolve(
-    request_uuid, user_id, layout_id, category_id, target=None
+    request_uuid,
+    user_id,
+    layout_id,
+    category_id,
+    target=None,
 ):
     load = LoadRequest.fetch(request_uuid)
     user = User.objects.get(pk=user_id)

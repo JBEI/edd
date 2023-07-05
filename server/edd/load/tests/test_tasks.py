@@ -25,7 +25,8 @@ class ImportTableTaskTests(TestCase):
         cls.user = UserFactory()
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.create(
-            user=cls.user, permission_type=models.StudyPermission.WRITE
+            user=cls.user,
+            permission_type=models.StudyPermission.WRITE,
         )
         cls.protocol = factory.ProtocolFactory()
         cls.measurement_type = factory.MeasurementTypeFactory()
@@ -55,10 +56,9 @@ class ImportTableTaskTests(TestCase):
         )
         # directly execute task
         tasks.import_table_task(self.study.pk, self.user.pk, import_id)
+        value_qs = models.MeasurementValue.objects.filter(study_id=self.study.pk)
         # asserts
-        assert (
-            models.MeasurementValue.objects.filter(study_id=self.study.pk).count() == 1
-        )
+        assert value_qs.count() == 1
 
     def test_bad_study(self):
         with pytest.raises(exceptions.ImportTaskError):
@@ -206,7 +206,10 @@ class WizardParseTaskTests(TestCase):
     def test_parse_with_missing_upload(self):
         with pytest.raises(exceptions.UnsupportedMimeTypeError):
             tasks.wizard_parse_and_resolve(
-                self.load.request, self.user.pk, self.layout.pk, self.category.pk
+                self.load.request,
+                self.user.pk,
+                self.layout.pk,
+                self.category.pk,
             )
 
     def test_parse_without_parser_match(self):
@@ -214,7 +217,10 @@ class WizardParseTaskTests(TestCase):
         self.load.update({"file": file})
         with pytest.raises(exceptions.UnsupportedMimeTypeError):
             tasks.wizard_parse_and_resolve(
-                self.load.request, self.user.pk, self.layout.pk, self.category.pk
+                self.load.request,
+                self.user.pk,
+                self.layout.pk,
+                self.category.pk,
             )
 
     def test_parse_with_bad_parser(self):
@@ -225,7 +231,10 @@ class WizardParseTaskTests(TestCase):
         self.load.update({"file": file})
         with pytest.raises(exceptions.BadParserError):
             tasks.wizard_parse_and_resolve(
-                self.load.request, self.user.pk, self.layout.pk, self.category.pk
+                self.load.request,
+                self.user.pk,
+                self.layout.pk,
+                self.category.pk,
             )
 
     def test_parse_success(self):
@@ -235,7 +244,11 @@ class WizardParseTaskTests(TestCase):
         with patch("edd.load.tasks.wizard_execute_loading") as task:
             # value of target currently doesn't matter as long as not None
             tasks.wizard_parse_and_resolve(
-                uuid, self.user.pk, self.layout.pk, self.category.pk, target=True
+                uuid,
+                self.user.pk,
+                self.layout.pk,
+                self.category.pk,
+                target=True,
             )
         updated = LoadRequest.fetch(uuid)
         assert updated.status == LoadRequest.Status.READY
@@ -269,7 +282,11 @@ class WizardParseTaskTests(TestCase):
         with patch("edd.load.tasks.wizard_execute_loading") as task:
             # value of target currently doesn't matter as long as not None
             tasks.wizard_parse_and_resolve(
-                uuid, self.user.pk, self.layout.pk, self.category.pk, target=True
+                uuid,
+                self.user.pk,
+                self.layout.pk,
+                self.category.pk,
+                target=True,
             )
         updated = LoadRequest.fetch(uuid)
         assert updated.status == LoadRequest.Status.READY
@@ -326,7 +343,8 @@ class WizardLoadTaskTests(TestCase):
         cls.protocol = factory.ProtocolFactory()
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.create(
-            user=cls.user, permission_type=models.StudyPermission.WRITE
+            user=cls.user,
+            permission_type=models.StudyPermission.WRITE,
         )
         cls.arcA = factory.LineFactory(study=cls.study, name="arcA")
         cls.mtype = factory.MeasurementTypeFactory()

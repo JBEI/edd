@@ -402,7 +402,7 @@ class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
 
     def test_import_delete_view_invalid(self):
         # mocking redis, to only test the view itself
-        with patch("main.redis.ScratchStorage") as MockStorage:
+        with patch("edd.load.broker.ScratchStorage") as MockStorage:
             storage = MockStorage.return_value
             # test attempted cache deletion with a non-uuid import key.
             # this must always fail
@@ -417,7 +417,7 @@ class PCAPImportDataTests(ImportDataTestsMixin, TestCase):
 
     def test_import_delete_view_valid(self):
         # mocking redis, to only test the view itself
-        with patch("main.redis.ScratchStorage") as MockStorage:
+        with patch("edd.load.broker.ScratchStorage") as MockStorage:
             storage = MockStorage.return_value
             # fake a valid DELETE request
             response = self.client.delete(

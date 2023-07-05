@@ -4,23 +4,23 @@ from contextlib import contextmanager
 
 from edd import receiver
 
-from . import exceptions
-from .exceptions.core import MessagingMixin
+from . import exceptions, messaging
 from .signals import errors_reported, warnings_reported
 
 if typing.TYPE_CHECKING:
     import uuid
 
+    TrackingId: typing.TypeAlias = str | "uuid.UUID"
+
 logger = logging.getLogger(__name__)
 
 # type aliases
 StrTriple = tuple[str, str, str]
-Aggregate = dict[StrTriple, MessagingMixin]
-MaybeError = typing.Optional[exceptions.EDDImportError]
-MaybeErrorType = typing.Optional[type[exceptions.EDDImportError]]
-MaybeWarningType = typing.Optional[type[exceptions.EDDImportWarning]]
-MaybeTrackedType = typing.Optional[type[MessagingMixin]]
-TrackingId = typing.Union["uuid.UUID", str]
+Aggregate = dict[StrTriple, messaging.MessagingMixin]
+MaybeError = exceptions.EDDImportError | None
+MaybeErrorType = type[exceptions.EDDImportError] | None
+MaybeWarningType = type[exceptions.EDDImportWarning] | None
+MaybeTrackedType = type[messaging.MessagingMixin] | None
 MessageSummary = dict[str, list[typing.Any]]
 
 
@@ -39,7 +39,7 @@ class MessageAggregator:
         # reference to the latest reported error occurrence, which enables raising it on demand
         self._latest_error: MaybeError = None
 
-    def _key(self, msgs: MessagingMixin) -> StrTriple:
+    def _key(self, msgs: messaging.MessagingMixin) -> StrTriple:
         # Note some messages may only have one or the other of subcategory / summary, so include
         # both
         return msgs.category, msgs.subcategory, msgs.summary
@@ -73,7 +73,7 @@ class MessageAggregator:
         """
         self._add_msg(self._warnings, warns)
 
-    def _add_msg(self, target: Aggregate, message: MessagingMixin):
+    def _add_msg(self, target: Aggregate, message: messaging.MessagingMixin):
         key = self._key(message)
 
         existing = target.get(key, None)
@@ -125,7 +125,7 @@ class MessageAggregator:
         return summary
 
 
-def add_errors(key: TrackingId, errs: exceptions.EDDImportError):
+def add_errors(key: "TrackingId", errs: exceptions.EDDImportError):
     """
     Reports one or more error occurrences from an EDDImportError exception.
 
@@ -153,7 +153,7 @@ def add_errors(key: TrackingId, errs: exceptions.EDDImportError):
         raise errs
 
 
-def warnings(key: TrackingId, warns: exceptions.EDDImportWarning):
+def warnings(key: "TrackingId", warns: exceptions.EDDImportWarning):
     """
     Reports one or more warning occurrences from an EDDImportWarning exception.
 
@@ -173,7 +173,7 @@ def warnings(key: TrackingId, warns: exceptions.EDDImportWarning):
     warnings_reported.send_robust(sender=MessageAggregator, key=key, warnings=warns)
 
 
-def raise_errors(key: TrackingId, errors: MaybeError = None):
+def raise_errors(key: "TrackingId", errors: MaybeError = None):
     """
     Raises errors if any exist, including any provided as an argument.
 
@@ -210,13 +210,12 @@ def raise_errors(key: TrackingId, errors: MaybeError = None):
 
 
 @contextmanager
-def tracker(key: TrackingId):
+def tracker(key: "TrackingId"):
     """Begins tracking of errors and warnings reported with the given key."""
     key = str(key)
     logger.debug(f"Enabling message tracking for {key}")
     try:
-        tracked = MessageAggregator()
-        _tracked_msgs[key] = tracked
+        tracked = _tracked_msgs[key] = MessageAggregator()
         yield tracked
     finally:
         logger.debug(f"Disabling message tracking for {key}")
@@ -235,7 +234,7 @@ def tracker(key: TrackingId):
 _tracked_msgs: dict[str, MessageAggregator] = {}
 
 
-def error_count(key: TrackingId, err_class: MaybeErrorType = None) -> int:
+def error_count(key: "TrackingId", err_class: MaybeErrorType = None) -> int:
     """
     Tests the number of unique error types that have been reported for this workflow.
 
@@ -254,7 +253,7 @@ def error_count(key: TrackingId, err_class: MaybeErrorType = None) -> int:
         raise exceptions.LoadError(f"Not tracking for {key}") from e
 
 
-def warning_count(key: TrackingId, warn_class: MaybeWarningType = None) -> int:
+def warning_count(key: "TrackingId", warn_class: MaybeWarningType = None) -> int:
     """
     Tests the number of unique error types that have been reported for this workflow.
 
@@ -273,7 +272,7 @@ def warning_count(key: TrackingId, warn_class: MaybeWarningType = None) -> int:
         raise exceptions.LoadError(f"Not tracking for {key}") from e
 
 
-def build_messages_summary(key: TrackingId) -> MessageSummary:
+def build_messages_summary(key: "TrackingId") -> MessageSummary:
     """
     Builds a Dict representation of all the errors and warnings reported for this
     workflow that's suitable for JSON serialization.
@@ -287,8 +286,7 @@ def build_messages_summary(key: TrackingId) -> MessageSummary:
 @receiver(errors_reported, dispatch_uid="edd.load.log_reported_errors")
 def log_reported_errors(sender, key, errors, **kwargs):
     try:
-        reporter = _tracked_msgs.get(key, None)
-        if reporter:
+        if reporter := _tracked_msgs.get(key, None):
             reporter.add_errors(errors)
     except Exception as e:
         logger.exception(e)
@@ -297,8 +295,7 @@ def log_reported_errors(sender, key, errors, **kwargs):
 @receiver(warnings_reported, dispatch_uid="edd.load.log_reported_warnings")
 def log_reported_warnings(sender, key, warnings, **kwargs):
     try:
-        reporter = _tracked_msgs.get(key, None)
-        if reporter:
+        if reporter := _tracked_msgs.get(key, None):
             reporter.add_warnings(warnings)
     except Exception as e:
         logger.exception(e)

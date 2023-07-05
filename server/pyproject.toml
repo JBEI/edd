@@ -16,6 +16,7 @@ exclude_also = [
     "def __repr__",
     "if self.debug:",
     "if settings.DEBUG:",
+    "if (?:typing.)?TYPE_CHECKING:",
     "raise AssertionError",
     "raise NotImplementedError",
     "if 0:",

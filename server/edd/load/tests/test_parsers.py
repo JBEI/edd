@@ -206,7 +206,7 @@ def test_GenericExcelParser_generates_warnings():
             assert len(received) == 3
             assert isinstance(received[0], exceptions.IgnoredWorksheetWarning)
             assert received[0].details == [
-                'Only the first sheet in your workbook, "Sheet 1", '
+                "Only the first sheet in your workbook, `Sheet 1`, "
                 "was processed. All other sheets were ignored (1).",
             ]
             assert isinstance(received[1], exceptions.IgnoredColumnWarning)
@@ -372,7 +372,7 @@ def test_SkylineExcelParser_generates_warnings():
             assert len(received) == 3
             assert isinstance(received[0], exceptions.IgnoredWorksheetWarning)
             assert received[0].details == [
-                'Only the first sheet in your workbook, "Sheet 1", '
+                "Only the first sheet in your workbook, `Sheet 1`, "
                 "was processed. All other sheets were ignored (1).",
             ]
             assert isinstance(received[1], exceptions.IgnoredColumnWarning)

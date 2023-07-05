@@ -58,16 +58,18 @@ class ImportExecutor:
             LoadRequest.Status.ABORTED,
             LoadRequest.Status.FAILED,
         ):
-            start = str(self.load.status)
-            end = str(LoadRequest.Status.PROCESSING)
-            message = _("Transition from {start} to {end} is not allowed.").format(
-                start=start, end=end
-            )
             reporting.raise_errors(
-                self.load.request, exceptions.IllegalTransitionError(details=message)
+                self.load.request,
+                exceptions.IllegalTransitionError(
+                    begin=str(self.load.status),
+                    end=str(LoadRequest.Status.PROCESSING),
+                ),
             )
         if not self.load.transition(LoadRequest.Status.PROCESSING):
-            raise exceptions.IllegalTransitionError()
+            raise exceptions.FailedTransitionError(
+                begin=str(self.load.status),
+                end=str(LoadRequest.Status.PROCESSING),
+            )
 
     def parse_context(self, context: dict[str, typing.Any]):
         """Parses context for this import from a dict."""
@@ -93,7 +95,10 @@ class ImportExecutor:
         :raises exceptions.ExecutionWarning: if transitioning the LoadRequest fails
         """
         if self.load.status != LoadRequest.Status.PROCESSING:
-            raise exceptions.IllegalTransitionError()
+            raise exceptions.IllegalTransitionError(
+                begin=str(self.load.status),
+                end=str(LoadRequest.Status.COMPLETED),
+            )
         try:
             self._get_or_create_assays()
             # if earlier setup failed, e.g. due to missing assay times,
@@ -111,13 +116,10 @@ class ImportExecutor:
     def finish_import(self):
         if self.total_updated and not self.load.allow_overwrite:
             self.load.transition(LoadRequest.Status.FAILED)
-            err = exceptions.UnplannedOverwriteError(
-                details=_(
-                    "No overwrite was planned, but {count} values "
-                    "would be overwritten"
-                ).format(count=self.total_updated)
+            reporting.raise_errors(
+                self.load.request,
+                exceptions.UnplannedOverwriteError(count=self.total_updated),
             )
-            reporting.raise_errors(self.load.request, err)
 
         self.load.transition(LoadRequest.Status.COMPLETED)
         # after importing, force updates of previously-existing assays

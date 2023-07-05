@@ -320,25 +320,12 @@ class ImportResolver:
             unmatched = names - self._loa_name_to_pk.keys()
             reporting.add_errors(
                 self.load.request,
-                exceptions.UnmatchedAssayError(
-                    details=unmatched,
-                    resolution=_(
-                        "Check for: A) identifiers in the file that don't match "
-                        "assays in the study, or B) missing assays in the study "
-                        "due to omitted time in the experiment definition"
-                    ),
-                ),
+                exceptions.UnmatchedAssayError(details=unmatched),
             )
         elif count > len(names):
-            duplicates = (
-                qs.values("name")
-                # group by name and find those with duplicates
-                .annotate(count=Count("name"))
-                .filter(count__gt=1)
-                # re-order by name and remove count annotation
-                .order_by("name")
-                .values_list("name", flat=True)
-            )
+            dupes_qs = qs.values("name").annotate(count=Count("name"))
+            dupes_ordered = dupes_qs.filter(count__gt=1).order_by("name")
+            duplicates = dupes_ordered.values_list("name", flat=True)
             reporting.add_errors(
                 self.load.request,
                 exceptions.DuplicateAssayError(details=duplicates),
@@ -390,17 +377,17 @@ class ImportResolver:
         error_count = 0
 
         # loop over measurement type names, looking them up in the appropriate place
-        for mtype_id in parsed.mtypes:
+        for mtype_token in parsed.mtypes:
             try:
-                found = type_resolver.lookup_type(mtype_id)
-                self._mtype_name_to_type[mtype_id] = found
+                found = type_resolver.lookup_type(mtype_token)
+                self._mtype_name_to_type[mtype_token] = found
             except ValidationError:
-                logger.exception(f"Exception verifying MeasurementType id {mtype_id}")
+                logger.exception(f"Exception verifying MeasurementType {mtype_token}")
                 # track errors and progress
                 error_count += 1
                 reporting.add_errors(
                     self.load.request,
-                    exceptions.UnmatchedMtypeError(details=mtype_id),
+                    exceptions.UnmatchedMtypeError(details=mtype_token),
                 )
                 # to stay responsive, stop lookups after a threshold is reached
                 if error_count == error_limit:
@@ -753,10 +740,9 @@ class ImportCacheCreator:
 
         page_count = math.ceil(len(import_records) / cache_page_size)
         if page_count > max_cache_pages:
-            msg = _("Total number of pages is exceeds maximum of {max} records").format(
-                max=max_cache_pages
+            raise exceptions.ImportTooLargeError(
+                max_count=cache_page_size * max_cache_pages,
             )
-            raise exceptions.ImportTooLargeError(details=msg)
 
         for i in range(0, len(import_records), cache_page_size):
             yield import_records[i : i + cache_page_size]

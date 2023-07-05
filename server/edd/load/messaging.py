@@ -3,32 +3,13 @@ import warnings
 from collections.abc import Iterable
 
 from django.conf import settings
+from django.utils.functional import Promise
 from django.utils.translation import gettext_lazy as _
 
-DetailValue = typing.Union[str, typing.Sequence[str], int, float, None]
+DetailValue = str | typing.Sequence[str] | int | float | None
 
 
-class LoadError(Exception):
-    """
-    Parent Exception for all exception types in the edd.load app.
-
-    Contains no boilerplate meant for reading by end-users by default.
-    """
-
-    pass
-
-
-class LoadWarning(Warning):
-    """
-    Parent Warning for "plain" import/load warnings.
-
-    Contains no boilerplate meant for reading by end-users.
-    """
-
-    pass
-
-
-class ReportingLimitWarning(LoadWarning):
+class ReportingLimitWarning(Warning):
     pass
 
 
@@ -67,17 +48,19 @@ class MessagingMixin:
         self.docs_link: str | None = docs_link
 
         self.details: list[str] = []
-        if details:
-            if isinstance(details, str):
+        match details:
+            case None:
+                pass
+            case str() | Promise():
                 self.details = [details]
-            elif isinstance(details, Iterable):
-                # account for sets, frozensets, etc that may be more convenient for client code
-                self.details = list(details)
-            elif isinstance(details, int) or isinstance(details, float):
+            case int() | float():
                 self.details = [str(details)]
-            else:
+            case Iterable() as d:
+                # account for sets, frozensets, etc that may be more convenient for client code
+                self.details = list(d)
+            case _:
                 raise TypeError(f"Unsupported type {type(details)}")
-            self._check_report_limit()
+        self._check_report_limit()
 
     def __key(self):
         return (
@@ -162,26 +145,3 @@ class MessagingMixin:
             result["detail"] = ", ".join(str(item) for item in showing)
 
         return result
-
-
-class EDDImportError(MessagingMixin, LoadError):
-    def __init__(self, **kwargs):
-        if "category" not in kwargs:
-            kwargs.update(category=_("Uncategorized Error"))
-        super().__init__(**kwargs)
-
-
-class EDDImportWarning(MessagingMixin, LoadWarning):
-    def __init__(self, **kwargs):
-        if "category" not in kwargs:
-            kwargs.update(category=_("Uncategorized Warning"))
-        super().__init__(**kwargs)
-
-
-class InvalidLoadRequestError(EDDImportError):
-    def __init__(self, **kwargs):
-        super().__init__(
-            category=_("Invalid ID"),
-            summary=_("Data loading request was not found"),
-            **kwargs,
-        )
