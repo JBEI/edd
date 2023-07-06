@@ -70,7 +70,9 @@ class ErrorListingMixin:
             ]
         }
         return JsonResponse(
-            payload, encoder=JSONEncoder, status=codes.internal_server_error
+            payload,
+            encoder=JSONEncoder,
+            status=codes.internal_server_error,
         )
 
 
@@ -118,7 +120,9 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             return self.send_exception_response(e)
         except Exception as e:
             return self.send_error_response(
-                _("Error"), _("An unexpected error occurred"), detail=str(e)
+                _("Error"),
+                _("An unexpected error occurred"),
+                detail=str(e),
             )
 
     def partial_update(self, request, study_pk=None, pk=None):
@@ -146,7 +150,9 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
         except Exception as e:
             logger.exception("unexpected error in upload", e)
             return self.send_error_response(
-                _("Error"), _("An unexpected error occurred"), detail=str(e)
+                _("Error"),
+                _("An unexpected error occurred"),
+                detail=str(e),
             )
 
     def destroy(self, request, study_pk=None, pk=None):
@@ -167,7 +173,9 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             return self.send_exception_response(e)
         except Exception as e:
             return self.send_error_response(
-                _("Error"), _("An unexpected error occurred"), detail=str(e)
+                _("Error"),
+                _("An unexpected error occurred"),
+                detail=str(e),
             )
 
     def _check_study_access(self, request, study_pk):
@@ -186,15 +194,17 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
         missing = {"category", "layout", "protocol"} - request.data.keys()
         if missing:
             raise DRFParseError(
-                f"Missing required parameters: {missing}", code=codes.bad_request
+                f"Missing required parameters: {missing}",
+                code=codes.bad_request,
             )
 
     def _schedule_task(self, load, request):
-        layout = request.data["layout"]
-        category = request.data["category"]
-        target = request.data.get("status", None)
         tasks.wizard_parse_and_resolve.delay(
-            load.request, request.user.pk, layout, category, target
+            request_uuid=load.request,
+            user_id=request.user.pk,
+            layout_id=request.data["layout"],
+            category_id=request.data["category"],
+            target=request.data.get("status", None),
         )
 
     def _verify_update_status(self, load):
@@ -202,8 +212,8 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             return self.send_error_response(
                 _("Invalid request"),
                 _(
-                    "A data loading operation cannot be accessed "
-                    "through a different study"
+                    "A data loading operation cannot be accessed through "
+                    "a different study."
                 ),
                 status=codes.bad_request,
             )
@@ -211,7 +221,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             return self.send_error_response(
                 _("Invalid state"),
                 _(
-                    "Changes are not permitted while loaded is processing. "
+                    "Changes are not permitted while loaded data is processing. "
                     "Wait until processing is complete."
                 ),
                 status=codes.bad_request,
@@ -221,7 +231,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
                 _("Invalid state"),
                 _(
                     "Modifications are not allowed once loaded data "
-                    "reaches the {status} state"
-                ).format(status=str(load.status)),
+                    "reaches the Completed state."
+                ),
                 status=codes.bad_request,
             )

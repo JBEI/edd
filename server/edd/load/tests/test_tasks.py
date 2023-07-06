@@ -186,7 +186,8 @@ class WizardParseTaskTests(TestCase):
         cls.user = UserFactory()
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.create(
-            user=cls.user, permission_type=models.StudyPermission.WRITE
+            user=cls.user,
+            permission_type=models.StudyPermission.WRITE,
         )
         cls.protocol = factory.ProtocolFactory()
         cls.category = CategoryFactory()
@@ -225,7 +226,8 @@ class WizardParseTaskTests(TestCase):
 
     def test_parse_with_bad_parser(self):
         parser = ParserFactory(
-            layout=self.layout, parser_class="bad.missing.ParserClass"
+            layout=self.layout,
+            parser_class="bad.missing.ParserClass",
         )
         file = SimpleUploadedFile("example", b"", content_type=parser.mime_type)
         self.load.update({"file": file})
@@ -260,7 +262,10 @@ class WizardParseTaskTests(TestCase):
         self._setup_parse_add_time()
         with patch("edd.load.tasks.wizard_execute_loading") as task:
             tasks.wizard_parse_and_resolve(
-                uuid, self.user.pk, self.layout.pk, self.category.pk
+                uuid,
+                self.user.pk,
+                self.layout.pk,
+                self.category.pk,
             )
         updated = LoadRequest.fetch(uuid)
         assert updated.status == LoadRequest.Status.READY
@@ -270,7 +275,10 @@ class WizardParseTaskTests(TestCase):
         uuid = self._setup_parse_success()
         # omitting Time metadata so resolve step finishes with RESOLVED instead of READY
         tasks.wizard_parse_and_resolve(
-            uuid, self.user.pk, self.layout.pk, self.category.pk
+            uuid,
+            self.user.pk,
+            self.layout.pk,
+            self.category.pk,
         )
         updated = LoadRequest.fetch(uuid)
         assert updated.status == LoadRequest.Status.RESOLVED

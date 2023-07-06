@@ -18,11 +18,12 @@ class Layout(models.Model):
     """
 
     name = VarCharField(
-        help_text=_("Name of this file layout."), verbose_name=_("Name")
+        help_text=_("Name of this file layout."),
+        verbose_name=_("Name"),
     )
     description = models.TextField(
         blank=True,
-        help_text=_("Description of this object."),
+        help_text=_("Description of the file layout."),
         null=True,
         verbose_name=_("Description"),
     )
