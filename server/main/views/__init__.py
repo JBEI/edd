@@ -3,7 +3,6 @@
 from .ajax import (
     InlineMetadataPartialView,
     study_access,
-    study_assay_table_data,
     study_edddata,
 )
 from .description import (
@@ -48,7 +47,6 @@ __all__ = [
     RemoveLineView,
     RestoreStudyView,
     study_access,
-    study_assay_table_data,
     study_edddata,
     StudyAttachmentView,
     StudyCreateView,

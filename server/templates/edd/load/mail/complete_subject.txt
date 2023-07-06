@@ -1,4 +1,0 @@
-{% load i18n %}
-{% blocktranslate %}
-{{ instance_tag }} Import Complete
-{% endblocktranslate %}

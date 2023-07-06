@@ -35,7 +35,6 @@ module.exports = {
         ],
         "ExperimentDescHelp": path.resolve(__dirname, "./src/Experiment-Desc-Help.ts"),
         "Export": path.resolve(__dirname, "./src/Export.ts"),
-        "Import": path.resolve(__dirname, "./src/Import.ts"),
         "LoadWizard": [
             "react",
             "react-dom",

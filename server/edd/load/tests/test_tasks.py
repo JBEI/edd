@@ -1,11 +1,9 @@
 from tempfile import NamedTemporaryFile
 from unittest.mock import patch
-from uuid import uuid4
 
 import pytest
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
 from openpyxl import Workbook
 
 from edd import TestCase
@@ -18,108 +16,12 @@ from ..broker import ImportBroker, LoadRequest
 from .factory import CategoryFactory, LayoutFactory, ParserFactory
 
 
-class ImportTableTaskTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.user = UserFactory()
-        cls.study = factory.StudyFactory()
-        cls.study.userpermission_set.create(
-            user=cls.user,
-            permission_type=models.StudyPermission.WRITE,
-        )
-        cls.protocol = factory.ProtocolFactory()
-        cls.measurement_type = factory.MeasurementTypeFactory()
-
-    def test_success(self):
-        # setup the context before the task
-        import_id = uuid4()
-        broker = ImportBroker()
-        broker.set_context(import_id, {})
-        broker.add_page(
-            import_id,
-            [
-                {
-                    "assay_id": "named_or_new",
-                    "assay_name": "bar",
-                    "compartment": "0",
-                    "data": [[12, 34]],
-                    "kind": "std",
-                    "line_id": "new",
-                    "line_name": "foo",
-                    "measurement_id": self.measurement_type.pk,
-                    "measurement_name": self.measurement_type.type_name,
-                    "protocol_id": self.protocol.pk,
-                    "units_id": "1",
-                },
-            ],
-        )
-        # directly execute task
-        tasks.import_table_task(self.study.pk, self.user.pk, import_id)
-        value_qs = models.MeasurementValue.objects.filter(study_id=self.study.pk)
-        # asserts
-        assert value_qs.count() == 1
-
-    def test_bad_study(self):
-        with pytest.raises(exceptions.ImportTaskError):
-            # triggering failure in task with bad study key
-            tasks.import_table_task(None, self.user.pk, uuid4())
-
-    def test_failed(self):
-        with pytest.raises(exceptions.ImportTaskError):
-            # triggering failure in task by failing to save import data
-            tasks.import_table_task(self.study.pk, self.user.pk, None)
-
-
 class EmailTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
         cls.user = UserFactory()
         cls.study = factory.StudyFactory()
-
-    def test_send_import_completion_email(self):
-        added = 13
-        updated = 42
-        tasks.send_import_completion_email(
-            study_id=self.study.pk,
-            user_id=self.user.pk,
-            added=added,
-            updated=updated,
-            duration="a New York minute",
-        )
-        assert len(mail.outbox) == 1
-        sent_email = mail.outbox[0]
-        assert self.user.email in sent_email.to
-        assert str(added) in sent_email.body
-        assert str(updated) in sent_email.body
-
-    def test_send_import_failure_email(self):
-        tasks.send_import_failure_email(
-            study_id=self.study.pk,
-            user_id=self.user.pk,
-            duration="a New York minute",
-            message="Whoopsie",
-        )
-        assert len(mail.outbox) == 1
-        sent_email = mail.outbox[0]
-        assert self.user.email in sent_email.to
-
-    @override_settings(ADMINS=[("Fake", "noreply@example.net")])
-    def test_send_import_failure_email_admins(self):
-        tasks.send_import_failure_email_admins(
-            study_id=self.study.pk,
-            user_id=self.user.pk,
-            import_id=None,
-            duration="a New York minute",
-            message="Whoopsie",
-            trace="a fake traceback",
-        )
-        assert len(mail.outbox) == 1
-        sent_email = mail.outbox[0]
-        assert self.user.email not in sent_email.to
-        assert self.user.email not in sent_email.cc
-        assert self.user.email not in sent_email.bcc
 
     def test_send_wizard_failed_email(self):
         load = LoadRequest(

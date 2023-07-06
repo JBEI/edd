@@ -2,7 +2,6 @@
 
 import logging
 
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -52,32 +51,6 @@ def study_edddata(request, pk=None, slug=None):
     """
     model = load_study(request, pk=pk, slug=slug)
     return JsonResponse(query.get_edddata_study(model), encoder=utilities.JSONEncoder)
-
-
-# /study/<study_id>/assaydata/
-def study_assay_table_data(request, pk=None, slug=None):
-    """Request information on assays associated with a study."""
-    model = load_study(request, pk=pk, slug=slug)
-    active_param = request.GET.get("active", None)
-    active_value = "true" == active_param if active_param in ("true", "false") else None
-    active = models.common.qfilter(value=active_value, fields=["active"])
-    existingLines = model.line_set.filter(active)
-    existingAssays = models.Assay.objects.filter(active, line__study=model)
-    return JsonResponse(
-        {
-            "ATData": {
-                "existingLines": list(existingLines.values("name", "id")),
-                "existingAssays": {
-                    assays["protocol_id"]: assays["ids"]
-                    for assays in existingAssays.values("protocol_id").annotate(
-                        ids=ArrayAgg("id")
-                    )
-                },
-            },
-            "EDDData": query.get_edddata_study(model),
-        },
-        encoder=utilities.JSONEncoder,
-    )
 
 
 # /study/<study_id>/access/

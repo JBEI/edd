@@ -1130,15 +1130,6 @@ class StudyAjaxViewTests(StudyViewTestCase):
 
             load_study(request)
 
-    def test_assaydata(self):
-        # this is deprecated, but we should test until it's officially removed
-        url = reverse("main:assaydata", kwargs=self.study_kwargs)
-        response = self.client.get(url)
-        assert response.status_code == codes.ok
-        payload = response.json()
-        assert "ATData" in payload
-        assert payload["EDDData"]["currentStudyID"] == self.target_study.pk
-
     def test_edddata(self):
         # this is deprecated, but we should test until it's officially removed
         url = reverse("main:edddata", kwargs=self.study_kwargs)

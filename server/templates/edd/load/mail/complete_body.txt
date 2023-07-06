@@ -1,6 +1,0 @@
-{% load i18n %}
-{% blocktranslate %}
-Your import to {{ study }} is complete. The import process added {{ added }} and updated {{ updated }} values in {{ duration }}.
-
-View the added data at <{{ study_uri }}>.
-{% endblocktranslate %}

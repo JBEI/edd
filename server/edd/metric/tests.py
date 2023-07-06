@@ -9,7 +9,7 @@ from edd import TestCase
 from edd.export.broker import ExportBroker
 from edd.export.tasks import export_table_task, export_worklist_task
 from edd.load.broker import ImportBroker, LoadRequest
-from edd.load.tasks import import_table_task, wizard_execute_loading
+from edd.load.tasks import wizard_execute_loading
 from edd.rest.tests import EddApiTestCaseMixin
 from main import models as edd_models
 from main.tests import factory
@@ -228,39 +228,6 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
         sl = qs.get()
         # count is 3 + 5 from both studies
         assert sl.detail == {"count": 8}
-
-    def test_legacy_import_adds_entry(self):
-        study = self._writable_study()
-        protocol = factory.ProtocolFactory()
-        measurement_type = factory.MeasurementTypeFactory()
-        import_id = factory.fake.uuid4()
-        storage = ImportBroker()
-        storage.set_context(import_id, {})
-        storage.add_page(
-            import_id,
-            [
-                {
-                    "assay_id": "named_or_new",
-                    "assay_name": "bar",
-                    "compartment": "0",
-                    "data": [[12, 34]],
-                    "kind": "std",
-                    "line_id": "new",
-                    "line_name": "foo",
-                    "measurement_id": measurement_type.pk,
-                    "measurement_name": measurement_type.type_name,
-                    "protocol_id": protocol.pk,
-                    "units_id": "1",
-                },
-            ],
-        )
-
-        import_table_task.s(study.id, self.user.id, import_id).apply()
-
-        qs = self._find_log(event=StudyLog.Event.IMPORTED, study=study)
-        assert qs.count() == 1
-        sl = qs.get()
-        assert sl.detail == {"count": 1, "protocol": str(protocol.uuid)}
 
     def test_wizard_import_adds_entry(self):
         study = self._writable_study()
