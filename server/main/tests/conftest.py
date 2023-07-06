@@ -31,6 +31,8 @@ def use_testing_cache():
         # once all tests are done, connect to alternate cache and compact AOF
         redis = get_redis_connection("default")
         redis.bgrewriteaof()
+    else:
+        yield False
 
 
 @fixture(autouse=True)
