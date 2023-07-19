@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.decorators import login_required
 from django.contrib.flatpages import views as flatpage_views
 from django.http import HttpResponse
+from django.template.response import TemplateResponse
 from django.urls import include, path, re_path
 from requests import codes
 
@@ -21,6 +22,11 @@ def ping(request):
     if request.user.is_authenticated:
         return HttpResponse(status=codes.no_content)
     return HttpResponse(status=codes.forbidden)
+
+
+def legacy_issue_no_strain_url(request):
+    """Simplest possible view for the legacy_issue_no_strain_url page."""
+    return TemplateResponse(request, "main/legacy_issue_no_strain_url.html", {})
 
 
 rest_urlpatterns = [
@@ -47,6 +53,11 @@ urlpatterns = [
     # flatpages.urls does not include app_name; cannot include it with namespace
     # path('pages/', include('django.contrib.flatpages.urls', namespace='flatpage'))
     path("pages/<path:url>", flatpage_views.flatpage, name="flatpage"),
+    path(
+        "legacy_issue_no_strain_url.html",
+        legacy_issue_no_strain_url,
+        name="legacy_issue_no_strain_url",
+    ),
 ]
 
 if getattr(settings, "EDD_ENABLE_GRAPHQL", False):

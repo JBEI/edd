@@ -1,0 +1,21 @@
+{% extends "edd_bs5.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block head_title %}
+  {% translate 'EDD - Registry Entry Not Linked' %}
+{% endblock head_title %}
+
+{% block body_title %}
+  {% translate 'Registry Entry Not Linked' %}
+{% endblock body_title %}
+
+{% block content %}
+  <p>
+    {% blocktranslate %}
+      This strain was entered into EDD before external registry
+      links were required, and no corresponding registry entry
+      was located.
+    {% endblocktranslate %}
+  </p>
+{% endblock content %}
