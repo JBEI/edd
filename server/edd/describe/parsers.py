@@ -6,7 +6,6 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from typing import Any
 
-from jsonschema import Draft4Validator
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
 
@@ -34,7 +33,6 @@ from .constants import (
     INVALID_CELL_TYPE,
     INVALID_COLUMN_HEADER,
     INVALID_FILE_VALUE_CATEGORY,
-    INVALID_JSON,
     INVALID_REPLICATE_COUNT,
     MISSING_REQUIRED_LINE_NAME,
     MULTIPLE_WORKSHEETS_FOUND,
@@ -57,7 +55,6 @@ from .utilities import (
     CombinatorialDescriptionInput,
     NamingStrategy,
 )
-from .validators import SCHEMA as JSON_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -87,14 +84,9 @@ _REPLICATE_COUNT_COL_PATTERN = re.compile(
 )
 ###################################################################################################
 
+# NOTE: update _STRAIN_GROUP_REGEX if changing the delimiter character
 _STRAIN_GROUP_MEMBER_DELIM = ";"
-_STRAIN_GROUP_REGEX = (
-    r"^\s*\(((?:\s*[^"
-    + _STRAIN_GROUP_MEMBER_DELIM
-    + r"\)\(]+\s*"
-    + _STRAIN_GROUP_MEMBER_DELIM
-    + r"?\s*)+)\)\s*$"
-)
+_STRAIN_GROUP_REGEX = r"^\s*\(((?:\s*[^;\)\(]+\s*;?\s*)+)\)\s*$"
 _STRAIN_GROUP_PATTERN = re.compile(_STRAIN_GROUP_REGEX)
 
 _TIME_VALUE_REGEX = r"^\s*(\d+(?:\.\d+)?)\s*h\s*$"
@@ -1572,31 +1564,7 @@ class JsonInputParser(CombinatorialInputParser):
         return combinatorial_inputs
 
     def _validate_parsed_json(self, raw_json: str | bytes | bytearray):
-        if self.aggregator.errors:
-            return None
-
-        parsed_json = json.loads(raw_json)
-        self.parsed_json = parsed_json
-
-        if not parsed_json:
-            return None
-
-        validator = Draft4Validator(JSON_SCHEMA)
-        validation_errors = validator.iter_errors(parsed_json)
-        for err in validation_errors:
-            path_str = (
-                ".".join(str(elt) for elt in err.relative_path)
-                if err.relative_path
-                else "root"
-            )
-            self.aggregator.add_error(
-                BAD_GENERIC_INPUT_CATEGORY, INVALID_JSON, f"{path_str}: {err.message}"
-            )
-        if self.aggregator.errors:
-            logger.error(
-                f"Aborting parsing due to JSON validation errors: {validation_errors}"
-            )
-            return None
+        self.parsed_json = json.loads(raw_json)
         return self.parsed_json
 
     def _get_naming_strategy(self, value):

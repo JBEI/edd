@@ -111,7 +111,6 @@ INSTALLED_APPS = (
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
-    "django_extensions",  # django-extensions in pip
     "rest_framework",  # djangorestframework in pip
     "django_filters",  # django-filter in pip
     "drf_yasg",  # drf-yasg in pip
@@ -171,6 +170,24 @@ TEMPLATES = [
 ROOT_URLCONF = "edd.urls"
 WSGI_APPLICATION = "edd.wsgi.application"
 
+# include Django Debug Toolbar when DEBUG == True
+if DEBUG:
+    # at end of apps
+    INSTALLED_APPS += ("debug_toolbar",)
+    # at beginning of middleware
+    MIDDLEWARE = ("debug_toolbar.middleware.DebugToolbarMiddleware",) + MIDDLEWARE
+    # don't use bundled JQuery
+    DEBUG_TOOLBAR_CONFIG = {"JQUERY_URL": ""}
+    # allow connections from any private network IP
+    INTERNAL_IPS = IpNetworks(
+        [
+            "127.0.0.1",
+            "::1",
+            "10.0.0.0/8",
+            "172.16.0.0/12",
+            "192.168.0.0/16",
+        ]
+    )
 
 # Database configuration
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
