@@ -10,21 +10,17 @@ class Select2Widget(forms.widgets.Select):
     kind = None
 
     def get_autourl(self):
-        if self.kind is None:
-            return reverse("search:autocomplete")
-        return reverse("search:acmodel", kwargs={"model": self.kind})
+        if self.kind:
+            url = reverse("search:acmodel", kwargs={"model": self.kind})
+            return {
+                "data-eddautocompletetype": self.kind,
+                "data-eddautocompleteurl": url,
+            }
+        return {}
 
     def get_context(self, name, value, attrs):
         # merge passed attrs with the defaults
-        with_defaults = self.build_attrs(self.default_attrs, attrs)
-        # force our autocomplete data attributes
-        combined = self.build_attrs(
-            with_defaults,
-            {
-                "data-eddautocompletetype": self.kind,
-                "data-eddautocompleteurl": self.get_autourl(),
-            },
-        )
+        combined = {**self.default_attrs, **(attrs or {}), **self.get_autourl()}
         # update any class attribute with the default classes
         all_classes = filter(None, (combined.get("class", None), *self.default_classes))
         combined.update({"class": " ".join(all_classes)})
@@ -81,6 +77,7 @@ class MetadataAutocomplete(Select2Widget):
             value = "true" if includeField else "false"
             self.default_attrs["data-eddauto-field-types"] = value
         if typeFilter is not None:
+            # dump to JSON to handle multiple values; frontend will deserialize
             value = JSONEncoder.dumps(typeFilter)
             self.default_attrs["data-eddauto-type-filter"] = value
         super().__init__(attrs)

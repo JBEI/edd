@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class Autocomplete:
-
     DEFAULT_RESULT_COUNT = 20
 
     def __init__(self, model):
@@ -338,7 +337,7 @@ class Autocomplete:
                 "html": template.render({"user": user}),
                 "id": user.id,
                 "initials": user.initials,
-                "text": user.profile.display_name,
+                "text": user.profile.display,
                 "username": user.username,
             }
             for user in found[start:end]

@@ -14,7 +14,7 @@ from edd.profile import factory as profile_factory
 from main import models
 from main.tests import factory
 
-from . import signals, solr
+from . import signals, solr, widgets
 
 fake = Faker()
 fake_solr = fake.url()
@@ -410,3 +410,103 @@ class Select2Tests(TestCase):
         assert response.status_code == codes.ok
         results = response.json()["results"]
         assert any(item["id"] == unit.id for item in results)
+
+
+def test_select2_without_autocomplete():
+    select2 = widgets.Select2Widget()
+    fieldname = fake.domain_word()
+
+    html = select2.render(fieldname, "foobar")
+
+    assert fieldname in html
+    assert "autocomp2" in html
+    assert "form-select" in html
+    assert "data-eddautocompletetype" not in html
+    assert "data-eddautocompleteurl" not in html
+
+
+def test_select2_metadata_builtins_on():
+    select2 = widgets.MetadataAutocomplete(includeField=True)
+    fieldname = fake.domain_word()
+
+    html = select2.render(fieldname, "foobar")
+
+    assert fieldname in html
+    assert "autocomp2" in html
+    assert "form-select" in html
+    assert 'data-eddautocompletetype="MetadataType"' in html
+    assert "data-eddautocompleteurl" in html
+    assert 'data-eddauto-field-types="true"' in html
+
+
+def test_select2_metadata_builtins_off():
+    select2 = widgets.MetadataAutocomplete(includeField=False)
+    fieldname = fake.domain_word()
+
+    html = select2.render(fieldname, "foobar")
+
+    assert fieldname in html
+    assert "autocomp2" in html
+    assert "form-select" in html
+    assert 'data-eddautocompletetype="MetadataType"' in html
+    assert "data-eddautocompleteurl" in html
+    assert 'data-eddauto-field-types="false"' in html
+
+
+def test_select2_metadata_filter_single():
+    select2 = widgets.MetadataAutocomplete(typeFilter="A")
+    fieldname = fake.domain_word()
+
+    html = select2.render(fieldname, "foobar")
+
+    assert fieldname in html
+    assert "autocomp2" in html
+    assert "form-select" in html
+    assert 'data-eddautocompletetype="MetadataType"' in html
+    assert "data-eddautocompleteurl" in html
+    assert 'data-eddauto-type-filter="&quot;A&quot;"' in html
+
+
+def test_select2_metadata_filter_multiple():
+    select2 = widgets.MetadataAutocomplete(typeFilter=["S", "L"])
+    fieldname = fake.domain_word()
+
+    html = select2.render(fieldname, "foobar")
+
+    assert fieldname in html
+    assert "autocomp2" in html
+    assert "form-select" in html
+    assert 'data-eddautocompletetype="MetadataType"' in html
+    assert "data-eddautocompleteurl" in html
+    # just check that it's a JSON list, too flaky to hard-code serialization
+    assert 'data-eddauto-type-filter="[' in html
+
+
+def test_select2_sbml_exchange():
+    sbml_id = fake.pyint()
+    select2 = widgets.SbmlExchange(sbml_id)
+    fieldname = fake.domain_word()
+
+    html = select2.render(fieldname, "foobar")
+
+    assert fieldname in html
+    assert "autocomp2" in html
+    assert "form-select" in html
+    assert 'data-eddautocompletetype="SbmlExchange"' in html
+    assert "data-eddautocompleteurl" in html
+    assert f'data-eddauto-template="{sbml_id}"' in html
+
+
+def test_select2_sbml_species():
+    sbml_id = fake.pyint()
+    select2 = widgets.SbmlSpecies(sbml_id)
+    fieldname = fake.domain_word()
+
+    html = select2.render(fieldname, "foobar")
+
+    assert fieldname in html
+    assert "autocomp2" in html
+    assert "form-select" in html
+    assert 'data-eddautocompletetype="SbmlSpecies"' in html
+    assert "data-eddautocompleteurl" in html
+    assert f'data-eddauto-template="{sbml_id}"' in html

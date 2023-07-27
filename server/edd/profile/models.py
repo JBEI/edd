@@ -38,6 +38,10 @@ class UserProfile(models.Model):
         verbose_name=_("Approved"),
     )
 
+    @property
+    def display(self):
+        return self.display_name or self.user.username
+
     def __str__(self):
         return str(self.user)
 

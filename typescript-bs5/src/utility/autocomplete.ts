@@ -22,17 +22,21 @@ export function initSelect2(elements?: JQuery): void {
     }
     elements.each(function () {
         const select = $(this);
-        select.select2({
-            "ajax": {
+        const url = select.data("eddautocompleteurl");
+        const options: Select2.Options = {
+            "theme": "bootstrap-5",
+        };
+        if (url) {
+            options.ajax = {
                 "data": (params) => {
                     return { ...params, ...extraParams(select) };
                 },
                 "dataType": "json",
                 "url": select.data("eddautocompleteurl"),
-            },
-            "templateResult": entryTemplate,
-            "theme": "bootstrap-5",
-        });
+            };
+            options.templateResult = entryTemplate;
+        }
+        select.select2(options);
     });
 }
 
@@ -47,7 +51,8 @@ function extraParams(select: JQuery): Params {
             const fields = select.data("eddautoFieldTypes");
             const params: Params = {};
             if (types !== undefined) {
-                params.types = types;
+                // types can be a JSON string or JSON list of strings
+                params.types = JSON.parse(types);
             }
             if (fields !== undefined) {
                 params.fields = fields;
