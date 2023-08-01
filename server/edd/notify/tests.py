@@ -4,7 +4,6 @@ from uuid import uuid4
 import faker
 import pytest
 from channels.testing import WebsocketCommunicator
-from django.test import Client
 
 from edd import asgi
 from edd.profile.factory import UserFactory
@@ -15,33 +14,13 @@ fake = faker.Faker()
 
 
 @pytest.fixture
-def anonymous_client():
-    return Client()
-
-
-@pytest.fixture
-def fake_user():
+def fake_user(db):
     return UserFactory()
-
-
-@pytest.fixture
-def logged_in_client(fake_user):
-    client = Client()
-    client.force_login(fake_user)
-    return client
 
 
 @pytest.fixture
 def unsaved_user():
     return UserFactory.build(pk=fake.pyint())
-
-
-def headers_from_client(client):
-    """Builds headers to send with WebSocket requests from a HTTP client."""
-    return [
-        (b"origin", b"..."),
-        (b"cookie", client.cookies.output(header="", sep="; ").encode()),
-    ]
 
 
 def test_prepared_notification_equal_to_source():
@@ -96,20 +75,17 @@ def test_basebroker_groups_has_single_name(unsaved_user):
     assert f"{unsaved_user.pk}" in groups[0]
 
 
-@pytest.mark.django_db
 def test_redisbroker_is_initially_empty(fake_user):
     broker = backend.RedisBroker(fake_user)
     assert broker.count() == 0
 
 
-@pytest.mark.django_db
 def test_redisbroker_has_one_message_after_adding_one_message(fake_user):
     broker = backend.RedisBroker(fake_user)
     broker.notify(fake.sentence())
     assert broker.count() == 1
 
 
-@pytest.mark.django_db
 def test_redisbroker_is_iterable(fake_user):
     broker = backend.RedisBroker(fake_user)
     broker.notify(fake.sentence())
@@ -117,7 +93,6 @@ def test_redisbroker_is_iterable(fake_user):
     assert len(ids) == 1
 
 
-@pytest.mark.django_db
 def test_redisbroker_can_remove_specific_messages(fake_user):
     broker = backend.RedisBroker(fake_user)
     marker_uuid = uuid4()
@@ -131,7 +106,6 @@ def test_redisbroker_can_remove_specific_messages(fake_user):
     assert marker_text not in {n.message for n in broker}
 
 
-@pytest.mark.django_db
 def test_redisbroker_can_remove_older_messages(fake_user):
     broker = backend.RedisBroker(fake_user)
     marker_uuid = uuid4()
@@ -147,12 +121,9 @@ def test_redisbroker_can_remove_older_messages(fake_user):
     assert expected_text in {n.message for n in broker}
 
 
-@pytest.mark.django_db
 @pytest.mark.asyncio
-async def test_notification_subscribe_no_user(anonymous_client):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(anonymous_client),
-    )
+async def test_notification_subscribe_no_user():
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
     try:
         connected, subprotocol = await communicator.connect()
         # websocket should initially accept the connection
@@ -163,12 +134,10 @@ async def test_notification_subscribe_no_user(anonymous_client):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_subscribe_empty(logged_in_client):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_subscribe_empty(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     try:
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
@@ -183,12 +152,10 @@ async def test_notification_subscribe_empty(logged_in_client):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_subscribe_with_messages(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_subscribe_with_messages(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     # joe is going to help us send some messages to the fake user
     joe = backend.RedisBroker(fake_user)
     try:
@@ -207,12 +174,10 @@ async def test_notification_subscribe_with_messages(logged_in_client, fake_user)
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_dismiss(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_dismiss(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     # joe is going to help us send some messages to the fake user
     joe = backend.RedisBroker(fake_user)
     try:
@@ -237,12 +202,10 @@ async def test_notification_dismiss(logged_in_client, fake_user):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_dismiss_all(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_dismiss_all(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     # joe is going to help us send some messages to the fake user
     joe = backend.RedisBroker(fake_user)
     try:
@@ -265,12 +228,10 @@ async def test_notification_dismiss_all(logged_in_client, fake_user):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_incoming(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_incoming(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     # joe is going to help us send some messages to the fake user
     joe = backend.RedisBroker(fake_user)
     try:
@@ -293,12 +254,10 @@ async def test_notification_incoming(logged_in_client, fake_user):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_send_dismiss(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_send_dismiss(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     # joe is going to help us send some messages to the fake user
     joe = backend.RedisBroker(fake_user)
     try:
@@ -323,12 +282,10 @@ async def test_notification_send_dismiss(logged_in_client, fake_user):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_send_dismiss_older(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_send_dismiss_older(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     # joe is going to help us send some messages to the fake user
     joe = backend.RedisBroker(fake_user)
     try:
@@ -359,12 +316,10 @@ async def test_notification_send_dismiss_older(logged_in_client, fake_user):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_send_reset(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_send_reset(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     try:
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
@@ -383,12 +338,10 @@ async def test_notification_send_reset(logged_in_client, fake_user):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_notification_send_fetch(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/notify/", headers_from_client(logged_in_client),
-    )
+async def test_notification_send_fetch(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/notify/")
+    communicator.scope["user"] = fake_user
     try:
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()

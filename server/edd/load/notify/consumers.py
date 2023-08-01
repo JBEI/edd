@@ -1,7 +1,6 @@
 import logging
 
 from asgiref.sync import sync_to_async
-from channels.auth import get_user
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from edd import utilities
@@ -16,12 +15,14 @@ logger = logging.getLogger(__name__)
 # than to call `sync_to_async(alias)(arg1, arg2)`.
 
 
-async def group_names(broker):
-    return await sync_to_async(broker.group_names)()
+@sync_to_async
+def group_names(broker):
+    return broker.group_names()
 
 
-async def logger_debug(message, **kwargs):
-    await sync_to_async(logger.debug)(message, **kwargs)
+@sync_to_async
+def logger_debug(message, **kwargs):
+    logger.debug(message, **kwargs)
 
 
 class SubscribeError(Exception):
@@ -43,22 +44,22 @@ class LoadNoticeConsumer(AsyncJsonWebsocketConsumer):
 
     async def connect(self):
         try:
-            user = await get_user(self.scope)
+            user = await self._get_user()
             if user is None or user.is_anonymous:
                 await self.close()
             else:
                 await self.accept()
                 # add to the notificaiton groups
-                await self.add_user_groups(user)
+                await self.add_user_groups()
         except Exception as e:
             await logger_debug(
-                f"Unexpected error during connection setup {e!r}", exc_info=e,
+                f"Unexpected error during connection setup {e!r}",
+                exc_info=e,
             )
 
     async def disconnect(self, code):
         try:
-            user = await get_user(self.scope)
-            broker = await self.ensure_broker(user, raises=False)
+            broker = await self.ensure_broker(raises=False)
             if broker:
                 groups = await group_names(broker)
                 for group in groups:
@@ -67,7 +68,8 @@ class LoadNoticeConsumer(AsyncJsonWebsocketConsumer):
                 await logger_debug("Disconnected without a broker")
         except Exception as e:
             await logger_debug(
-                f"Unexpected error during disconnect {e!r}", exc_info=e,
+                f"Unexpected error during disconnect {e!r}",
+                exc_info=e,
             )
 
     # command methods
@@ -79,8 +81,9 @@ class LoadNoticeConsumer(AsyncJsonWebsocketConsumer):
 
     # helper methods
 
-    async def ensure_broker(self, user, raises=True):
+    async def ensure_broker(self, raises=True):
         if not hasattr(self, "_broker"):
+            user = await self._get_user()
             if user and not user.is_anonymous:
                 self._broker = WsBroker(user)
             elif raises:
@@ -89,11 +92,14 @@ class LoadNoticeConsumer(AsyncJsonWebsocketConsumer):
                 return None
         return self._broker
 
-    async def add_user_groups(self, user):
-        broker = await self.ensure_broker(user)
+    async def add_user_groups(self):
+        broker = await self.ensure_broker()
         groups = await group_names(broker)
         for group in groups:
             await self.channel_layer.group_add(group, self.channel_name)
+
+    async def _get_user(self):
+        return self.scope.get("user", None)
 
 
 __all__ = [
