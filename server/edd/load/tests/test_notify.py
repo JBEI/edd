@@ -1,6 +1,5 @@
 import pytest
 from channels.testing import WebsocketCommunicator
-from django.test import Client
 
 from edd import asgi
 from edd.profile.factory import UserFactory
@@ -9,36 +8,13 @@ from ..notify import WsBroker
 
 
 @pytest.fixture
-def anonymous_client():
-    return Client()
-
-
-@pytest.fixture
-def fake_user():
+def fake_user(db):
     return UserFactory()
 
 
-@pytest.fixture
-def logged_in_client(fake_user):
-    client = Client()
-    client.force_login(fake_user)
-    return client
-
-
-def headers_from_client(client):
-    """Builds headers to send with WebSocket requests from a HTTP client."""
-    return [
-        (b"origin", b"..."),
-        (b"cookie", client.cookies.output(header="", sep="; ").encode()),
-    ]
-
-
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_refuse_connection_for_anonymous_user(anonymous_client):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/load/", headers_from_client(anonymous_client),
-    )
+async def test_refuse_connection_for_anonymous_user():
+    communicator = WebsocketCommunicator(asgi.application, "/ws/load/")
     try:
         connected, subprotocol = await communicator.connect()
         # websocket should initially accept the connection
@@ -51,12 +27,10 @@ async def test_refuse_connection_for_anonymous_user(anonymous_client):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_accept_connection_for_authenticated_user(logged_in_client):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/load/", headers_from_client(logged_in_client),
-    )
+async def test_accept_connection_for_authenticated_user(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/load/")
+    communicator.scope["user"] = fake_user
     try:
         # websocket will allow connection
         connected, subprotocol = await communicator.connect()
@@ -67,12 +41,10 @@ async def test_accept_connection_for_authenticated_user(logged_in_client):
         await communicator.disconnect()
 
 
-@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_receive_notification(logged_in_client, fake_user):
-    communicator = WebsocketCommunicator(
-        asgi.application, "/ws/load/", headers_from_client(logged_in_client),
-    )
+async def test_receive_notification(fake_user):
+    communicator = WebsocketCommunicator(asgi.application, "/ws/load/")
+    communicator.scope["user"] = fake_user
     try:
         connected, subprotocol = await communicator.connect()
 
@@ -80,11 +52,13 @@ async def test_receive_notification(logged_in_client, fake_user):
         ws = WsBroker(fake_user)
         # send a message from the back end
         await ws.async_notify(
-            "Test message", tags=["import-status-update"], payload={"key": 12345}
+            "Test message",
+            tags=["import-status-update"],
+            payload={"key": 12345},
         )
 
         # receive the message from the websocket
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         # test that content is in there
         assert "messages" in response
     finally:

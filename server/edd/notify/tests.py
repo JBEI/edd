@@ -143,7 +143,7 @@ async def test_notification_subscribe_empty(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["messages"] == []
@@ -164,7 +164,7 @@ async def test_notification_subscribe_with_messages(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert len(response["messages"][0]) == 5
@@ -187,13 +187,13 @@ async def test_notification_dismiss(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["unread"] == 1
         # joe is now going to dismiss the message sent earlier
         await joe.async_mark_read(marker_uuid)
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "dismiss" in response
         assert "unread" in response
         assert response["dismiss"] == str(marker_uuid)
@@ -214,13 +214,13 @@ async def test_notification_dismiss_all(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["unread"] == 1
         # joe is now going to dismiss the message sent earlier
         await joe.async_mark_all_read()
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "dismiss" in response
         assert "unread" in response
         assert response["unread"] == 0
@@ -239,13 +239,13 @@ async def test_notification_incoming(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # nothing in inbox to start
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["unread"] == 0
         # joe is now going to send a message
         await joe.async_notify("Hello, world!")
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["messages"][0][0] == "Hello, world!"
@@ -267,13 +267,13 @@ async def test_notification_send_dismiss(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["unread"] == 1
         # now dismiss the message via our own channel
         await communicator.send_json_to({"dismiss": str(marker_uuid)})
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "dismiss" in response
         assert "unread" in response
         assert response["dismiss"] == str(marker_uuid)
@@ -301,13 +301,13 @@ async def test_notification_send_dismiss_older(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["unread"] == 10
         # now dismiss the message via our own channel
         await communicator.send_json_to({"dismiss_older": str(marker_uuid)})
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "dismiss" in response
         assert "unread" in response
         assert response["dismiss"] == str(marker_uuid)
@@ -325,14 +325,14 @@ async def test_notification_send_reset(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["messages"] == []
         assert response["unread"] == 0
         # now reset via our own channel
         await communicator.send_json_to({"reset": True})
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "reset" in response
     finally:
         await communicator.disconnect()
@@ -347,14 +347,14 @@ async def test_notification_send_fetch(fake_user):
         connected, subprotocol = await communicator.connect()
         assert connected
         # initial message will have messages and unread count
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["messages"] == []
         assert response["unread"] == 0
         # now reset via our own channel
         await communicator.send_json_to({"fetch": True})
-        response = await communicator.receive_json_from()
+        response = await communicator.receive_json_from(timeout=5)
         assert "messages" in response
         assert "unread" in response
         assert response["messages"] == []
