@@ -66,3 +66,10 @@ def test_wsgi_application_loads():
     from edd import wsgi
 
     assert callable(wsgi.application)
+
+
+def test_not_running_with_debug_enabled():
+    from django.conf import settings
+
+    assert settings.DEBUG is False
+    assert "debug_toolbar" not in settings.INSTALLED_APPS
