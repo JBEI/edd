@@ -5,7 +5,6 @@ import edd.fields
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -81,7 +80,7 @@ class Migration(migrations.Migration):
                     "description",
                     models.TextField(
                         blank=True,
-                        help_text="Description of this object.",
+                        help_text="Description of the file layout.",
                         null=True,
                         verbose_name="Description",
                     ),

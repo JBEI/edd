@@ -1,4 +1,3 @@
-import io
 import pathlib
 
 import environ
@@ -385,20 +384,20 @@ def bootstrap_template(apps, now):
         updated=now,
     )
     template.save()
-    with open(template_file, "rb") as fp, io.BytesIO() as buff:
-        buff.write(fp.read())
-        cf = ContentFile(buff.getbuffer())
-        sbml_file = Attachment(
-            object_ref=template,
-            file=cf,
-            filename="StdEciJO1366.xml",
-            mime_type="text/xml",
-            file_size=template_file.stat().st_size,
-            created=now,
-        )
-        sbml_file.save()
-        # work-around: above save isn't actually saving the file
-        sbml_file.file.save(sbml_file.filename, cf)
+    with open(template_file, "rb") as fp:
+        cf = ContentFile(fp.read(), name="StdEciJO1366.xml")
+    sbml_file = Attachment(
+        object_ref=template,
+        file=cf,
+        filename="StdEciJO1366.xml",
+        mime_type="text/xml",
+        file_size=template_file.stat().st_size,
+        created=now,
+    )
+    sbml_file.save()
+    # connecting to parent after save
+    sbml_file.object_ref = template
+    sbml_file.save()
     # re-save SBMLTemplate object, getting around the chicken-and-egg problem
     template.sbml_file = sbml_file
     # can these be calculated from the model?
@@ -1605,7 +1604,7 @@ class Migration(migrations.Migration):
                     "file",
                     FileField(
                         help_text="Path to file data.",
-                        upload_to="%Y/%m/%d",
+                        upload_to=core.attachment_path,
                         verbose_name="File Path",
                     ),
                 ),

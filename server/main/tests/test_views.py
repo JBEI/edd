@@ -17,22 +17,26 @@ faker = Faker()
 EXCEL_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def upload_attachment(
-    client,
-    study,
-    filename="ImportData_FBA_HPLC.xlsx",
-    content_type=EXCEL_CONTENT_TYPE,
-):
-    url = reverse("main:attach_ajax", kwargs={"slug": study.slug})
-    with factory.load_test_file(filename) as fp:
-        upload = BytesIO(fp.read())
-    upload.name = filename
-    upload.content_type = content_type
+def upload_attachment_request(client, study, url_name="main:attach_ajax"):
+    """Sends a request to upload a small random attachment."""
+    url = reverse(url_name, kwargs={"slug": study.slug})
+    upload = BytesIO(faker.emoji().encode())
+    upload.name = faker.file_name()
+    upload.content_type = faker.mime_type()
     payload = {
         "description": faker.catch_phrase(),
         "file": upload,
     }
-    return client.post(url, data=payload, follow=True)
+    return client.post(url, data=payload, follow=True), upload.name
+
+
+def upload_attachment(client, study):
+    """Upload a small random attachment and return it."""
+    response, filename = upload_attachment_request(client, study)
+    # everything should go OK, but if it doesn't ...
+    if response.status_code != codes.ok:
+        print(response.content)
+    return study.attachments.get(filename=filename)
 
 
 class StudyCreateViewTests(TestCase):
@@ -135,14 +139,16 @@ class StudyViewTestCase(TestCase):
 class StudyAttachmentViewTests(StudyViewTestCase):
     def setUp(self):
         super().setUp()
-        upload_attachment(self.client, self.target_study)
-        self.attachment = self.target_study.attachments.first()
+        self.attachment = upload_attachment(self.client, self.target_study)
         kwargs = {
             "slug": self.target_study.slug,
             "file_id": self.attachment.id,
             "file_name": self.attachment.filename,
         }
         self.url = reverse("main:attachment", kwargs=kwargs)
+
+    def tearDown(self):
+        self.attachment.file.delete()
 
     def test_get(self):
         # viewing an attachment
@@ -279,39 +285,33 @@ class StudyOverviewViewTests(StudyViewTestCase):
 
     def test_overview_attach_post(self):
         # adding an attachment without AJAX swapping
-        filename = "ImportData_FBA_HPLC.xlsx"
-        url = reverse("main:attach", kwargs=self.study_kwargs)
-        with factory.load_test_file(filename) as fp:
-            upload = BytesIO(fp.read())
-        upload.name = filename
-        upload.content_type = EXCEL_CONTENT_TYPE
-        payload = {
-            "description": faker.catch_phrase(),
-            "file": upload,
-        }
-        response = self.client.post(url, data=payload, follow=True)
+        response, filename = upload_attachment_request(
+            self.client,
+            self.target_study,
+            url_name="main:attach",
+        )
         self.assertRedirects(response, self.url)
         self.assertContains(response, filename)
         assert response.status_code == codes.ok
         assert self.target_study.attachments.count() == 1
+        # cleanup
+        f = self.target_study.attachments.first()
+        f.file.delete()
 
     def test_overview_attach_post_ajax(self):
         # adding an attachment with AJAX swapping
-        filename = "ImportData_FBA_HPLC.xlsx"
-        url = reverse("main:attach_ajax", kwargs=self.study_kwargs)
-        with factory.load_test_file(filename) as fp:
-            upload = BytesIO(fp.read())
-        upload.name = filename
-        upload.content_type = EXCEL_CONTENT_TYPE
-        payload = {
-            "description": faker.catch_phrase(),
-            "file": upload,
-        }
-        response = self.client.post(url, data=payload, follow=True)
+        response, filename = upload_attachment_request(
+            self.client,
+            self.target_study,
+            url_name="main:attach",
+        )
         self.assertContains(response, filename)
         self.assertTemplateUsed(response, "main/include/attachments.html")
         assert response.status_code == codes.ok
         assert self.target_study.attachments.count() == 1
+        # cleanup
+        f = self.target_study.attachments.first()
+        f.file.delete()
 
     def test_overview_attach_without_a_file(self):
         url = reverse("main:attach_ajax", kwargs=self.study_kwargs)

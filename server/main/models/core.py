@@ -34,10 +34,13 @@ class Comment(models.Model):
         db_table = "comment"
 
     object_ref = models.ForeignKey(
-        "EDDObject", on_delete=models.CASCADE, related_name="comments"
+        "EDDObject",
+        on_delete=models.CASCADE,
+        related_name="comments",
     )
     body = models.TextField(
-        help_text=_("Content of the comment."), verbose_name=_("Comment")
+        help_text=_("Content of the comment."),
+        verbose_name=_("Comment"),
     )
     created = models.ForeignKey(
         Update,
@@ -50,6 +53,18 @@ class Comment(models.Model):
         return self.body
 
 
+def attachment_path(instance, filename):
+    datepath = arrow.now().strftime("%Y/%m/%d")
+    if instance and instance.object_ref_id:
+        # attachments created by bootstrap migration go in root
+        if instance.object_ref.created.mod_by_id == 1:
+            return filename
+        # others go in directory for date with parent ID prepended
+        return f"{datepath}/{instance.object_ref_id}-{filename}"
+    # otherwise, use filename directly
+    return f"{datepath}/{filename}"
+
+
 class Attachment(models.Model):
     """
     File uploads attached to an EDDObject; include MIME, file name,
@@ -60,16 +75,19 @@ class Attachment(models.Model):
         db_table = "attachment"
 
     object_ref = models.ForeignKey(
-        "EDDObject", on_delete=models.CASCADE, related_name="files"
+        "EDDObject",
+        on_delete=models.CASCADE,
+        related_name="files",
     )
     file = FileField(
         help_text=_("Path to file data."),
         max_length=None,
-        upload_to="%Y/%m/%d",
+        upload_to=attachment_path,
         verbose_name=_("File Path"),
     )
     filename = VarCharField(
-        help_text=_("Name of attachment file."), verbose_name=_("File Name")
+        help_text=_("Name of attachment file."),
+        verbose_name=_("File Name"),
     )
     created = models.ForeignKey(
         Update,
