@@ -317,7 +317,8 @@ class WorklistExportTests(TestCase):
     def test_line_and_assay_metadata(self):
         # create template
         template = models.WorklistTemplate.objects.create(
-            name="test_line_and_assay_metadata", protocol=self.protocol
+            name="test_line_and_assay_metadata",
+            protocol=self.protocol,
         )
         columns = [
             models.WorklistColumn.objects.create(
@@ -327,7 +328,10 @@ class WorklistExportTests(TestCase):
                 template=template,
             ),
             models.WorklistColumn.objects.create(
-                default_value="", heading="Position", ordering=2, template=template
+                default_value="",
+                heading="Position",
+                ordering=2,
+                template=template,
             ),
             models.WorklistColumn.objects.create(
                 default_value="",

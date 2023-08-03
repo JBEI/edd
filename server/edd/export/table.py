@@ -143,7 +143,6 @@ class ExportSelection:
         assayId=None,
         measureId=None,
     ):
-
         hierarchy = ["study", "line", "assay", "measurement"]
         ids = {
             "study": studyId,
@@ -233,41 +232,48 @@ class ExportSelection:
         #     Prefetch('measurement_type', queryset=type_queryset)
         # )
         # find all measurements contained by the listed IDs
-        self._measure_queryset = (
-            models.Measurement.objects.distinct()
-            .filter(
-                # first filter based on whether user has access
-                models.Study.access_filter(user, via=("study",)),
-                # then find all lines that match at least one of the inputs
-                ids_filter("measurement", ids),
-            )
-            .order_by("assay__protocol_id")
+        self._measure_queryset = models.Measurement.objects.distinct().filter(
+            # first filter based on whether user has access
+            models.Study.access_filter(user, via=("study",)),
+            # then find all lines that match at least one of the inputs
+            ids_filter("measurement", ids),
         )
 
     @property
     def studies(self):
         """List of studies allowed to be viewed in the selection."""
-        return self._study_queryset
+        return self._study_queryset.order_by("pk")
 
     @property
     def lines(self):
         """A queryset of lines included in the selection."""
-        return (
-            self._line_queryset.select_related("experimenter__userprofile", "updated")
-            .annotate(strain_names=ArrayAgg("strains__name"))
-            .prefetch_related(Prefetch("strains", to_attr="strain_list"))
-        )
+        strain_prefetch = Prefetch("strains", to_attr="strain_list")
+        qs = self._line_queryset.select_related("experimenter__userprofile", "updated")
+        qs = qs.annotate(strain_names=ArrayAgg("strains__name"))
+        qs = qs.prefetch_related(strain_prefetch)
+        return qs.order_by("study_id", "pk")
 
     @property
     def assays(self):
         """A queryset of assays included in the selection."""
-        return self._assay_queryset
+        return self._assay_queryset.order_by(
+            "study_id",
+            "protocol_id",
+            "line_id",
+            "pk",
+        )
 
     @property
     def measurements(self):
         """A queryset of measurements to include."""
         # TODO: add in empty measurements for assays that have none?
-        return self._measure_queryset
+        return self._measure_queryset.order_by(
+            "study_id",
+            "assay__protocol_id",
+            "assay__line_id",
+            "assay_id",
+            "pk",
+        )
 
 
 class ExportOption:
@@ -277,12 +283,18 @@ class ExportOption:
     DATA_COLUMN_BY_POINT = "dbyp"
     LINE_COLUMN_BY_DATA = "lbyd"
     LAYOUT_CHOICE = (
-        (DATA_COLUMN_BY_LINE, _("columns of metadata types, and rows of lines/assays")),
+        (
+            DATA_COLUMN_BY_LINE,
+            _("columns of metadata types, and rows of lines/assays"),
+        ),
         (
             DATA_COLUMN_BY_POINT,
             _("columns of metadata types, and rows of single points"),
         ),
-        (LINE_COLUMN_BY_DATA, _("columns of lines/assays, and rows of metadata types")),
+        (
+            LINE_COLUMN_BY_DATA,
+            _("columns of lines/assays, and rows of metadata types"),
+        ),
     )
     COMMA_SEPARATED = ","
     COMMA_SEPARATED_TOKEN = ","
@@ -553,8 +565,9 @@ class WorklistExport(TableExport):
     def _do_worklist(self, tables):
         protocol = self.worklist.protocol
         assays = self.selection.assays.filter(
-            active=True, protocol_id=protocol.id,
-        ).order_by("line_id")
+            active=True,
+            protocol_id=protocol.id,
+        )
         lines = self.selection.lines.filter(active=True).order_by("pk")
         table = tables["all"]
 
