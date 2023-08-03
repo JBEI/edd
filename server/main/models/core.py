@@ -724,6 +724,20 @@ class Protocol(models.Model):
         # return the first created Protocol matching the name
         return qs.order_by(sort, "created__mod_time").first()
 
+    def to_json(self, depth=0):
+        # these may not be included in .select_related()
+        updated = getattr(self, "updated", None)
+        created = getattr(self, "created", None)
+        return {
+            "id": self.pk,
+            "name": self.name,
+            "external_url": self.external_url,
+            "active": self.active,
+            # Always include expanded created/updated objects if present, instead of IDs
+            "modified": updated.to_json(depth) if updated else None,
+            "created": created.to_json(depth) if created else None,
+        }
+
     def __str__(self):
         return self.name
 
@@ -905,7 +919,6 @@ class Line(EDDObject):
             control=self.control,
             contact=contact,
             experimenter=self.get_attr_depth("experimenter", depth),
-            strain=self.strain_ids,
         )
         if depth > 0:
             json_dict.update(study=self.study_id)
