@@ -14,7 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 NotificationBase = namedtuple(
-    "NotificationBase", ("message", "tags", "payload", "time", "uuid")
+    "NotificationBase",
+    (
+        "message",
+        "tags",
+        "payload",
+        "time",
+        "uuid",
+    ),
 )
 
 
@@ -130,34 +137,11 @@ class BaseBroker:
             logger.debug(f"group_send to {group}: {payload}")
             async_to_sync(channel_layer.group_send)(group, payload)
 
-    async def async_mark_all_read(self, uuid=None):
-        last = await sync_to_async(self._load)(uuid)
-        seq = await sync_to_async(self._loadAll)()
-        # TODO loop blocks on IO because _loadAll() is not async generator
-        for note in seq:
-            if last is None or note.time <= last.time:
-                await self.async_mark_read(note.uuid)
-        # send update to Channel Group
-        await self.async_send_to_groups({"type": "notification.reset"})
-
-    async def async_mark_read(self, uuid):
-        await sync_to_async(self._remove)(uuid)
-        await self.async_send_to_groups(
-            {"type": "notification.dismiss", "uuid": JSONEncoder.dumps(uuid)}
-        )
-
-    async def async_notify(self, message, tags=None, payload=None, uuid=None):
-        note = Notification(message, tags=tags, payload=payload, uuid=uuid)
-        # _store notification to self
-        await sync_to_async(self._store)(note)
-        # send notification to Channel Groups
-        await self.async_send_to_groups(
-            {"type": "notification", "notice": JSONEncoder.dumps(note.prepare())}
-        )
-
-    async def async_send_to_groups(self, payload):
-        async for group in self.agroup_names():
-            await channel_layer.group_send(group, payload)
+    # async versions
+    async_mark_all_read = sync_to_async(mark_all_read)
+    async_mark_read = sync_to_async(mark_read)
+    async_notify = sync_to_async(notify)
+    async_send_to_groups = sync_to_async(send_to_groups)
 
 
 class RedisBroker(BaseBroker):
@@ -219,7 +203,8 @@ class RedisBroker(BaseBroker):
             # shortcut for redis
             # when not marking read from a given point: delete everything
             self._redis.delete(
-                self._key_user(), *self._redis.keys(f"{self._key_user()}:*")
+                self._key_user(),
+                *self._redis.keys(f"{self._key_user()}:*"),
             )
         # parent will loop over all
         # remove anything older than uuid
