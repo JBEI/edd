@@ -10,6 +10,8 @@ from requests.sessions import Session
 from jbei.rest.auth import HmacAuth
 from main import models
 
+from .select2 import Select2
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +20,6 @@ class RegistryError(Exception):
 
 
 class StrainRegistry:
-
     # Folder Collections
     FEATURED = "FEATURED"
     PERSONAL = "PERSONAL"
@@ -179,6 +180,18 @@ class StrainRegistry:
                 break
             start = start + count
             yield from results
+
+
+@Select2("Registry")
+@Select2("Strain")
+def strain_autocomplete(request):
+    ice = StrainRegistry()
+    start, end = request.range
+    with ice.login(request.user):
+        # NOTE: this API only supports starting index,
+        # plus gives no indication of further elements
+        search = ice.search_page(request.term, start)
+        return [{"text": entry.name, **entry.payload} for entry in search], False
 
 
 class AdminRegistry(StrainRegistry):

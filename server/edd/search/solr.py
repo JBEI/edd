@@ -11,6 +11,8 @@ from django_auth_ldap.backend import _LDAPUser
 from edd import utilities
 from main import models
 
+from .select2 import Select2
+
 logger = logging.getLogger(__name__)
 # tuple for request connection and read timeouts, respectively, in seconds
 timeout = (10, 10)
@@ -626,3 +628,14 @@ class MeasurementTypeSearch(SolrSearch):
         else:
             item = obj
         return item.to_solr_json()
+
+
+@Select2("GenericOrMetabolite")
+def metaboliteish_autocomplete(request):
+    core = MeasurementTypeSearch()
+    start, end = request.range
+    result = core.query(query=request.term, i=start, size=request.DEFAULT_RESULT_COUNT)
+    response = result.get("response", ())
+    items = response.get("docs", [])
+    count = response.get("numFound", 0)
+    return items, count > end

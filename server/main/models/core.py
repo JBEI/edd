@@ -8,11 +8,12 @@ from django.conf import settings
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import Case, Q, When
+from django.db.models import Case, F, Q, When
 from django.template.defaultfilters import slugify
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import FileField, VarCharField
+from edd.search.select2 import Select2
 
 from .common import EDDSerialize, qfilter
 from .measurement_type import MeasurementType, MeasurementUnit, Metabolite
@@ -760,6 +761,17 @@ class Protocol(models.Model):
         return self.name
 
 
+@Select2("Protocol")
+def protocol_autocomplete(request):
+    start, end = request.range
+    found = Protocol.objects.filter(name__iregex=request.term).order_by("name")
+    found = request.optional_sort(found)
+    found = found.annotate(text=F("name"))
+    count = found.count()
+    # expect items to have an "id" field and "text" field, at minimum
+    return found.values("id", "name", "text")[start:end], count > end
+
+
 class Strain(EDDObject):
     """A link to a strain/part in the JBEI ICE Registry."""
 
@@ -1291,6 +1303,13 @@ class Measurement(EDDMetadata, EDDSerialize):
             assay__protocol_id=protocol_id,
         )
         return active
+
+
+@Select2("Compartment")
+def compartment_autocomplete(request):
+    # only 3 elements, just always return the whole thing
+    values = [{"id": c[0], "text": str(c[1])} for c in Measurement.Compartment.CHOICE]
+    return values, False
 
 
 def measurement_formal_id(measurement):

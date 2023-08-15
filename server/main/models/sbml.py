@@ -8,6 +8,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
+from edd.search.select2 import Select2
 
 from .core import Attachment, EDDObject
 from .measurement_type import MeasurementType
@@ -133,6 +134,27 @@ class MetaboliteExchange(models.Model):
         return self.exchange_name
 
 
+@Select2("SbmlExchange")
+def exchange_autocomplete(request):
+    term = request.term
+    start, end = request.range
+    q = (
+        models.Q(reactant_name__iregex=term)
+        | models.Q(exchange_name__iregex=term)
+        | models.Q(measurement_type__type_name__iregex=term)
+    )
+    template = request["template"]
+    if not template:
+        message = "Must provide a template ID for SBML exchange searches."
+        raise ValueError(message)
+    found = MetaboliteExchange.objects.filter(q, sbml_template_id=template)
+    found = request.optional_sort(found.order_by("exchange_name"))
+    found = found.annotate(text=models.F("measurement_type__type_name"))
+    count = found.count()
+    values = found.values("id", "exchange_name", "reactant_name", "text")
+    return values[start:end], count > end
+
+
 class MetaboliteSpecies(models.Model):
     """Mapping for a metabolite to an species defined by a SBML template."""
 
@@ -176,3 +198,24 @@ class MetaboliteSpecies(models.Model):
 
     def __str__(self):
         return self.species
+
+
+@Select2("SbmlSpecies")
+def species_autocomplete(request):
+    term = request.term
+    start, end = request.range
+    q = (
+        models.Q(species__iregex=term)
+        | models.Q(short_code__iregex=term)
+        | models.Q(measurement_type__type_name__iregex=term)
+    )
+    template = request["template"]
+    if not template:
+        message = "Must provide a template ID for SBML exchange searches."
+        raise ValueError(message)
+    found = MetaboliteSpecies.objects.filter(q, sbml_template_id=template)
+    found = request.optional_sort(found.order_by("species"))
+    found = found.annotate(text=models.F("measurement_type__type_name"))
+    count = found.count()
+    values = found.values("id", "short_code", "species", "text")
+    return values[start:end], count > end

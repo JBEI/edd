@@ -4,11 +4,12 @@ import dataclasses
 import logging
 
 from django.db import models
-from django.db.models import F, Func
+from django.db.models import F, Func, Q
 from django.db.models.functions import Cast
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
+from edd.search.select2 import Select2
 
 from .common import EDDSerialize
 
@@ -336,6 +337,34 @@ class MetadataType(models.Model, EDDSerialize):
             "default": self.default_value,
             "context": self.for_context,
         }
+
+
+@Select2("MetadataType")
+def metadata_autocomplete(request):
+    term = request.term
+    start, end = request.range
+    term_filter = Q(type_name__iregex=term) | Q(group__group_name__iregex=term)
+    match request["types"]:
+        case str(one_type) if one_type in MetadataType.CONTEXT_VALUES:
+            type_filter = Q(for_context=one_type)
+        case [*types]:
+            type_filter = Q(for_context__in=types)
+        case _:
+            logger.warning("No pattern match on metadata.types")
+            type_filter = Q()
+    match request["fields"]:
+        case "true":
+            type_filter = type_filter & Q(type_field__isnull=False)
+        case "false":
+            type_filter = type_filter & Q(type_field__isnull=True)
+    found = MetadataType.objects.filter(term_filter, type_filter).order_by("type_name")
+    found = found.annotate(
+        group_name=F("group__group_name"),
+        text=F("type_name"),
+    )
+    count = found.count()
+    values = found.values("id", "type_name", "description", "group_name", "text")
+    return values[start:end], count > end
 
 
 class EDDMetadata(models.Model):

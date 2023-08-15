@@ -19,6 +19,7 @@ from rdflib.term import URIRef
 from edd.celery import app
 from edd.fields import VarCharField
 from edd.search.registry import StrainRegistry
+from edd.search.select2 import Select2
 
 from .common import EDDSerialize
 from .update import Datasource
@@ -380,6 +381,18 @@ class Metabolite(MeasurementType):
         )
 
 
+@Select2("Metabolite")
+def metabolite_autocomplete(request):
+    q = Q(type_name__iregex=request.term) | Q(smiles__iregex=request.term)
+    found = Metabolite.objects.filter(q).order_by("type_name")
+    found = request.optional_sort(found)
+    found = found.annotate(text=F("type_name"))
+    count = found.count()
+    values = found.values("id", "pubchem_cid", "smiles", "type_name", "text")
+    start, end = request.range
+    return values[start:end], count > end
+
+
 @app.task(ignore_result=True, rate_limit="6/m")
 def metabolite_load_pubchem(pk):
     try:
@@ -473,6 +486,17 @@ class GeneIdentifier(MeasurementType):
         except ValidationError:
             # fall back to checking for same identifier used by same user
             return cls._load_fallback(identifier, user)
+
+
+@Select2("Gene")
+def gene_autocomplete(request):
+    start, end = request.range
+    found = GeneIdentifier.objects.filter(type_name__iregex=request.term)
+    found = request.optional_sort(found.order_by("type_name"))
+    found = found.annotate(text=F("type_name"))
+    count = found.count()
+    values = found.values("id", "type_name", "text")
+    return values[start:end], count > end
 
 
 class ProteinIdentifier(MeasurementType):
@@ -745,6 +769,20 @@ def lookup_protein_in_uniprot(pk):
         raise Retry()
 
 
+@Select2("Protein")
+def protein_autocomplete(request):
+    term = request.term
+    start, end = request.range
+    q = Q(type_name__iregex=term) | Q(accession_id__iregex=term)
+    found = ProteinIdentifier.objects.filter(q)
+    found = request.optional_sort(found.order_by("type_name"))
+    found = found.annotate(text=F("type_name"))
+    count = found.count()
+    values = found.values("id", "accession_id", "type_name", "text")
+    # expect items to have an "id" field and "text" field, at minimum
+    return values[start:end], count > end
+
+
 class StrainLinkMixin:
     """Common code for objects linked to Strains."""
 
@@ -893,3 +931,15 @@ class MeasurementUnit(models.Model):
 
     def __str__(self):
         return self.unit_name
+
+
+@Select2("Unit")
+def unit_autocomplete(request):
+    start, end = request.range
+    found = MeasurementUnit.objects.filter(unit_name__iregex=request.term)
+    found = request.optional_sort(found.order_by("unit_name"))
+    found = found.annotate(text=F("unit_name"))
+    count = found.count()
+    values = found.values("id", "text", "unit_name")
+    # expect items to have an "id" field and "text" field, at minimum
+    return values[start:end], count > end

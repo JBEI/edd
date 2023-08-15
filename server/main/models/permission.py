@@ -1,12 +1,17 @@
 """
 Models related to setting permissions to view/edit objects in EDD.
 """
+import json
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.db import models
+from django.template.loader import get_template
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
+from edd.search.select2 import Select2
 
 
 class Permission:
@@ -213,3 +218,98 @@ class EveryonePermission(EveryoneMixin, StudyPermission):
     def can_make_public(user):
         """Test if a given user can make public permissions"""
         return user.is_superuser or user.has_perm("main.add_everyonepermission")
+
+
+@Select2("Group")
+def group_autocomplete(request):
+    start, end = request.range
+    found = Group.objects.filter(name__iregex=request.term)
+    found = request.optional_sort(found.order_by("name"))
+    found = found.annotate(text=models.F("name"))
+    count = found.count()
+    values = found.values("id", "name", "text")
+    return values[start:end], count > end
+
+
+@Select2("Permission")
+def permission_autocomplete(request):
+    term = request.term
+    start, end = request.range
+    # unified fields so both User and Group can be queried together
+    value_fields = ("id", "text", "type", "backup")
+    groups = Group.objects.filter(name__iregex=term)
+    # display the name always, use name as sort key "backup"
+    groups = groups.annotate(
+        text=models.F("name"),
+        type=models.Value("group"),
+        backup=models.F("name"),
+    )
+    groups = groups.values(*value_fields)
+    q = (
+        models.Q(username__iregex=term)
+        | models.Q(first_name__iregex=term)
+        | models.Q(last_name__iregex=term)
+        | models.Q(emailaddress__email__iregex=term)
+        | models.Q(userprofile__initials__iregex=term)
+    )
+    User = get_user_model()
+    users = User.profiles.filter(q).distinct()
+    # display display_name preferentially, fallback to username as "backup"
+    users = users.annotate(
+        text=models.F("userprofile__display_name"),
+        type=models.Value("user"),
+        backup=models.F("username"),
+    )
+    users = users.values(*value_fields)
+    union = groups.union(users).order_by("backup")
+    count = union.count()
+    template = get_template("edd/profile/permission_autocomplete_item.html")
+    items = [
+        {
+            "html": template.render({"item": item}),
+            "id": json.dumps(item),
+            "text": item.get("text", _("Unknown Record")),
+        }
+        for item in union[start:end]
+    ]
+    if start == 0:
+        everyone = {"type": "everyone"}
+        # add an entry for "everyone" permission at top of the list
+        items = [
+            {
+                "html": template.render({"item": everyone}),
+                "id": json.dumps(everyone),
+                "text": _("Any User"),
+            },
+            *items,
+        ]
+    return items, count > end
+
+
+@Select2("User")
+def user_autocomplete(request):
+    term = request.term
+    start, end = request.range
+    User = get_user_model()
+    q = (
+        models.Q(username__iregex=term)
+        | models.Q(first_name__iregex=term)
+        | models.Q(last_name__iregex=term)
+        | models.Q(emailaddress__email__iregex=term)
+        | models.Q(userprofile__initials__iregex=term)
+    )
+    found = User.profiles.filter(q).distinct()
+    found = request.optional_sort(found.order_by("username"))
+    count = found.count()
+    template = get_template("edd/profile/user_autocomplete_item.html")
+    values = [
+        {
+            "html": template.render({"user": user}),
+            "id": user.id,
+            "initials": user.initials,
+            "text": user.profile.display,
+            "username": user.username,
+        }
+        for user in found[start:end]
+    ]
+    return values, count > end
