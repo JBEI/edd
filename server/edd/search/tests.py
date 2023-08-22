@@ -1,6 +1,5 @@
 """Tests for Solr API"""
 import collections
-import time
 from unittest.mock import patch
 
 import pytest
@@ -108,18 +107,9 @@ def test_integration():
     # try all the main methods and verify they work as expected
     # _default is the built-in schema config
     search = solr.SolrSearch(core="_default")
-    # create a collection to index things under _default schema
-    # this test hits some timeout errors, so try waiting and retry
-    for _loop in range(3):
-        try:
-            search.create_collection()
-        except solr.SolrException:
-            time.sleep(10)
-            continue
-        break
-    else:
-        raise AssertionError("Taking too long to create integration index")
     try:
+        # create a collection to index things under _default schema
+        search.create_collection()
         # checking length on brand-new collection
         assert len(search) == 0
         # adding stuff to collection

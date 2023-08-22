@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-import time
+import datetime
 from uuid import uuid4
 
 import faker
@@ -130,13 +130,14 @@ def test_redisbroker_can_remove_specific_messages(edd_broker):
     assert marker_text not in {n.message for n in edd_broker}
 
 
-def test_redisbroker_can_remove_older_messages(edd_broker):
+def test_redisbroker_can_remove_older_messages(edd_broker, time_machine):
+    time_machine.move_to(datetime.datetime.now())
     marker_uuid = uuid4()
     expected_text = fake.sentence()
     edd_broker.notify(fake.sentence())
     edd_broker.notify(fake.sentence(), uuid=marker_uuid)
-    # add sleep so next notify gets a distinct timestamp from marker
-    time.sleep(1)
+    # shift time so next notify gets a distinct timestamp from marker
+    time_machine.coordinates.shift(datetime.timedelta(seconds=1))
     edd_broker.notify(expected_text)
     edd_broker.mark_all_read(uuid=marker_uuid)
     assert edd_broker.count() == 1
