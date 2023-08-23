@@ -23,7 +23,15 @@ def watch_static(context):
     # then, run /code/manage.py edd_collectstatic --watch &
 
 
-@invoke.task(pre=[prereq.errorpage, prereq.rabbitmq, prereq.owner, prereq.checkuser])
+@invoke.task(
+    pre=[
+        prereq.errorpage,
+        prereq.rabbitmq,
+        prereq.owner,
+        prereq.checkuser,
+        prereq.ice,
+    ]
+)
 def gunicorn(context):
     """Executes EDD as a Django site with Gunicorn."""
     with open(STARTUP_SCRIPT, "w") as script:

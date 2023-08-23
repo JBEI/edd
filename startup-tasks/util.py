@@ -62,6 +62,18 @@ def get_version_hash(context):
     return context.run("cat /edd.hash", hide=True).stdout.strip()
 
 
+def is_ice_available():
+    try:
+        if url := env("ICE_URL", default=False):
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.status_code < 400
+        return True
+    except Exception as e:
+        print(f"Connection to ICE failed with {e}")
+    return False
+
+
 def is_postgres_available():
     try:
         with get_postgres() as connection, connection.cursor() as cursor:

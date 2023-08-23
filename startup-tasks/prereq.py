@@ -228,3 +228,9 @@ def checkuser(context):
     except Exception as e:
         print(e)
         raise invoke.exceptions.Exit("Initial admin account creation failed") from e
+
+
+@invoke.task(pre=[code, postgres])
+def ice(context, limit=10):
+    """Waits for the ICE service to begin responding to connections."""
+    util.retry(util.is_ice_available, limit=limit)
