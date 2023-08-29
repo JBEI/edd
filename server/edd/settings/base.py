@@ -12,6 +12,7 @@ import ipaddress
 import logging
 
 import environ
+from django.contrib.messages import constants as messages
 
 
 def load_secret(name, default=None):
@@ -312,3 +313,13 @@ STATICFILES_STORAGE = "edd.utilities.StaticFilesStorage"
 # File upload location
 MEDIA_ROOT = "/var/www/uploads"
 MEDIA_URL = "/uploads/"
+
+
+# Messages customization
+MESSAGE_TAGS = {
+    # display debug messages as bootstrap secondary class (default theme, grey)
+    messages.DEBUG: "secondary",
+    # display error messages as bootstrap danger class (default theme, red)
+    messages.ERROR: "danger",
+    # all other default message classes map to appropriate bootstrap classes
+}

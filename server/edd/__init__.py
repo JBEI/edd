@@ -63,8 +63,14 @@ class TestCase(DjangoTestCase):
 
 class SafeExceptionReporterFilter(debug.SafeExceptionReporterFilter):
     url_settings = re.compile(r"URL|BACKEND")
+    ignored_settings = {
+        # contains non-string keys, non-secret values; don't try cleansing them
+        "MESSAGE_TAGS",
+    }
 
     def cleanse_setting(self, key, value):
+        if key in self.ignored_settings:
+            return value
         # use the base implementation
         cleansed = super().cleanse_setting(key, value)
         if not isinstance(key, str):
@@ -72,7 +78,7 @@ class SafeExceptionReporterFilter(debug.SafeExceptionReporterFilter):
                 f"Not trying to match non-string key {key} while cleansing settings."
             )
         # if the setting is a URL, try to parse it and replace any password
-        elif self.url_settings.search(key):
+        if self.is_sensitive_key(key):
             try:
                 parsed = None
                 if isinstance(value, str):
@@ -81,13 +87,23 @@ class SafeExceptionReporterFilter(debug.SafeExceptionReporterFilter):
                     # urlparse returns a read-only tuple, use a list to rewrite parts
                     parsed_list = list(parsed)
                     parsed_list[1] = parsed.netloc.replace(
-                        f":{parsed.password}", f":{self.cleansed_substitute}", 1
+                        f":{parsed.password}",
+                        f":{self.cleansed_substitute}",
+                        1,  # count, only replacing once
                     )
                     # put Humpty Dumpty back together again
                     cleansed = urlunparse(parsed_list)
             except Exception:
                 logger.exception("Exception cleansing URLs for error reporting")
         return cleansed
+
+    def is_sensitive_key(self, key):
+        try:
+            return self.url_settings.search(key)
+        except TypeError:
+            # Some settings have non-string sub-keys (e.g. MESSAGE_TAGS)
+            # These are assumed never sensitive in this filter
+            return False
 
 
 def monkey_patch_mail():
