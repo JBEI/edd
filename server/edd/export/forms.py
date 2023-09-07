@@ -40,7 +40,12 @@ class ExportSelectionForm(forms.Form):
     template_name = "django/forms/div.html"
 
     def __init__(
-        self, user=None, exclude_disabled=True, fallback=None, *args, **kwargs
+        self,
+        user=None,
+        exclude_disabled=True,
+        fallback=None,
+        *args,
+        **kwargs,
     ):
         """
         A form for selecting measurements to export. If a parent object is passed to

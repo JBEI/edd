@@ -1,6 +1,5 @@
 {% extends "edd_base.html" %}
-{% load static %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block js_css %}
   {{ block.super }}
@@ -16,6 +15,18 @@
 {% endblock head_title %}
 
 {% block content %}
+{% if select_form.errors %}
+<div class="alert alert-warning my-2" role="alert">
+  <p>
+    {% blocktranslate %}
+    Could not validate items for export. This usually happens when reloading the page.
+    Please try going back and using the Export Data button again. If you believe this is
+    an error, contact your EDD administrators and include the validation errors below.
+    {% endblocktranslate %}
+  </p>
+  {{ select_form.errors }}
+</div>
+{% else %}
 <!-- Line info section -->
 {% include "edd/export/linetable.html" %}
 
@@ -79,4 +90,5 @@
     </div>
   </div>
 </form>
+{% endif %}
 {% endblock content %}

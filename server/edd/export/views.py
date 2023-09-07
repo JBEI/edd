@@ -25,13 +25,9 @@ class EDDExportView(generic.TemplateView):
     _selection = ExportSelection(None)
 
     def get(self, request, *args, **kwargs):
-        context = self.get_context_data(**kwargs)
-        context.update(self.init_forms(request, request.GET))
+        forms_context = self.init_forms(request, request.GET)
+        context = self.get_context_data(**forms_context, **kwargs)
         return self.render_to_response(context)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        return context
 
     def get_selection(self):
         return self._selection
@@ -47,10 +43,11 @@ class EDDExportView(generic.TemplateView):
         try:
             self._selection = select_form.get_selection()
         except Exception as e:
+            logger.warning(f"Selection errors: {select_form.errors}")
             logger.exception(f"Failed to validate forms for export: {e}")
         primary = None
-        if self.selection.studies[:1]:
-            primary = self.selection.studies[0]
+        if study_slice := self.selection.studies[:1]:
+            primary = study_slice[0]
         return {
             "download": payload.get("download", None),
             "primary_study": primary,
@@ -60,8 +57,8 @@ class EDDExportView(generic.TemplateView):
         }
 
     def post(self, request, *args, **kwargs):
-        context = self.get_context_data(**kwargs)
-        context.update(self.init_forms(request, request.POST))
+        forms_context = self.init_forms(request, request.POST)
+        context = self.get_context_data(**forms_context, **kwargs)
         if "download" == request.POST.get("action", None):
             self.submit_export(request, context)
             return HttpResponse(status=204)
