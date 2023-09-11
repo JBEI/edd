@@ -36,7 +36,7 @@ CMD ["/bin/zsh"]
 
 # ---
 
-FROM library/python:3.11-slim-bullseye as pybase
+FROM library/python:3.11-slim-bookworm as pybase
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
@@ -123,7 +123,7 @@ RUN set -ex \
 
 # ---
 
-FROM library/python:3.11-slim-bullseye as docs-build
+FROM library/python:3.11-slim-bookworm as docs-build
 
 WORKDIR /usr/local/edd
 COPY . /usr/local/edd/
