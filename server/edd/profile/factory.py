@@ -7,6 +7,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = get_user_model()
         django_get_or_create = ("username",)
+        skip_postgeneration_save = True
 
     username = factory.Faker("user_name")
     email = factory.Faker("safe_email")
