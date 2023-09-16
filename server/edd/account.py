@@ -14,6 +14,15 @@ from django.utils.translation import gettext_lazy as _
 logger = logging.getLogger(__name__)
 
 
+def deny_signup(request):
+    """
+    Used to illustrate overriding EDD signup behavior. A function taking a
+    request to the signup view can return a boolean to indicate whether to
+    allow the signup or return a page stating signup is closed.
+    """
+    return False
+
+
 class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
     """
     Adapter overrides default behavior for username selection and email verification.
@@ -35,7 +44,9 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
                 "user": user,
             }
             account.adapter.get_adapter(request).send_mail(
-                "account/email/approval_requested", contact, context
+                "account/email/approval_requested",
+                contact,
+                context,
             )
 
     def get_email_confirmation_url(self, request, emailconfirmation):
@@ -77,9 +88,11 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
         # notify how to reset LDAP password
         for user in ldap_users:
             self._reset_for_ldap(request, email, user)
+            return []
         # if a social account and not LDAP, notify to login with social account
         for user in social_users - ldap_users:
             self._reset_for_social(request, email, user)
+            return []
         # any remaining users can reset a local password
         return local_users - ldap_users - social_users
 
@@ -90,7 +103,9 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
             "user": user,
         }
         account.adapter.get_adapter(request).send_mail(
-            "account/email/ldap_reset_requested", email, context
+            "account/email/ldap_reset_requested",
+            email,
+            context,
         )
 
     def _reset_for_social(self, request, email, user):
@@ -101,7 +116,9 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
             "user": user,
         }
         account.adapter.get_adapter(request).send_mail(
-            "account/email/social_reset_requested", email, context
+            "account/email/social_reset_requested",
+            email,
+            context,
         )
 
     def _find_ldap_users_by_email(self, email):
@@ -109,8 +126,7 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
         ldap_backends = (b for b in auth.get_backends() if hasattr(b, "ldap"))
         for b in ldap_backends:
             # return first matching LDAP user
-            found = b.populate_user(email)
-            if found:
+            if found := b.populate_user(email):
                 return [found]
         return []
 
@@ -174,7 +190,6 @@ def make_a11y_form(form):
 
 
 class ResetPasswordForm(forms.ResetPasswordForm):
-
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
 
@@ -203,7 +218,6 @@ class ResetPasswordForm(forms.ResetPasswordForm):
 
 
 class SignupForm(forms.SignupForm):
-
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
 
@@ -216,7 +230,6 @@ class SignupForm(forms.SignupForm):
 
 
 class AddEmailForm(forms.AddEmailForm):
-
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
 
@@ -226,7 +239,6 @@ class AddEmailForm(forms.AddEmailForm):
 
 
 class ChangePasswordForm(forms.ChangePasswordForm):
-
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
 
@@ -236,7 +248,6 @@ class ChangePasswordForm(forms.ChangePasswordForm):
 
 
 class SetPasswordForm(forms.SetPasswordForm):
-
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
 
@@ -249,7 +260,6 @@ class SetPasswordForm(forms.SetPasswordForm):
 
 
 class ResetPasswordKeyForm(forms.ResetPasswordKeyForm):
-
     error_css_class = "is-invalid"
     template_name = "main/forms/simple_bootstrap.html"
 
