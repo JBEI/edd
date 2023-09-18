@@ -12,27 +12,25 @@ COPY ./package.json /run/package.json
 
 WORKDIR /run/
 
-RUN apk add --no-cache zsh \
- && yarn install --non-interactive --ignore-optional \
- && yarn cache clean
+RUN apk add --no-cache zsh
 
 CMD ["/bin/zsh"]
 
 # ---
 
-FROM node:lts-alpine as edd-node-bs5
-
+FROM oven/bun as edd-bun
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
+COPY ./package.json /home/bun/app/package.json
+WORKDIR /home/bun/app
+RUN bun install --non-interactive --ignore-optional
 
-COPY ./package.bs5.json /run/package.json
+# ---
 
-WORKDIR /run/
-
-RUN apk add --no-cache zsh \
- && yarn install --non-interactive --ignore-optional \
- && yarn cache clean
-
-CMD ["/bin/zsh"]
+FROM oven/bun as edd-bun-bs5
+LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
+COPY ./package.bs5.json /home/bun/app/package.json
+WORKDIR /home/bun/app
+RUN bun install --non-interactive --ignore-optional
 
 # ---
 
@@ -146,16 +144,18 @@ FROM edd-node as typescript
 
 WORKDIR /run/
 COPY ./typescript ./.prettierrc.js /run/
+COPY --from=edd-bun /home/bun/app/node_modules /run/node_modules
 
 # build & test the TypeScript code
 RUN ls -al && yarn build
 
 # ---
 
-FROM edd-node-bs5 as typescript-bs5
+FROM edd-node as typescript-bs5
 
 WORKDIR /run/
 COPY ./typescript-bs5 ./.prettierrc.js /run/
+COPY --from=edd-bun-bs5 /home/bun/app/node_modules /run/node_modules
 
 # build & test the TypeScript code
 RUN ls -al && yarn build

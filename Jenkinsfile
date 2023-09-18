@@ -10,9 +10,6 @@ def result = buildRepo([
         // documentation
         ["docker": ["repo": "jbei/edd-docs", "target": "docs"]],
     ],
-    "test": [
-        "scriptFile": "./bin/unittest.sh",
-    ],
 ])
 // NOTE: single ${VARIABLE} replaced in Groovy; double $${VARIABLE} in Bash.
 def testScript = $/#!/bin/bash -e
