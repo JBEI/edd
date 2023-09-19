@@ -1415,7 +1415,9 @@ class ExperimentDescFileParser(CombinatorialInputParser):
         :param convert_to_string: True to convert the cell value to a string if it isn't stored
         as one.
         """
-        cell_content = self._raw_cell_value(row[col_index])
+        cell_content = None
+        if row and len(row) > col_index:
+            cell_content = self._raw_cell_value(row[col_index])
 
         if cell_content is None:
             return None
