@@ -438,7 +438,8 @@ class GeneIdentifier(MeasurementType):
             if link.check_ice(user, identifier):
                 # save link if found in ICE
                 datasource = Datasource.objects.create(
-                    name="ICE Registry", url=link.strain.registry_url
+                    name="ICE Registry",
+                    url=link.strain.registry_url,
                 )
                 gene = cls.objects.create(
                     type_name=identifier,
@@ -456,36 +457,48 @@ class GeneIdentifier(MeasurementType):
         )
 
     @classmethod
+    def load_existing(cls, identifier, user):
+        """
+        Load an existing gene identifier, either a non-provisional one from an
+        external datasource with a matching name, or a provisional one created
+        by the same user.
+        """
+        user_specific_provisional = Q(
+            provisional=True,
+            strainlink__isnull=True,
+            type_name=identifier,
+            type_source__created__mod_by=user,
+        )
+        external_validated = Q(
+            provisional=False,
+            type_name=identifier,
+        )
+        return cls.objects.get(external_validated | user_specific_provisional)
+
+    @classmethod
     def _load_fallback(cls, identifier, user):
-        try:
-            return cls.objects.get(
-                type_name=identifier, type_source__created__mod_by=user
-            )
-        except cls.DoesNotExist:
-            datasource = Datasource.objects.create(name=user.username)
-            return cls.objects.create(type_name=identifier, type_source=datasource)
-        except Exception:
-            logger.exception('Failed to load GeneIdentifier "%s"', identifier)
-            raise ValidationError(
-                _u('Could not load gene "{identifier}"').format(identifier=identifier)
-            )
+        datasource = Datasource.objects.create(name=user.username)
+        return cls.objects.create(
+            provisional=True,
+            type_name=identifier,
+            type_source=datasource,
+        )
 
     @classmethod
     def load_or_create(cls, identifier, user):
-        # TODO check for NCBI pattern in identifier
-
-        # if ICE is not connected, skip checking ICE
-        if not hasattr(settings, "ICE_URL"):
-            logger.warning("Skipping ICE checks since ICE is not configured")
-            # fall back to checking for same identifier used by same user
-            return cls._load_fallback(identifier, user)
-
+        # TODO check for NCBI pattern in identifier?
         try:
-            # check ICE for identifier
-            return cls._load_ice(identifier, user)
-        except ValidationError:
-            # fall back to checking for same identifier used by same user
-            return cls._load_fallback(identifier, user)
+            return cls.load_existing(identifier, user)
+        except cls.DoesNotExist:
+            pass
+        # TODO get ICE URL(s) from user profile instead of global setting
+        if hasattr(settings, "ICE_URL"):
+            try:
+                return cls._load_ice(identifier, user)
+            except Exception:
+                pass
+        # fall back to checking for same identifier used by same user
+        return cls._load_fallback(identifier, user)
 
 
 @Select2("Gene")

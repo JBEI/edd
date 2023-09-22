@@ -41,52 +41,58 @@ class TypeResolver:
                 raise ValidationError(_("Could not look up measurement type in EDD"))
 
     def _broad_type_lookup(self, token):
-        # check for PubChem pattern
         try:
-            return models.Metabolite.load_or_create(str(token))
-        except ValidationError:
-            # ok, not a PubChem ID, keep trying below
-            pass
-        # maybe it's a UniProt pattern
-        try:
-            return models.ProteinIdentifier.load_or_create(str(token), self.user)
-        except ValidationError:
-            pass
-        # check type_name exact match
-        try:
-            return models.MeasurementType.objects.get(type_name=token)
-        except models.MeasurementType.DoesNotExist:
-            # ok, no name match, keep trying below before failing
-            pass
+            found = (
+                self.__pubchem(token)
+                or self.__uniprot(token)
+                or self.__typename(token)
+                or self.__gene(token)
+            )
+            if not found:
+                raise ValidationError(f'Measurement Type "{token}" not found')
+            return found
         except MultipleObjectsReturned as e:
             raise ValidationError(
                 f'Multiple Measurement Types found matching "{token}"'
             ) from e
-        # everything so far failed, time to give up
-        # not attempting GeneIdentifier.load_or_create()
-        # because it will *always* generate an identifier
-        raise ValidationError(f'Measurement Type "{token}" not found')
 
     def _omics_type_lookup(self, token):
-        # check for PubChem pattern
+        return (
+            self.__pubchem(token)
+            or self.__uniprot(token)
+            or self.__typename(token)
+            # NOTE: this load_or_create will *always* generate an identifier
+            or models.GeneIdentifier.load_or_create(token, self.user)
+        )
+
+    def __gene(self, token):
+        # check on gene identifiers, *without* generating one
+        try:
+            return models.GeneIdentifier.load_existing(str(token), self.user)
+        except models.GeneIdentifier.DoesNotExist:
+            # no match, fall through
+            pass
+
+    def __pubchem(self, token):
         try:
             return models.Metabolite.load_or_create(str(token))
         except ValidationError:
-            # ok, not a PubChem ID, keep trying below
             pass
-        # maybe it's a UniProt pattern
+
+    def __typename(self, token):
+        try:
+            return models.MeasurementType.objects.get(
+                type_name__iexact=token,
+                type_group=models.MeasurementType.Group.GENERIC,
+            )
+        except models.MeasurementType.DoesNotExist:
+            pass
+
+    def __uniprot(self, token):
         try:
             return models.ProteinIdentifier.load_or_create(str(token), self.user)
         except ValidationError:
             pass
-        # check type_name exact match
-        try:
-            return models.MeasurementType.objects.get(type_name=token)
-        except (models.MeasurementType.DoesNotExist, MultipleObjectsReturned):
-            # ok, no exact name match, keep trying below before failing
-            pass
-        # try to turn into GeneIdentifier when nothing else matches
-        return models.GeneIdentifier.load_or_create(token, self.user)
 
 
 class ImportResolver:
