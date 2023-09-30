@@ -23,6 +23,14 @@ def deny_signup(request):
     return False
 
 
+class AbortResetEmail(Exception):
+    """
+    Raised when the default password reset email should not be sent.
+    """
+
+    pass
+
+
 class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
     """
     Adapter overrides default behavior for username selection and email verification.
@@ -88,13 +96,13 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
         # notify how to reset LDAP password
         for user in ldap_users:
             self._reset_for_ldap(request, email, user)
-            return []
+            raise AbortResetEmail()
         # if a social account and not LDAP, notify to login with social account
         for user in social_users - ldap_users:
             self._reset_for_social(request, email, user)
-            return []
-        # any remaining users can reset a local password
-        return local_users - ldap_users - social_users
+            raise AbortResetEmail()
+        # any local users can reset a local password
+        return local_users
 
     def _reset_for_ldap(self, request, email, user):
         context = {
@@ -209,7 +217,10 @@ class ResetPasswordForm(forms.ResetPasswordForm):
         email = self.cleaned_data["email"]
         account_adapter = account.adapter.get_adapter(request)
         if callable(account_adapter.password_reset_request):
-            self.users = account_adapter.password_reset_request(request, email)
+            try:
+                self.users = account_adapter.password_reset_request(request, email)
+            except AbortResetEmail:
+                return email
         else:
             # if adapter does not have password_reset_request, fall back to base behavior
             self.users = account.utils.filter_users_by_email(email)
