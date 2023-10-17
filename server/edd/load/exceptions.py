@@ -29,17 +29,13 @@ class LoadWarning(Warning):
 
 
 class EDDImportError(MessagingMixin, LoadError):
-    def __init__(self, **kwargs):
-        if "category" not in kwargs:
-            kwargs.update(category=_("Uncategorized Error"))
-        super().__init__(**kwargs)
+    def __init__(self, *, category=_("Uncategorized Error"), **kwargs):
+        super().__init__(category=category, **kwargs)
 
 
 class EDDImportWarning(MessagingMixin, LoadWarning):
-    def __init__(self, **kwargs):
-        if "category" not in kwargs:
-            kwargs.update(category=_("Uncategorized Warning"))
-        super().__init__(**kwargs)
+    def __init__(self, *, category=_("Uncategorized Warning"), **kwargs):
+        super().__init__(category=category, **kwargs)
 
 
 class InvalidLoadRequestError(EDDImportError):

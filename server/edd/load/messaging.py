@@ -73,7 +73,7 @@ class MessagingMixin:
         )
 
     def __eq__(self, other):
-        return self.__key() == other.__key()
+        return isinstance(other, MessagingMixin) and self.__key() == other.__key()
 
     def __hash__(self):
         return hash(self.__key())
