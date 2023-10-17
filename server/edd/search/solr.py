@@ -6,6 +6,7 @@ import requests
 from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db.models import Count, F, Prefetch
+from django.template.loader import get_template
 from django_auth_ldap.backend import _LDAPUser
 
 from edd import utilities
@@ -592,7 +593,10 @@ class MeasurementTypeSearch(SolrSearch):
         return models.MeasurementType.objects.annotate(
             _source_name=F("type_source__name")
         ).select_related(
-            "metabolite", "proteinidentifier", "geneidentifier", "phosphor"
+            "metabolite",
+            "proteinidentifier",
+            "geneidentifier",
+            "phosphor",
         )
 
     def get_queryopt(self, query, **kwargs):
@@ -638,4 +642,13 @@ def metaboliteish_autocomplete(request):
     response = result.get("response", ())
     items = response.get("docs", [])
     count = response.get("numFound", 0)
+    template = get_template("main/autocomplete/metaboliteish.html")
+    items = [
+        {
+            "html": template.render({"item": item}),
+            "text": item["name"],
+            **item,
+        }
+        for item in items
+    ]
     return items, count > end

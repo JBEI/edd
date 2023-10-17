@@ -1,5 +1,6 @@
 """Models describing measurement types."""
 
+import json
 import logging
 import re
 from uuid import uuid4
@@ -11,6 +12,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F, Q
+from django.template.loader import get_template
 from django.utils.translation import gettext as _u
 from django.utils.translation import gettext_lazy as _
 from rdflib import Graph
@@ -19,7 +21,7 @@ from rdflib.term import URIRef
 from edd.celery import app
 from edd.fields import VarCharField
 from edd.search.registry import StrainRegistry
-from edd.search.select2 import Select2
+from edd.search.select2 import Select2, autocomplete_from_queryset
 
 from .common import EDDSerialize
 from .update import Datasource
@@ -383,14 +385,16 @@ class Metabolite(MeasurementType):
 
 @Select2("Metabolite")
 def metabolite_autocomplete(request):
+    template = get_template("main/autocomplete/metabolite.html")
     q = Q(type_name__iregex=request.term) | Q(smiles__iregex=request.term)
     found = Metabolite.objects.filter(q).order_by("type_name")
-    found = request.optional_sort(found)
-    found = found.annotate(text=F("type_name"))
-    count = found.count()
-    values = found.values("id", "pubchem_cid", "smiles", "type_name", "text")
-    start, end = request.range
-    return values[start:end], count > end
+    items, has_next = autocomplete_from_queryset(
+        request=request,
+        queryset=found,
+        template=template,
+        text_field="type_name",
+    )
+    return items, has_next
 
 
 @app.task(ignore_result=True, rate_limit="6/m")
@@ -503,13 +507,15 @@ class GeneIdentifier(MeasurementType):
 
 @Select2("Gene")
 def gene_autocomplete(request):
-    start, end = request.range
+    template = get_template("main/autocomplete/gene.html")
     found = GeneIdentifier.objects.filter(type_name__iregex=request.term)
-    found = request.optional_sort(found.order_by("type_name"))
-    found = found.annotate(text=F("type_name"))
-    count = found.count()
-    values = found.values("id", "type_name", "text")
-    return values[start:end], count > end
+    items, has_next = autocomplete_from_queryset(
+        request=request,
+        queryset=found.order_by("type_name"),
+        template=template,
+        text_field="type_name",
+    )
+    return items, has_next
 
 
 class ProteinIdentifier(MeasurementType):
@@ -784,16 +790,15 @@ def lookup_protein_in_uniprot(pk):
 
 @Select2("Protein")
 def protein_autocomplete(request):
-    term = request.term
-    start, end = request.range
-    q = Q(type_name__iregex=term) | Q(accession_id__iregex=term)
-    found = ProteinIdentifier.objects.filter(q)
-    found = request.optional_sort(found.order_by("type_name"))
-    found = found.annotate(text=F("type_name"))
-    count = found.count()
-    values = found.values("id", "accession_id", "type_name", "text")
-    # expect items to have an "id" field and "text" field, at minimum
-    return values[start:end], count > end
+    template = get_template("main/autocomplete/protein.html")
+    q = Q(type_name__iregex=request.term) | Q(accession_id__iregex=request.term)
+    items, has_next = autocomplete_from_queryset(
+        request=request,
+        queryset=ProteinIdentifier.objects.filter(q).order_by("type_name"),
+        template=template,
+        text_field="type_name",
+    )
+    return items, has_next
 
 
 class StrainLinkMixin:
@@ -813,10 +818,9 @@ class StrainLinkMixin:
                 )
                 self.strain.part = entry
                 return True
-        except Exception:
+        except Exception as e:
             logger.warning(
-                f"Failed to load ICE information on `{name}` for `{user.username}`",
-                exc_info=True,
+                f"Failed to load ICE information on `{name}` for `{user.username}`: {e}",
             )
         return False
 
@@ -948,11 +952,22 @@ class MeasurementUnit(models.Model):
 
 @Select2("Unit")
 def unit_autocomplete(request):
-    start, end = request.range
-    found = MeasurementUnit.objects.filter(unit_name__iregex=request.term)
-    found = request.optional_sort(found.order_by("unit_name"))
-    found = found.annotate(text=F("unit_name"))
-    count = found.count()
-    values = found.values("id", "text", "unit_name")
-    # expect items to have an "id" field and "text" field, at minimum
-    return values[start:end], count > end
+    template = get_template("main/autocomplete/unit.html")
+    queryset = MeasurementUnit.objects.filter(unit_name__iregex=request.term)
+    queryset = queryset.order_by("unit_name")
+    items, has_next = autocomplete_from_queryset(
+        request=request,
+        queryset=queryset,
+        template=template,
+        text_field="unit_name",
+    )
+    create_permission = request.user.has_perm("main.add_measurementunit")
+    if request.allow_create and create_permission:
+        create = {"new": True}
+        entry = {
+            "html": template.render({"item": create}),
+            "id": json.dumps(create),
+            "text": _("+ Create Unit"),
+        }
+        items.insert(0, entry)
+    return items, has_next

@@ -1,0 +1,14 @@
+{% load i18n %}
+<div class="edd-geneauto-item">
+  {% if item.id %}
+    <span class="edd-geneauto-name">{{ item.type_name }}</span>
+  {% elif item.new %}
+    <div class="text-end">
+      <i class="fas fa-plus"></i>
+      <span class="edd-geneauto-name">{% translate "Create Provisional Gene" %}</span>
+    </div>
+  {% else %}
+    <i class="fas fa-triangle-exclamation"></i>
+    <span class="edd-geneauto-name">{% translate "Unknown Record" %}</span>
+  {% endif %}
+</div>

@@ -1,0 +1,14 @@
+{% load i18n %}
+<div class="edd-unitauto-item">
+  {% if item.id %}
+    <span class="edd-unitauto-name">{{ item.unit_name }}</span>
+  {% elif item.new %}
+    <div class="text-end">
+      <i class="fas fa-plus"></i>
+      <span class="edd-unitauto-name">{% translate "Create Unit" %}</span>
+    </div>
+  {% else %}
+    <i class="fas fa-triangle-exclamation"></i>
+    <span class="edd-unitauto-name">{% translate "Unknown Record" %}</span>
+  {% endif %}
+</div>

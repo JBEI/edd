@@ -1,0 +1,14 @@
+{% load i18n %}
+<div class="edd-proteinauto-item">
+  {% if item.id %}
+    <span class="edd-proteinauto-name">{{ item.type_name }}</span>
+  {% elif item.new %}
+    <div class="text-end">
+      <i class="fas fa-plus"></i>
+      <span class="edd-proteinauto-name">{% translate "Create Provisional Protein" %}</span>
+    </div>
+  {% else %}
+    <i class="fas fa-triangle-exclamation"></i>
+    <span class="edd-proteinauto-name">{% translate "Unknown Record" %}</span>
+  {% endif %}
+</div>

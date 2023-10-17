@@ -23,7 +23,10 @@ class SBMLTemplate(EDDObject):
         db_table = "sbml_template"
 
     object_ref = models.OneToOneField(
-        EDDObject, on_delete=models.CASCADE, parent_link=True, related_name="+"
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name="+",
     )
     biomass_calculation = models.DecimalField(
         decimal_places=5,
@@ -148,7 +151,7 @@ def exchange_autocomplete(request):
         message = "Must provide a template ID for SBML exchange searches."
         raise ValueError(message)
     found = MetaboliteExchange.objects.filter(q, sbml_template_id=template)
-    found = request.optional_sort(found.order_by("exchange_name"))
+    found = found.order_by("exchange_name")
     found = found.annotate(text=models.F("measurement_type__type_name"))
     count = found.count()
     values = found.values("id", "exchange_name", "reactant_name", "text")
@@ -214,7 +217,7 @@ def species_autocomplete(request):
         message = "Must provide a template ID for SBML exchange searches."
         raise ValueError(message)
     found = MetaboliteSpecies.objects.filter(q, sbml_template_id=template)
-    found = request.optional_sort(found.order_by("species"))
+    found = found.order_by("species")
     found = found.annotate(text=models.F("measurement_type__type_name"))
     count = found.count()
     values = found.values("id", "short_code", "species", "text")

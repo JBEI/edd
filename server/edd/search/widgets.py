@@ -5,6 +5,15 @@ from edd.utilities import JSONEncoder
 
 
 class Select2Widget(forms.widgets.Select):
+    """
+    Widget class to handle the attributes of INPUT elements used with the
+    Select2 library for autocompletion.
+
+    See the `select2` module for the framework for individual searchers, and
+    the `Select2` decorator that matches widgets to search functions via the
+    `kind` attribute of each subclass.
+    """
+
     default_attrs = {}
     default_classes = ["autocomp2", "form-select"]
     kind = None
@@ -36,6 +45,26 @@ class Select2Widget(forms.widgets.Select):
         return super().optgroups(name, value, attrs)
 
 
+class AssayAutocomplete(Select2Widget):
+    kind = "Assay"
+
+    def __init__(self, *, study_id, attrs=None):
+        self.default_attrs = {"data-eddauto-study": study_id}
+        super().__init__(attrs)
+
+
+class AssayLineAutocomplete(Select2Widget):
+    kind = "AssayLine"
+
+    def __init__(self, *, study_id, attrs=None):
+        self.default_attrs = {"data-eddauto-study": study_id}
+        super().__init__(attrs)
+
+
+class CategoryAutocomplete(Select2Widget):
+    kind = "Category"
+
+
 class CompartmentAutocomplete(Select2Widget):
     kind = "Compartment"
 
@@ -46,6 +75,14 @@ class GeneAutocomplete(Select2Widget):
 
 class GroupAutocomplete(Select2Widget):
     kind = "Group"
+
+
+class LineAutocomplete(Select2Widget):
+    kind = "Line"
+
+    def __init__(self, *, study_id, attrs=None):
+        self.default_attrs = {"data-eddauto-study": study_id}
+        super().__init__(attrs)
 
 
 class MeasurementAutocomplete(Select2Widget):
@@ -126,6 +163,10 @@ class SbmlSpecies(Select2Widget):
 
 class UnitAutocomplete(Select2Widget):
     kind = "Unit"
+
+    def __init__(self, *, allow_create=False, attrs=None):
+        self.default_attrs = {"data-eddauto-create": allow_create}
+        super().__init__(attrs)
 
 
 class UserAutocomplete(Select2Widget):

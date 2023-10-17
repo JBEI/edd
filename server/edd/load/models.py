@@ -4,6 +4,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
+from edd.search.select2 import Select2
 from main import models as edd_models
 
 from . import exceptions, reporting
@@ -96,7 +97,8 @@ class Category(models.Model):
         verbose_name=_("File layouts"),
     )
     name = VarCharField(
-        help_text=_("Name of this loading category."), verbose_name=_("Name")
+        help_text=_("Name of this loading category."),
+        verbose_name=_("Name"),
     )
     protocols = models.ManyToManyField(
         edd_models.Protocol,
@@ -122,6 +124,16 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+
+@Select2("Category")
+def category_autocomplete(request):
+    start, end = request.range
+    found = Category.objects.filter(name__iregex=request.term).order_by("sort_key")
+    count = found.count()
+    values = found.values("id", "name")
+    items = [{"id": item["id"], "text": item["name"]} for item in values[start:end]]
+    return items, count > end
 
 
 class CategoryLayout(models.Model):

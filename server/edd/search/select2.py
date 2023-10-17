@@ -1,3 +1,4 @@
+import functools
 import logging
 import re
 from collections.abc import Callable, Iterable
@@ -18,14 +19,12 @@ class SearchRequest:
     def __init__(self, request):
         self.request = request
 
-    def optional_sort(self, queryset):
-        "Apply the optional sorting parameter to the search queryset."
-        sort_field = self.request.GET.get("sort", None)
-        if not sort_field:
-            return queryset
-        return queryset.order_by(sort_field)
+    @functools.cached_property
+    def allow_create(self):
+        start, end = self.range
+        return bool(self.request.GET.get("c", None)) and start == 0
 
-    @property
+    @functools.cached_property
     def range(self):
         "Property containing the start, end indices for the search."
         page = int(self.request.GET.get("page", "1"))
@@ -33,13 +32,13 @@ class SearchRequest:
         start = end - self.DEFAULT_RESULT_COUNT
         return start, end
 
-    @property
+    @functools.cached_property
     def term(self):
         "Property containing the search term to narrow the search."
         term = self.request.GET.get("term", "")
         return re.escape(term)
 
-    @property
+    @functools.cached_property
     def user(self):
         return self.request.user
 
@@ -76,6 +75,31 @@ class Select2:
             return search_registry[key]
         except KeyError as e:
             raise ValueError(f"Unsupported model for autocomplete: '{key}'") from e
+
+
+def autocomplete_from_queryset(
+    *,
+    request,
+    queryset,
+    template,
+    fields=None,
+    id_field="id",
+    text_field="name",
+):
+    start, end = request.range
+    count = queryset.count()
+    if fields is None:
+        fields = (id_field, text_field)
+    values = queryset.values(*fields)
+    items = [
+        {
+            "html": template.render({"item": item}),
+            "id": item.get(id_field, None),
+            "text": item.get(text_field, None),
+        }
+        for item in values[start:end]
+    ]
+    return items, count > end
 
 
 class Autocomplete:

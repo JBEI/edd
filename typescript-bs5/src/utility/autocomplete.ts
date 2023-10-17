@@ -44,12 +44,17 @@ export function initSelect2(elements?: JQuery): void {
  * Define any additional parameters to send with autocomplete requests here.
  */
 function extraParams(select: JQuery): Params {
+    const params: Params = {};
     const type = select.data("eddautocompletetype");
     switch (type) {
+        case "Assay":
+        case "AssayLine":
+        case "Line":
+            params.study = select.data("eddautoStudy");
+            break;
         case "MetadataType":
             const types = select.data("eddautoTypeFilter");
             const fields = select.data("eddautoFieldTypes");
-            const params: Params = {};
             if (types !== undefined) {
                 // types can be a JSON string or JSON list of strings
                 params.types = JSON.parse(types);
@@ -57,12 +62,18 @@ function extraParams(select: JQuery): Params {
             if (fields !== undefined) {
                 params.fields = fields;
             }
-            return params;
+            break;
         case "SbmlExchange":
         case "SbmlSpecies":
-            return { "template": select.data("eddautoTemplate") };
+            params.template = select.data("eddautoTemplate");
+            break;
     }
-    return {};
+    // send back param "c" when autocomplete annotated with create
+    const create = select.data("eddautoCreate");
+    if (create !== undefined) {
+        params.c = "1";
+    }
+    return params;
 }
 
 function entryTemplate(payload: any): string | JQuery {

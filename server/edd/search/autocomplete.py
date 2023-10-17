@@ -62,11 +62,8 @@ def search_group(request):
     """Autocomplete for Groups of users."""
     term = request.GET.get("term", "")
     re_term = re.escape(term)
-    found = (
-        Group.objects.filter(name__iregex=re_term).order_by("name").values("id", "name")
-    )
-    found = optional_sort(request, found)
-    found = found[:DEFAULT_RESULT_COUNT]
+    found = Group.objects.filter(name__iregex=re_term).order_by("name")
+    found = found.values("id", "name")[:DEFAULT_RESULT_COUNT]
     return JsonResponse({"rows": list(found)})  # force QuerySet to list
 
 

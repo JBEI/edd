@@ -245,9 +245,8 @@ class Select2Tests(TestCase):
         self.client.force_login(self.user)
 
     def test_bad_model_via_path(self):
-        response = self.client.get(
-            reverse("search:acmodel", kwargs={"model": "BADMODEL"}),
-        )
+        bad_model_url = reverse("search:acmodel", kwargs={"model": "BADMODEL"})
+        response = self.client.get(bad_model_url)
         assert response.status_code == HTTPStatus.BAD_REQUEST
 
     def test_bad_model_via_query(self):

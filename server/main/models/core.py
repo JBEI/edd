@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import Case, F, Q, When
+from django.db.models import Case, Count, F, Q, When
 from django.template.defaultfilters import slugify
 from django.utils.translation import gettext_lazy as _
 
@@ -765,7 +765,6 @@ class Protocol(models.Model):
 def protocol_autocomplete(request):
     start, end = request.range
     found = Protocol.objects.filter(name__iregex=request.term).order_by("name")
-    found = request.optional_sort(found)
     found = found.annotate(text=F("name"))
     count = found.count()
     # expect items to have an "id" field and "text" field, at minimum
@@ -852,7 +851,10 @@ class Line(EDDObject):
     )
 
     object_ref = models.OneToOneField(
-        EDDObject, on_delete=models.CASCADE, parent_link=True, related_name="+"
+        EDDObject,
+        on_delete=models.CASCADE,
+        parent_link=True,
+        related_name="+",
     )
     contact = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -954,6 +956,18 @@ class Line(EDDObject):
             json_dict.update(study=self.study_id)
         return json_dict
 
+    def new_assay(self, locator, protocol):
+        count_ann = Count("assay", filter=Q(assay__protocol=protocol))
+        count_qs = Line.objects.annotate(assay_count=count_ann).filter(id=self.id)
+        count = count_qs.values_list("assay_count", flat=True)[0]
+        name = locator if count == 0 else Assay.build_name(self, protocol, count + 1)
+        return Assay.objects.create(
+            name=name,
+            study=self.study,
+            line=self,
+            protocol=protocol,
+        )
+
     def new_assay_number(self, protocol, user=None):
         """
         Given a Protocol name, fetch all matching child Assays, and return one
@@ -970,6 +984,23 @@ class Line(EDDObject):
 
     def user_can_write(self, user):
         return self.study.user_can_write(user)
+
+
+@Select2("Line")
+def line_autocomplete(request):
+    start, end = request.range
+    study = request["study"]
+    if not study:
+        message = "Must provide a study ID for Line searches."
+        raise ValueError(message)
+    found = Line.objects.filter(name__iregex=request.term, study_id=study)
+    found = found.order_by("name")
+    count = found.count()
+    items = [
+        {"id": json.dumps(item), "text": item["name"]}
+        for item in found.values("id", "name")[start:end]
+    ]
+    return items, count > end
 
 
 class Assay(EDDObject):
@@ -1036,6 +1067,63 @@ class Assay(EDDObject):
             study=self.get_attr_depth("study", depth),
         )
         return json_dict
+
+
+@Select2("Assay")
+def assay_autocomplete(request):
+    start, end = request.range
+    study = request["study"]
+    if not study:
+        message = "Must provide a study ID for Assay searches."
+        raise ValueError(message)
+    found = Assay.objects.filter(name__iregex=request.term, study_id=study)
+    found = found.order_by("name")
+    count = found.count()
+    items = [
+        {"id": json.dumps(item), "text": item["name"]}
+        for item in found.values("id", "name")[start:end]
+    ]
+    return items, count > end
+
+
+@Select2("AssayLine")
+def assay_line_autocomplete(request):
+    start, end = request.range
+    value_fields = ("id", "line_id", "name", "type")
+    study = request["study"]
+    if not study:
+        message = "Must provide a study ID for Line/Assay searches."
+        raise ValueError(message)
+    # basic queries
+    assay = Assay.objects.filter(name__iregex=request.term, study_id=study)
+    line = Line.objects.filter(name__iregex=request.term, study_id=study)
+    # using any "natural" fields can cause Django to order fields differently
+    # in the query, thus we must use *only* annotation fields to get data out
+    assay = assay.values(
+        union_id=models.F("pk"),
+        union_line_id=models.F("line_id"),
+        union_name=models.F("name"),
+        union_type=models.Value("Assay"),
+    )
+    line = line.values(
+        union_id=models.F("pk"),
+        union_line_id=models.F("pk"),
+        union_name=models.F("name"),
+        union_type=models.Value("Line"),
+    )
+    found = line.union(assay).order_by("union_name")
+    count = found.count()
+    # values have the "union_" prefix, strip it off before returning
+    prefixed = found.values(*[f"union_{n}" for n in value_fields])[start:end]
+    values = [{k.removeprefix("union_"): v for k, v in x.items()} for x in prefixed]
+    items = [
+        {
+            "id": json.dumps(value),
+            "text": value["name"],
+        }
+        for value in values
+    ]
+    return items, count > end
 
 
 class Measurement(EDDMetadata, EDDSerialize):

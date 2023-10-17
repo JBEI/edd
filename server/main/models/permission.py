@@ -223,8 +223,7 @@ class EveryonePermission(EveryoneMixin, StudyPermission):
 @Select2("Group")
 def group_autocomplete(request):
     start, end = request.range
-    found = Group.objects.filter(name__iregex=request.term)
-    found = request.optional_sort(found.order_by("name"))
+    found = Group.objects.filter(name__iregex=request.term).order_by("name")
     found = found.annotate(text=models.F("name"))
     count = found.count()
     values = found.values("id", "name", "text")
@@ -298,8 +297,7 @@ def user_autocomplete(request):
         | models.Q(emailaddress__email__iregex=term)
         | models.Q(userprofile__initials__iregex=term)
     )
-    found = User.profiles.filter(q).distinct()
-    found = request.optional_sort(found.order_by("username"))
+    found = User.profiles.filter(q).distinct().order_by("username")
     count = found.count()
     template = get_template("edd/profile/user_autocomplete_item.html")
     values = [
