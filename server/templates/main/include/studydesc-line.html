@@ -4,7 +4,6 @@
   class="container-sm ms-0 my-2 text-bg-light{% if line_form.errors %} was-validated{% endif %}"
   id="edd-line-edit-form"
   method="POST"
-  data-action-inline="{{ url_inline }}"
 >
   {% csrf_token %}
   {{ select_form }}

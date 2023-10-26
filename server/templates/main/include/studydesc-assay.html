@@ -4,7 +4,6 @@
   {% if assay_form.errors %}class="was-validated"{% endif %}
   id="edd-assay-add-form"
   method="POST"
-  data-action-inline="{% url 'main:assay_add_ajax' slug=study.slug %}"
 >
   {% csrf_token %}
   {{ select_form }}

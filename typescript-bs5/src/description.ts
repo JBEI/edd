@@ -319,7 +319,7 @@ class LinesTable {
     private formSubmit(event): boolean {
         const form = $(event.currentTarget);
         const buttons = form.find(".edd-save-btn,.edd-saving-btn");
-        const url = form.data("actionInline");
+        const url = form.attr("action");
         if (url !== undefined) {
             event.preventDefault();
         } else {

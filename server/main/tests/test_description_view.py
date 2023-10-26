@@ -7,6 +7,8 @@ from pytest_django import asserts
 from .. import models
 from . import factory
 
+AJAX_HEADER = {"X-Requested-With": "XMLHttpRequest"}
+
 
 class StudySession:
     """
@@ -69,13 +71,10 @@ def test_create_line_get_without_permission(client, readable_session):
     "url_name",
     [
         "main:new_line",
-        "main:new_line_ajax",
         "main:line_start",
         "main:line_edit",
-        "main:line_edit_ajax",
         "main:assay_start",
         "main:assay_add",
-        "main:assay_add_ajax",
         "main:line_clone",
         "main:line_group",
         "main:line_ungroup",
@@ -97,10 +96,8 @@ def test_views_post_without_permission(client, readable_session, url_name):
     [
         "main:line_start",
         "main:line_edit",
-        "main:line_edit_ajax",
         "main:assay_start",
         "main:assay_add",
-        "main:assay_add_ajax",
         "main:line_clone",
         "main:line_group",
         "main:line_ungroup",
@@ -131,10 +128,10 @@ def test_create_line_get(client, writable_session):
 
 
 def test_create_line_get_ajax(client, writable_session):
-    url = writable_session.url("main:new_line_ajax")
+    url = writable_session.url("main:new_line")
     client.force_login(writable_session.user)
 
-    response = client.get(url)
+    response = client.get(url, headers=AJAX_HEADER)
 
     assert response.status_code == HTTPStatus.OK
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
@@ -156,10 +153,10 @@ def test_create_line_post_without_payload(client, writable_session):
 
 
 def test_create_line_post_ajax_without_payload(client, writable_session):
-    url = writable_session.url("main:new_line_ajax")
+    url = writable_session.url("main:new_line")
     client.force_login(writable_session.user)
 
-    response = client.post(url, data={})
+    response = client.post(url, data={}, headers=AJAX_HEADER)
 
     assert writable_session.study.line_set.count() == 0
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
@@ -168,11 +165,11 @@ def test_create_line_post_ajax_without_payload(client, writable_session):
 
 
 def test_create_line_post_ajax(client, writable_session):
-    url = writable_session.url("main:new_line_ajax")
+    url = writable_session.url("main:new_line")
     client.force_login(writable_session.user)
     name = factory.fake.catch_phrase()
 
-    response = client.post(url, data={"name": name})
+    response = client.post(url, data={"name": name}, headers=AJAX_HEADER)
 
     assert writable_session.study.line_set.count() == 1
     assert response.status_code == HTTPStatus.OK
@@ -189,10 +186,10 @@ def test_edit_line_without_selection(client, writable_session):
 
 
 def test_edit_line_without_selection_inline(client, writable_session):
-    url = writable_session.url("main:line_edit_ajax")
+    url = writable_session.url("main:line_edit")
     client.force_login(writable_session.user)
 
-    response = client.post(url, data={})
+    response = client.post(url, data={}, headers=AJAX_HEADER)
 
     asserts.assertContains(
         response,
@@ -203,13 +200,13 @@ def test_edit_line_without_selection_inline(client, writable_session):
 
 
 def test_edit_single_line(client, writable_session):
-    url = writable_session.url("main:line_edit_ajax")
+    url = writable_session.url("main:line_edit")
     line = factory.LineFactory(study=writable_session.study)
     client.force_login(writable_session.user)
 
     new_name = f"edited {line.name}"
     payload = {"lineId": [line.id], "name": new_name}
-    response = client.post(url, data=payload)
+    response = client.post(url, data=payload, headers=AJAX_HEADER)
 
     updated = models.Line.objects.get(pk=line.id)
     assert response.status_code == HTTPStatus.OK
@@ -217,13 +214,13 @@ def test_edit_single_line(client, writable_session):
 
 
 def test_edit_single_line_with_invalid_form(client, writable_session):
-    url = writable_session.url("main:line_edit_ajax")
+    url = writable_session.url("main:line_edit")
     line = factory.LineFactory(study=writable_session.study)
     client.force_login(writable_session.user)
 
     # name is required, form will be invalid
     payload = {"lineId": [line.id], "name": ""}
-    response = client.post(url, data=payload)
+    response = client.post(url, data=payload, headers=AJAX_HEADER)
 
     asserts.assertContains(
         response,
@@ -235,7 +232,7 @@ def test_edit_single_line_with_invalid_form(client, writable_session):
 
 
 def test_edit_single_line_metadata_add_remove(client, writable_session):
-    url = writable_session.url("main:line_edit_ajax")
+    url = writable_session.url("main:line_edit")
     meta_a = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
     meta_b = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)
     start_meta = {meta_a.pk: "foo"}
@@ -250,7 +247,7 @@ def test_edit_single_line_metadata_add_remove(client, writable_session):
         "name": line.name,
         "selected_meta": [meta_a.id, meta_b.id],
     }
-    response = client.post(url, data=payload)
+    response = client.post(url, data=payload, headers=AJAX_HEADER)
 
     updated = models.Line.objects.get(pk=line.id)
     assert response.status_code == HTTPStatus.OK
@@ -290,13 +287,13 @@ def test_initial_edit_multiple_lines_prefill(client, writable_session):
 
 
 def test_edit_multiple_lines(client, writable_session):
-    url = writable_session.url("main:line_edit_ajax")
+    url = writable_session.url("main:line_edit")
     line1 = factory.LineFactory(control=False, study=writable_session.study)
     line2 = factory.LineFactory(control=False, study=writable_session.study)
     client.force_login(writable_session.user)
 
     payload = {"lineId": [line1.id, line2.id], "control": True}
-    response = client.post(url, data=payload)
+    response = client.post(url, data=payload, headers=AJAX_HEADER)
 
     found = models.Line.objects.filter(pk__in=[line1.id, line2.id], control=True)
     assert response.status_code == HTTPStatus.OK
@@ -591,10 +588,10 @@ def test_add_assay_without_selection(client, writable_session):
 
 
 def test_add_assay_ajax_without_selection(client, writable_session):
-    url = writable_session.url("main:assay_add_ajax")
+    url = writable_session.url("main:assay_add")
     client.force_login(writable_session.user)
 
-    response = client.post(url, data={})
+    response = client.post(url, data={}, headers=AJAX_HEADER)
 
     asserts.assertContains(
         response,
@@ -618,13 +615,13 @@ def test_add_assay_with_invalid_form(client, writable_session):
 
 
 def test_add_assay_ajax_with_invalid_form(client, writable_session):
-    url = writable_session.url("main:assay_add_ajax")
+    url = writable_session.url("main:assay_add")
     line = factory.LineFactory(study=writable_session.study)
     client.force_login(writable_session.user)
 
     # missing protocol
     payload = {"lineId": [line.id]}
-    response = client.post(url, data=payload)
+    response = client.post(url, data=payload, headers=AJAX_HEADER)
 
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
     asserts.assertTemplateUsed(response, "main/include/studydesc-assay.html")
@@ -646,13 +643,13 @@ def test_add_assay(client, writable_session):
 
 
 def test_add_assay_ajax(client, writable_session):
-    url = writable_session.url("main:assay_add_ajax")
+    url = writable_session.url("main:assay_add")
     line = factory.LineFactory(study=writable_session.study)
     protocol = factory.ProtocolFactory()
     client.force_login(writable_session.user)
 
     payload = {"lineId": [line.id], "protocol": protocol.id}
-    response = client.post(url, data=payload)
+    response = client.post(url, data=payload, headers=AJAX_HEADER)
 
     assert line.assay_set.count() == 1
     assert response.status_code == HTTPStatus.OK

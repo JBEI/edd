@@ -4,6 +4,17 @@ import "jquery";
 
 import { DescriptionDropzone } from "./utility/dropzone";
 
+function postAjax(form: JQuery): JQuery.AjaxSettings {
+    return {
+        "cache": false,
+        "contentType": false,
+        "data": new FormData(form[0] as HTMLFormElement),
+        "processData": false,
+        "type": "POST",
+        "url": form.attr("action"),
+    };
+}
+
 function setupDropzone(): void {
     const dropzoneDiv = $("#experimentDescDropZone");
     DescriptionDropzone.initialize(dropzoneDiv, ".dz-browse-link");
@@ -27,14 +38,7 @@ function setupStudyEdit(): void {
         ev.preventDefault();
         if (ev.currentTarget.checkValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
-            $.ajax({
-                "cache": false,
-                "contentType": false,
-                "data": new FormData(form[0]),
-                "processData": false,
-                "type": "POST",
-                "url": form.data("actionInline"),
-            })
+            $.ajax(postAjax(form))
                 .done((fragment) => {
                     $("#edd-studyinfo-readonly").html(fragment);
                     switchStudyEditDisplay();
@@ -58,14 +62,7 @@ function setupPermissionEdit(): void {
         ev.preventDefault();
         if (ev.currentTarget.checkValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
-            $.ajax({
-                "cache": false,
-                "contentType": false,
-                "data": new FormData(form[0]),
-                "processData": false,
-                "type": "POST",
-                "url": form.data("actionInline"),
-            })
+            $.ajax(postAjax(form))
                 .done((fragment) => {
                     $("#edd-studyperm-readonly").html(fragment);
                 })
@@ -111,14 +108,7 @@ function setupAttachmentAdd(): void {
         ev.preventDefault();
         if (ev.currentTarget.checkValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
-            $.ajax({
-                "cache": false,
-                "contentType": false,
-                "data": new FormData(form[0]),
-                "processData": false,
-                "type": "POST",
-                "url": form.data("actionInline"),
-            })
+            $.ajax(postAjax(form))
                 .done((fragment) => {
                     $("#edd-attachments").html(fragment);
                 })
@@ -140,14 +130,7 @@ function setupCommentAdd(): void {
         ev.preventDefault();
         if (ev.currentTarget.checkValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
-            $.ajax({
-                "cache": false,
-                "contentType": false,
-                "data": new FormData(form[0]),
-                "processData": false,
-                "type": "POST",
-                "url": form.data("actionInline"),
-            })
+            $.ajax(postAjax(form))
                 .done((fragment) => {
                     $("#edd-comments").html(fragment);
                 })

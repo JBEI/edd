@@ -4,7 +4,6 @@
   {% if edit_study.errors %}class="was-validated"{% endif %}
   id="edd-studyinfo-form"
   method="POST"
-  data-action-inline="{% url 'main:modify_study_ajax' slug=study.slug %}"
 >
   {% csrf_token %}
   {{ edit_study }}

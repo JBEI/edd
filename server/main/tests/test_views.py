@@ -14,12 +14,13 @@ from .. import models, redis
 from . import factory
 
 faker = Faker()
+AJAX_HEADER = {"X-Requested-With": "XMLHttpRequest"}
 EXCEL_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def upload_attachment_request(client, study, url_name="main:attach_ajax"):
+def upload_attachment_request(client, study, headers={}):
     """Sends a request to upload a small random attachment."""
-    url = reverse(url_name, kwargs={"slug": study.slug})
+    url = reverse("main:attach", kwargs={"slug": study.slug})
     upload = BytesIO(faker.emoji().encode())
     upload.name = faker.file_name()
     upload.content_type = faker.mime_type()
@@ -27,12 +28,12 @@ def upload_attachment_request(client, study, url_name="main:attach_ajax"):
         "description": faker.catch_phrase(),
         "file": upload,
     }
-    return client.post(url, data=payload, follow=True), upload.name
+    return client.post(url, data=payload, follow=True, headers=headers), upload.name
 
 
 def upload_attachment(client, study):
     """Upload a small random attachment and return it."""
-    response, filename = upload_attachment_request(client, study)
+    response, filename = upload_attachment_request(client, study, AJAX_HEADER)
     # everything should go OK, but if it doesn't ...
     if response.status_code != HTTPStatus.OK:
         print(response.content)
@@ -209,13 +210,14 @@ class StudyOverviewViewTests(StudyViewTestCase):
         description = faker.paragraph()
         # edit study info as default test user
         response = self.client.post(
-            reverse("main:modify_study_ajax", kwargs=self.study_kwargs),
+            reverse("main:modify_study", kwargs=self.study_kwargs),
             data={
                 "study-name": name,
                 "study-description": description,
                 "study-contact": new_user.id,
             },
             follow=True,
+            headers=AJAX_HEADER,
         )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         reloaded = models.Study.objects.get(slug=self.target_study.slug)
@@ -228,13 +230,14 @@ class StudyOverviewViewTests(StudyViewTestCase):
         self._setup_permission()
         new_user = UserFactory()
         response = self.client.post(
-            reverse("main:modify_study_ajax", kwargs=self.study_kwargs),
+            reverse("main:modify_study", kwargs=self.study_kwargs),
             data={
                 "study-name": faker.catch_phrase(),
                 "study-description": faker.paragraph(),
                 "study-contact": new_user.id,
             },
             follow=True,
+            headers=AJAX_HEADER,
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
         reloaded = models.Study.objects.get(slug=self.target_study.slug)
@@ -254,9 +257,10 @@ class StudyOverviewViewTests(StudyViewTestCase):
 
     def test_overview_set_permissions_ajax(self):
         response = self.client.post(
-            reverse("main:permission_ajax", kwargs=self.study_kwargs),
+            reverse("main:permission", kwargs=self.study_kwargs),
             data={"perm": models.StudyPermission.READ, "who": '{"type":"everyone"}'},
             follow=True,
+            headers=AJAX_HEADER,
         )
         self.assertTemplateUsed(response, "main/include/studyperm-readonly.html")
         assert response.status_code == HTTPStatus.OK
@@ -265,9 +269,10 @@ class StudyOverviewViewTests(StudyViewTestCase):
     def test_overview_set_permissions_without_write(self):
         self._setup_permission()
         response = self.client.post(
-            reverse("main:permission_ajax", kwargs=self.study_kwargs),
+            reverse("main:permission", kwargs=self.study_kwargs),
             data={"perm": models.StudyPermission.READ, "who": '{"type":"everyone"}'},
             follow=True,
+            headers=AJAX_HEADER,
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
         assert self.target_study.everyonepermission_set.count() == 0
@@ -285,11 +290,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
 
     def test_overview_attach_post(self):
         # adding an attachment without AJAX swapping
-        response, filename = upload_attachment_request(
-            self.client,
-            self.target_study,
-            url_name="main:attach",
-        )
+        response, filename = upload_attachment_request(self.client, self.target_study)
         self.assertRedirects(response, self.url)
         self.assertContains(response, filename)
         assert response.status_code == HTTPStatus.OK
@@ -303,10 +304,11 @@ class StudyOverviewViewTests(StudyViewTestCase):
         response, filename = upload_attachment_request(
             self.client,
             self.target_study,
-            url_name="main:attach",
+            AJAX_HEADER,
         )
         self.assertContains(response, filename)
         self.assertTemplateUsed(response, "main/include/attachments.html")
+        self.assertTemplateNotUsed(response, "main/study-overview.html")
         assert response.status_code == HTTPStatus.OK
         assert self.target_study.attachments.count() == 1
         # cleanup
@@ -314,9 +316,9 @@ class StudyOverviewViewTests(StudyViewTestCase):
         f.file.delete()
 
     def test_overview_attach_without_a_file(self):
-        url = reverse("main:attach_ajax", kwargs=self.study_kwargs)
+        url = reverse("main:attach", kwargs=self.study_kwargs)
         payload = {"description": faker.catch_phrase()}
-        response = self.client.post(url, data=payload, follow=True)
+        response = self.client.post(url, data=payload, follow=True, headers=AJAX_HEADER)
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert self.target_study.attachments.count() == 0
 
@@ -338,17 +340,18 @@ class StudyOverviewViewTests(StudyViewTestCase):
         body = faker.sentence()
         payload = {"body": body}
         response = self.client.post(
-            reverse("main:comment_ajax", kwargs=self.study_kwargs),
+            reverse("main:comment", kwargs=self.study_kwargs),
             data=payload,
             follow=True,
+            headers=AJAX_HEADER,
         )
         self.assertContains(response, body)
         self.assertTemplateUsed(response, "main/include/comments.html")
         assert self.target_study.comments.count() == 1
 
     def test_overview_comment_without_content(self):
-        url = reverse("main:comment_ajax", kwargs=self.study_kwargs)
-        response = self.client.post(url, follow=True)
+        url = reverse("main:comment", kwargs=self.study_kwargs)
+        response = self.client.post(url, follow=True, headers=AJAX_HEADER)
         self.assertTemplateUsed(response, "main/include/add-comment.html")
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert self.target_study.comments.count() == 0
@@ -441,8 +444,9 @@ class StudyOverviewViewTests(StudyViewTestCase):
             form.is_valid.return_value = False
             # should be no redirect
             response = self.client.post(
-                reverse("main:modify_study_ajax", kwargs=self.study_kwargs),
+                reverse("main:modify_study", kwargs=self.study_kwargs),
                 data={"action": "update"},
+                headers=AJAX_HEADER,
             )
         # verify that a failed validation renders to overview page
         self.assertTemplateUsed(response, "main/include/studyinfo-editable.html")

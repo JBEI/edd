@@ -5,7 +5,6 @@
   enctype="multipart/form-data"
   id="edd-attachment-form"
   method="POST"
-  data-action-inline="{% url 'main:attach_ajax' slug=study.slug %}"
 >
   {% csrf_token %}
   {{ new_attach }}

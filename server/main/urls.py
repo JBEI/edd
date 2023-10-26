@@ -76,11 +76,6 @@ study_url_patterns = [
         name="modify_study",
     ),
     path(
-        "edit-ajax/",
-        login_required(views.ModifyStudyView.as_view(inline=True)),
-        name="modify_study_ajax",
-    ),
-    path(
         "delete/",
         login_required(views.DeleteStudyView.as_view()),
         name="delete_study",
@@ -96,19 +91,9 @@ study_url_patterns = [
         name="permission",
     ),
     path(
-        "permission-ajax/",
-        login_required(views.ModifyPermissionView.as_view(inline=True)),
-        name="permission_ajax",
-    ),
-    path(
         "attach/",
         login_required(views.CreateAttachmentView.as_view()),
         name="attach",
-    ),
-    path(
-        "attach-ajax/",
-        login_required(views.CreateAttachmentView.as_view(inline=True)),
-        name="attach_ajax",
     ),
     path(
         "comment/",
@@ -116,19 +101,9 @@ study_url_patterns = [
         name="comment",
     ),
     path(
-        "comment-ajax/",
-        login_required(views.CreateCommentView.as_view(inline=True)),
-        name="comment_ajax",
-    ),
-    path(
         "new-line/",
         login_required(views.CreateLineView.as_view()),
         name="new_line",
-    ),
-    path(
-        "new-line-ajax/",
-        login_required(views.CreateLineView.as_view(inline=True)),
-        name="new_line_ajax",
     ),
     path(
         "line/",
@@ -141,11 +116,6 @@ study_url_patterns = [
         name="line_edit",
     ),
     path(
-        "save-line-ajax/",
-        login_required(views.ModifyLineView.as_view(inline=True)),
-        name="line_edit_ajax",
-    ),
-    path(
         "assay/",
         login_required(views.InitialAddAssayView.as_view()),
         name="assay_start",
@@ -154,11 +124,6 @@ study_url_patterns = [
         "save-assay/",
         login_required(views.AddAssayView.as_view()),
         name="assay_add",
-    ),
-    path(
-        "save-assay-ajax/",
-        login_required(views.AddAssayView.as_view(inline=True)),
-        name="assay_add_ajax",
     ),
     path(
         "clone/",

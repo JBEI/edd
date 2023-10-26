@@ -113,7 +113,6 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
         "Something went wrong with your update. "
         "Please try again, or contact support."
     )
-    inline = False
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(study=self.get_object(), **kwargs)
@@ -124,7 +123,7 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
         add an error message to the messages framework and redirect to the
         main description view.
         """
-        if self.inline:
+        if self.isAjax():
             return self.render_to_response(
                 self.get_context_data(**kwargs),
                 status=HTTPStatus.BAD_REQUEST,
@@ -138,7 +137,7 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
         error message to the messages framework and redirect to the main
         description view.
         """
-        if self.inline:
+        if self.isAjax():
             return TemplateResponse(
                 self.request,
                 "main/include/error_message.html",
@@ -148,12 +147,15 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
         messages.error(self.request, message)
         return self._redirect()
 
+    def isAjax(self):
+        return self.request.META.get("HTTP_X_REQUESTED_WITH", None) == "XMLHttpRequest"
+
     def success(self, **kwargs):
         """
         If the view is inline, send a JSON document from the keyword arguments.
         Otherwise, redirect to the main description view.
         """
-        if self.inline:
+        if self.isAjax():
             return JsonResponse(kwargs, encoder=utilities.JSONEncoder)
         return self._redirect()
 
@@ -162,7 +164,7 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
         If the view is inline,  send a rendered template response. Otherwise,
         redirect to the main description view.
         """
-        if self.inline:
+        if self.isAjax():
             return self.render_to_response(self.get_context_data(**kwargs))
         return self._redirect()
 
@@ -194,7 +196,6 @@ class InitialModifyLineView(DescriptionMixin, generic.DetailView):
                 ),
                 select_form=form,
                 url_action=self.study_reverse("main:line_edit"),
-                url_inline=self.study_reverse("main:line_edit_ajax"),
             )
             return self.render_to_response(context)
         return TemplateResponse(
@@ -210,12 +211,10 @@ class BaseLineSave(StudyDescriptionPartial):
 
     template_name = "main/include/studydesc-line.html"
     url_name_action = "main:new_line"
-    url_name_inline = "main:new_line_ajax"
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(
             url_action=self.study_reverse(self.url_name_action),
-            url_inline=self.study_reverse(self.url_name_inline),
             **kwargs,
         )
 
@@ -290,7 +289,6 @@ class ModifyLineView(BaseLineSave):
 
     http_method_names = ["head", "post"]
     url_name_action = "main:line_edit"
-    url_name_inline = "main:line_edit_ajax"
 
     def post(self, request, *args, **kwargs):
         self.check_write_permission(request)

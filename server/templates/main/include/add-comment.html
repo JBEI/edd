@@ -5,7 +5,6 @@
   enctype="multipart/form-data"
   id="edd-comment-form"
   method="POST"
-  data-action-inline="{% url 'main:comment_ajax' slug=study.slug %}"
 >
   {% csrf_token %}
   {{ new_comment }}

@@ -53,14 +53,13 @@ class StudyOverviewPartial(StudyObjectMixin, generic.DetailView):
     Overview without scripting.
     """
 
-    inline = False
     partial_error_template = None
 
     def get(self, request, *args, **kwargs):
         return self._redirect()
 
     def error_or_redirect(self, context, message=None):
-        if self.inline:
+        if self.isAjax():
             template = get_template(self.partial_error_template)
             return HttpResponse(
                 template.render(context),
@@ -70,8 +69,11 @@ class StudyOverviewPartial(StudyObjectMixin, generic.DetailView):
             messages.error(self.request, message)
         return self._redirect()
 
+    def isAjax(self):
+        return self.request.META.get("HTTP_X_REQUESTED_WITH", None) == "XMLHttpRequest"
+
     def update_or_redirect(self):
-        if self.inline:
+        if self.isAjax():
             return self.render_to_response(self.get_context_data())
         return self._redirect()
 

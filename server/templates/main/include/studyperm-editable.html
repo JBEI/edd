@@ -4,7 +4,6 @@
   {% if permission_form.errors %}class="was-validated"{% endif %}
   id="edd-studyperm-form"
   method="POST"
-  data-action-inline="{% url 'main:permission_ajax' slug=study.slug %}"
 >
   {% csrf_token %}
   {{ permission_form }}
