@@ -1,7 +1,8 @@
+from http import HTTPStatus
+
 from django.contrib.admin.sites import all_sites
 from django.urls import reverse
 from pytest import fixture, mark
-from requests import codes
 
 from . import factory
 
@@ -40,7 +41,7 @@ def test_admin_add_for_readonly(client, admin_user, site, model, model_admin):
     response = client.get(url)
 
     # these admins explicitly prohibit adding via admin
-    assert response.status_code == codes.forbidden
+    assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 @mark.parametrize("site,model,model_admin", writable_admin_pages)
@@ -50,7 +51,7 @@ def test_admin_add(client, admin_user, site, model, model_admin):
 
     response = client.get(url)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
 
 
 @mark.parametrize("site,model,model_admin", all_admin_pages)
@@ -60,4 +61,4 @@ def test_admin_changelist(client, admin_user, site, model, model_admin):
 
     response = client.get(url)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK

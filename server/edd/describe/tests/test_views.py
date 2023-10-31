@@ -1,7 +1,7 @@
 import io
+from http import HTTPStatus
 
 from django.urls import reverse
-from requests import codes
 
 from edd import TestCase
 from edd.profile.factory import UserFactory
@@ -26,14 +26,14 @@ class ViewTests(TestCase):
 
     def test_get_global_HelpView(self):
         response = self.client.get(reverse("describe_flat:help"))
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "edd/describe/help.html")
 
     def test_get_scoped_HelpView(self):
         self.client.force_login(self.user)
         url = reverse("main:describe:help", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "edd/describe/help.html")
 
     def test_get_global_ice_view_redirects_anonymous(self):
@@ -47,7 +47,7 @@ class ViewTests(TestCase):
         self.client.force_login(other_user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_get_DescribeView_readonly(self):
         other_user = UserFactory()
@@ -57,13 +57,13 @@ class ViewTests(TestCase):
         self.client.force_login(other_user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.forbidden)
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_get_DescribeView_writer(self):
         self.client.force_login(self.user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "edd/describe/combos.html")
 
     def test_post_DescribeView_no_permission(self):
@@ -71,7 +71,7 @@ class ViewTests(TestCase):
         self.client.force_login(other_user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.post(url)
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_post_DescribeView_readonly(self):
         other_user = UserFactory()
@@ -81,16 +81,16 @@ class ViewTests(TestCase):
         self.client.force_login(other_user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.post(url)
-        self.assertEqual(response.status_code, codes.forbidden)
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_post_DescribeView_writer_empty(self):
         self.client.force_login(self.user)
         url = reverse("main:describe:describe", kwargs=self.study_kwargs)
         response = self.client.post(url)
         # TODO: this describes current behavior!
-        # it should return codes.bad_request
+        # it should return HTTPStatus.BAD_REQUEST
         # with details on why an empty request is bad m'kay
-        self.assertEqual(response.status_code, codes.internal_server_error)
+        self.assertEqual(response.status_code, HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def test_post_DescribeView_writer_json(self):
         self.client.force_login(self.user)
@@ -110,7 +110,7 @@ class ViewTests(TestCase):
         response = self.client.post(
             url, payload.strip(), content_type="application/json"
         )
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(self.study.line_set.count(), 1)
 
     def test_post_DescribeView_writer_csv(self):
@@ -122,7 +122,7 @@ class ViewTests(TestCase):
         file.content_type = "text/csv"
         payload = {"file": file}
         response = self.client.post(url, payload)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(self.study.line_set.count(), 2)
 
     def test_post_DescribeView_writer_xlsx(self):
@@ -135,7 +135,7 @@ class ViewTests(TestCase):
         file.content_type = XLSX_CONTENT_TYPE
         payload = {"file": file}
         response = self.client.post(url, payload)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(self.study.line_set.count(), 2)
 
     def test_post_DescribeView_writer_invalid_contenttype(self):
@@ -147,7 +147,7 @@ class ViewTests(TestCase):
         file.content_type = "application/octet-stream"
         payload = {"file": file}
         response = self.client.post(url, payload)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
 
     def test_post_DescribeView_writer_xlsx_double_import(self):
         # run test_post_DescribeView_writer_xlsx
@@ -161,7 +161,7 @@ class ViewTests(TestCase):
         file.content_type = XLSX_CONTENT_TYPE
         payload = {"file": file}
         response = self.client.post(url, payload)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertEqual(self.study.line_set.count(), 2)
         messages = response.json()
         self.assertIn("errors", messages)
@@ -178,7 +178,7 @@ class ViewTests(TestCase):
         file.content_type = XLSX_CONTENT_TYPE
         payload = {"file": file}
         response = self.client.post(url, payload)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(self.study.line_set.count(), 2)
         messages = response.json()
         self.assertNotIn("errors", messages)
@@ -195,7 +195,7 @@ class ViewTests(TestCase):
         file.content_type = XLSX_CONTENT_TYPE
         payload = {"file": file}
         response = self.client.post(url, payload)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertEqual(self.study.line_set.count(), 0)
         messages = response.json()
         self.assertIn("errors", messages)

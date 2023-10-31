@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from io import BytesIO
 from unittest.mock import patch
 
@@ -5,7 +6,6 @@ from django.http import Http404
 from django.http.request import HttpRequest
 from django.urls import reverse
 from faker import Faker
-from requests import codes
 
 from edd import TestCase
 from edd.profile.factory import UserFactory
@@ -34,7 +34,7 @@ def upload_attachment(client, study):
     """Upload a small random attachment and return it."""
     response, filename = upload_attachment_request(client, study)
     # everything should go OK, but if it doesn't ...
-    if response.status_code != codes.ok:
+    if response.status_code != HTTPStatus.OK:
         print(response.content)
     return study.attachments.get(filename=filename)
 
@@ -53,7 +53,7 @@ class StudyCreateViewTests(TestCase):
     def test_create_study_get(self):
         # Verify response from the dedicated creation page
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/create_study.html")
 
     def test_create_study_post(self):
@@ -61,7 +61,7 @@ class StudyCreateViewTests(TestCase):
         name = faker.catch_phrase()
         payload = {"name": name}
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         created = models.Study.objects.filter(name=name)
         self.assertEqual(created.count(), 1)
         self.assertRedirects(
@@ -83,7 +83,7 @@ class StudyIndexViewTests(TestCase):
     def test_index_view_get(self):
         # GET loads the index view
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/index.html")
 
     def test_index_view_post(self):
@@ -91,7 +91,7 @@ class StudyIndexViewTests(TestCase):
         name = faker.catch_phrase()
         payload = {"name": name}
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         created = models.Study.objects.filter(name=name)
         self.assertEqual(created.count(), 1)
         self.assertRedirects(
@@ -153,7 +153,7 @@ class StudyAttachmentViewTests(StudyViewTestCase):
     def test_get(self):
         # viewing an attachment
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_post_to_delete(self):
         # delete an attachment confirmation page
@@ -176,32 +176,32 @@ class StudyOverviewViewTests(StudyViewTestCase):
 
     def test_overview_get(self):
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_overview_get_inactive(self):
         self.target_study.active = False
         self.target_study.save()
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_overview_get_inactive_as_admin(self):
         self.target_study.active = False
         self.target_study.save()
         self._setup_admin()
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_overview_get_without_permissions(self):
         self._setup_permission(models.StudyPermission.NONE)
         # Not Found for a study without permissions
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_overview_get_admin_sees_all(self):
         self._setup_admin()
         # admin user can see the study
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_overview_update(self):
         new_user = UserFactory()
@@ -217,7 +217,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             },
             follow=True,
         )
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         reloaded = models.Study.objects.get(slug=self.target_study.slug)
         self.assertEqual(reloaded.name, name)
         self.assertEqual(reloaded.description, description)
@@ -236,7 +236,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             },
             follow=True,
         )
-        assert response.status_code == codes.forbidden
+        assert response.status_code == HTTPStatus.FORBIDDEN
         reloaded = models.Study.objects.get(slug=self.target_study.slug)
         self.assertEqual(reloaded.name, self.target_study.name)
         self.assertEqual(reloaded.description, self.target_study.description)
@@ -249,7 +249,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             follow=True,
         )
         self.assertRedirects(response, self.url)
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         assert self.target_study.everyonepermission_set.count() == 1
 
     def test_overview_set_permissions_ajax(self):
@@ -259,7 +259,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             follow=True,
         )
         self.assertTemplateUsed(response, "main/include/studyperm-readonly.html")
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         assert self.target_study.everyonepermission_set.count() == 1
 
     def test_overview_set_permissions_without_write(self):
@@ -269,7 +269,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             data={"perm": models.StudyPermission.READ, "who": '{"type":"everyone"}'},
             follow=True,
         )
-        assert response.status_code == codes.forbidden
+        assert response.status_code == HTTPStatus.FORBIDDEN
         assert self.target_study.everyonepermission_set.count() == 0
 
     def test_overview_set_permissions_as_admin(self):
@@ -280,7 +280,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             follow=True,
         )
         self.assertRedirects(response, self.url)
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         assert self.target_study.everyonepermission_set.count() == 1
 
     def test_overview_attach_post(self):
@@ -292,7 +292,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
         )
         self.assertRedirects(response, self.url)
         self.assertContains(response, filename)
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         assert self.target_study.attachments.count() == 1
         # cleanup
         f = self.target_study.attachments.first()
@@ -307,7 +307,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
         )
         self.assertContains(response, filename)
         self.assertTemplateUsed(response, "main/include/attachments.html")
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         assert self.target_study.attachments.count() == 1
         # cleanup
         f = self.target_study.attachments.first()
@@ -317,7 +317,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
         url = reverse("main:attach_ajax", kwargs=self.study_kwargs)
         payload = {"description": faker.catch_phrase()}
         response = self.client.post(url, data=payload, follow=True)
-        assert response.status_code == codes.bad_request
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         assert self.target_study.attachments.count() == 0
 
     def test_overview_comment_post(self):
@@ -350,7 +350,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
         url = reverse("main:comment_ajax", kwargs=self.study_kwargs)
         response = self.client.post(url, follow=True)
         self.assertTemplateUsed(response, "main/include/add-comment.html")
-        assert response.status_code == codes.bad_request
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         assert self.target_study.comments.count() == 0
 
     def test_overview_delete_shows_confirmation_page(self):
@@ -358,7 +358,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             reverse("main:delete_study", kwargs=self.study_kwargs),
             follow=True,
         )
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/confirm_delete.html")
         assert self.query.count() == 1
 
@@ -386,7 +386,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             data=payload,
             follow=True,
         )
-        assert response.status_code == codes.forbidden
+        assert response.status_code == HTTPStatus.FORBIDDEN
         assert self.query.count() == 1
 
     def test_overview_delete_confirmation_with_data(self):
@@ -402,7 +402,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             follow=True,
         )
         # OK response, study still exists with active flag disabled
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         assert self.query.filter(active=False).count() == 1
 
     def test_overview_restore_as_admin(self):
@@ -430,7 +430,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             follow=True,
         )
         # not found, study does not have active flag restored
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         assert not self.query.filter(active=True).exists()
 
     def test_overview_update_failed(self):
@@ -446,7 +446,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
             )
         # verify that a failed validation renders to overview page
         self.assertTemplateUsed(response, "main/include/studyinfo-editable.html")
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
 
 
 # DEPRECATED
@@ -464,7 +464,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
         # content the same as a GET request
         self.assertTemplateUsed(response, "main/study-lines.html")
         # status code will say request is bad
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
 
     def test_lines_clone(self):
         line = factory.LineFactory(study=self.target_study)
@@ -473,7 +473,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         assert self.target_study.line_set.count() == 2
 
     def test_lines_clone_with_no_id(self):
@@ -485,7 +485,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
         self.assertContains(
             response,
             "Failed to validate selection for clone.",
-            status_code=codes.bad_request,
+            status_code=HTTPStatus.BAD_REQUEST,
         )
         assert self.target_study.line_set.count() == 0
 
@@ -499,7 +499,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
         self.assertContains(
             response,
             "Failed to validate selection for clone.",
-            status_code=codes.bad_request,
+            status_code=HTTPStatus.BAD_REQUEST,
         )
         assert self.target_study.line_set.count() == 0
 
@@ -511,7 +511,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
         }
         response = self.client.post(self.url, data=payload, follow=True)
         self.assertTemplateUsed(response, "main/confirm_delete.html")
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         assert self.target_study.line_set.count() == 1
 
     def test_lines_confirmed_delete_removes_empty_line(self):
@@ -521,7 +521,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         assert self.target_study.line_set.count() == 0
 
     def test_lines_confirmed_delete_deactivates_line_with_data(self):
@@ -533,7 +533,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         assert self.target_study.line_set.count() == 1
         assert self.target_study.line_set.filter(active=True).count() == 0
 
@@ -544,7 +544,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         assert self.target_study.line_set.count() == 1
         assert self.target_study.line_set.filter(active=True).count() == 1
 
@@ -553,7 +553,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "action": "disable_confirm",
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         assert self.target_study.line_set.count() == 0
 
     def test_lines_delete_with_invalid_line_id(self):
@@ -562,7 +562,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [12345],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         assert self.target_study.line_set.count() == 0
 
     def test_lines_assay_add_without_line_id(self):
@@ -570,7 +570,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "action": "assay",
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "main/study-lines.html")
 
     def test_lines_assay_add_with_empty_form(self):
@@ -580,7 +580,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "main/study-lines.html")
 
     def test_lines_assay_add_with_bad_protocol(self):
@@ -591,7 +591,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "main/study-lines.html")
 
     def test_lines_assay_add(self):
@@ -603,7 +603,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/study-lines.html")
         assert models.Assay.objects.filter(study=self.target_study).count() == 1
 
@@ -617,7 +617,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "lineId": [line1.id, line2.id],
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/study-lines.html")
         assert models.Assay.objects.filter(study=self.target_study).count() == 2
 
@@ -627,7 +627,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "assayId": 12345,
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "main/study-lines.html")
 
     def test_lines_assay_edit(self):
@@ -641,7 +641,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             "assay-protocol": assay.protocol_id,
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/study-lines.html")
         assert self.target_study.assay_set.filter(name=name).exists()
 
@@ -669,7 +669,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             form.is_valid.return_value = False
             response = self.client.post(self.url, data=payload, follow=True)
         self.assertTemplateUsed(response, "main/study-lines.html")
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         assert self.target_study.line_set.count() == 0
 
     def test_lines_edit_line(self):
@@ -697,7 +697,9 @@ class StudyDescriptionViewTests(StudyViewTestCase):
         response = self.client.post(self.url, data=payload, follow=True)
         self.assertTemplateUsed(response, "main/study-lines.html")
         self.assertContains(
-            response, "Failed to load line for editing", status_code=codes.bad_request
+            response,
+            "Failed to load line for editing",
+            status_code=HTTPStatus.BAD_REQUEST,
         )
         assert self.target_study.line_set.count() == 0
 
@@ -716,7 +718,7 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             form = MockForm.return_value
             form.is_valid.return_value = False
             response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "main/study-lines.html")
         # line still using original name
         assert self.target_study.line_set.filter(name=line.name).exists()
@@ -755,9 +757,9 @@ class StudyDescriptionViewTests(StudyViewTestCase):
             response = self.client.post(self.url, data=payload, follow=True)
         self.assertTemplateUsed(response, "main/study-lines.html")
         self.assertContains(
-            response, "Saved 0 of 2 Lines", status_code=codes.bad_request
+            response, "Saved 0 of 2 Lines", status_code=HTTPStatus.BAD_REQUEST
         )
-        self.assertContains(response, "fake error", status_code=codes.bad_request)
+        self.assertContains(response, "fake error", status_code=HTTPStatus.BAD_REQUEST)
         assert self.target_study.line_set.filter(description=description).count() == 0
 
     def test_lines_replicate_with_empty_selection(self):
@@ -869,7 +871,7 @@ class StudyDetailViewTests(StudyViewTestCase):
         factory.MeasurementFactory(assay=assay)
         response = self.client.get(self.url)
         self.assertTemplateUsed(response, "main/study-data.html")
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_detail_assay_delete_requests_confirmation(self):
         line = factory.LineFactory(study=self.target_study)
@@ -895,7 +897,7 @@ class StudyDetailViewTests(StudyViewTestCase):
         )
         self.assertTemplateUsed(response, "main/study-data.html")
         self.assertContains(
-            response, "Nothing selected to delete.", status_code=codes.bad_request
+            response, "Nothing selected to delete.", status_code=HTTPStatus.BAD_REQUEST
         )
         assert self.target_study.assay_set.count() == 1
 
@@ -949,7 +951,7 @@ class StudyDetailViewTests(StudyViewTestCase):
         self.assertContains(
             response,
             "Must select at least one Assay to edit.",
-            status_code=codes.bad_request,
+            status_code=HTTPStatus.BAD_REQUEST,
         )
         assert self.target_study.assay_set.filter(
             name=assay.name, protocol=assay.protocol
@@ -972,7 +974,7 @@ class StudyDetailViewTests(StudyViewTestCase):
         self.assertContains(
             response,
             "Saved 0 of 1 Assays",
-            status_code=codes.bad_request,
+            status_code=HTTPStatus.BAD_REQUEST,
         )
         assert self.target_study.assay_set.filter(name=assay.name).exists()
 
@@ -983,7 +985,7 @@ class StudyDetailViewTests(StudyViewTestCase):
             "action": "measurement",
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "main/study-data.html")
         assert self.target_study.measurement_set.count() == 0
 
@@ -998,7 +1000,7 @@ class StudyDetailViewTests(StudyViewTestCase):
             "measurement-measurement_type_1": "",
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "main/study-data.html")
         assert self.target_study.measurement_set.count() == 0
 
@@ -1015,7 +1017,7 @@ class StudyDetailViewTests(StudyViewTestCase):
             "measurement-y_units": "1",
         }
         response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/study-data.html")
         assert self.target_study.measurement_set.count() == 1
 
@@ -1028,7 +1030,7 @@ class StudyDetailViewTests(StudyViewTestCase):
             data={"action": "disable_assay", "measurementId": measurement.pk},
             follow=True,
         )
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/confirm_delete.html")
         assert self.target_study.measurement_set.count() == 1
 
@@ -1056,7 +1058,7 @@ class StudyDetailViewTests(StudyViewTestCase):
             data={"action": "measurement_edit", "measurementId": measurement.pk},
             follow=True,
         )
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "main/edit_measurement.html")
 
     def test_detail_measurement_edit_with_invalid_id(self):
@@ -1068,7 +1070,7 @@ class StudyDetailViewTests(StudyViewTestCase):
         )
         self.assertTemplateUsed(response, "main/study-data.html")
         self.assertContains(
-            response, "Nothing selected for edit.", status_code=codes.bad_request
+            response, "Nothing selected for edit.", status_code=HTTPStatus.BAD_REQUEST
         )
 
     def test_detail_measurement_update_existing_values(self):
@@ -1102,7 +1104,7 @@ class StudyAjaxViewTests(StudyViewTestCase):
         """A valid study should have all study identifiers in access response."""
         url = reverse("main:access", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         payload = response.json()
         assert payload["study"]["pk"] == self.target_study.pk
         assert payload["study"]["slug"] == self.target_study.slug
@@ -1112,13 +1114,13 @@ class StudyAjaxViewTests(StudyViewTestCase):
         """An invalid slug should return a Not Found code."""
         # using access view as simple way to go through main.view.load_study function
         response = self.client.get(reverse("main:access", kwargs={"slug": "invalid"}))
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_load_study_with_invalid_pk(self):
         """An invalid pk should return a Not Found code."""
         # using access view as simple way to go through main.view.load_study function
         response = self.client.get(reverse("main:edd-pk:access", kwargs={"pk": 0}))
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_load_study_without_identifier(self):
         # no view method should be calling load_study without ID or slug, but test directly
@@ -1134,7 +1136,7 @@ class StudyAjaxViewTests(StudyViewTestCase):
         # this is deprecated, but we should test until it's officially removed
         url = reverse("main:edddata", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         payload = response.json()
         assert payload["currentStudyID"] == self.target_study.pk
 
@@ -1143,7 +1145,7 @@ class StudyAjaxViewTests(StudyViewTestCase):
         # this is deprecated, but we should test until it's officially removed
         url = reverse("main:edddata", kwargs=self.study_kwargs)
         response = self.client.get(url)
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         payload = response.json()
         assert payload["currentStudyID"] == self.target_study.pk
 
@@ -1151,4 +1153,4 @@ class StudyAjaxViewTests(StudyViewTestCase):
 def test_load_no_strain_url_page(client):
     url = reverse("legacy_issue_no_strain_url")
     response = client.get(url)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK

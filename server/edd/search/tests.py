@@ -1,12 +1,12 @@
 """Tests for Solr API"""
 import collections
+from http import HTTPStatus
 from unittest.mock import patch
 
 import pytest
 from django.test import override_settings
 from django.urls import reverse
 from faker import Faker
-from requests import codes
 
 from edd import TestCase
 from edd.profile import factory as profile_factory
@@ -248,21 +248,21 @@ class Select2Tests(TestCase):
         response = self.client.get(
             reverse("search:acmodel", kwargs={"model": "BADMODEL"}),
         )
-        assert response.status_code == codes.bad_request
+        assert response.status_code == HTTPStatus.BAD_REQUEST
 
     def test_bad_model_via_query(self):
         response = self.client.get(
             reverse("search:autocomplete"),
             data={"model": "BADMODEL"},
         )
-        assert response.status_code == codes.bad_request
+        assert response.status_code == HTTPStatus.BAD_REQUEST
 
     def test_autocomplete_own_user(self):
         response = self.client.get(
             reverse("search:acmodel", kwargs={"model": "User"}),
             data={"term": self.user.username},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         self.assertTemplateUsed("edd/profile/user_autocomplete_item.html")
         results = response.json()["results"]
         assert any(item["id"] == self.user.id for item in results)
@@ -272,7 +272,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Permission"}),
             data={"term": self.user.username},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         self.assertTemplateUsed("edd/profile/permission_autocomplete_item.html")
         results = response.json()["results"]
         assert any(self.user.username in item["html"] for item in results)
@@ -281,7 +281,7 @@ class Select2Tests(TestCase):
         response = self.client.get(
             reverse("search:acmodel", kwargs={"model": "Compartment"}),
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         # should always return the "N/A" compartment
         assert any(item["id"] == "0" for item in results)
@@ -292,7 +292,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Gene"}),
             data={"term": gene.type_name},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         assert any(item["id"] == gene.id for item in results)
 
@@ -302,7 +302,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Group"}),
             data={"term": group.name},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         assert any(item["id"] == group.id for item in results)
 
@@ -312,7 +312,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Metabolite"}),
             data={"term": metabolite.type_name},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         assert any(item["id"] == metabolite.id for item in results)
 
@@ -323,7 +323,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Metabolite"}),
             data={"term": term},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         assert any(item["id"] == metabolite.id for item in results)
 
@@ -340,8 +340,8 @@ class Select2Tests(TestCase):
             )
             for search_type in ("Assay", "AssayForm", "AssayLine")
         ]
-        assert basic_response.status_code == codes.ok
-        assert all(r.status_code == codes.ok for r in typed_responses)
+        assert basic_response.status_code == HTTPStatus.OK
+        assert all(r.status_code == HTTPStatus.OK for r in typed_responses)
         results = basic_response.json()["results"]
         assert any(item["id"] == meta.id for item in results)
         assert all(
@@ -362,8 +362,8 @@ class Select2Tests(TestCase):
             )
             for search_type in ("Line", "LineForm", "AssayLine")
         ]
-        assert basic_response.status_code == codes.ok
-        assert all(r.status_code == codes.ok for r in typed_responses)
+        assert basic_response.status_code == HTTPStatus.OK
+        assert all(r.status_code == HTTPStatus.OK for r in typed_responses)
         results = basic_response.json()["results"]
         assert any(item["id"] == meta.id for item in results)
         assert all(
@@ -377,7 +377,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Protein"}),
             data={"term": protein.type_name},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         assert any(item["id"] == protein.id for item in results)
 
@@ -387,7 +387,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Protocol"}),
             data={"term": protocol.name},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         assert any(item["id"] == protocol.id for item in results)
 
@@ -397,7 +397,7 @@ class Select2Tests(TestCase):
             reverse("search:acmodel", kwargs={"model": "Unit"}),
             data={"term": unit.unit_name},
         )
-        assert response.status_code == codes.ok
+        assert response.status_code == HTTPStatus.OK
         results = response.json()["results"]
         assert any(item["id"] == unit.id for item in results)
 

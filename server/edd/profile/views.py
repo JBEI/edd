@@ -1,11 +1,11 @@
 import json
+from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views import View
 from django.views.generic.base import TemplateView
-from requests import codes
 
 from edd import utilities
 
@@ -50,7 +50,7 @@ class SettingsView(View):
         else:
             profile.preferences.update({key: payload})
         profile.save()
-        return HttpResponse(status=codes.no_content)
+        return HttpResponse(status=HTTPStatus.NO_CONTENT)
 
     # treat PUT the same as POST
     put = post
@@ -63,4 +63,4 @@ class SettingsView(View):
         else:
             del profile.preferences[key]
         profile.save()
-        return HttpResponse(status=codes.no_content)
+        return HttpResponse(status=HTTPStatus.NO_CONTENT)

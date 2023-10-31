@@ -1,11 +1,11 @@
 import logging
 import re
 from collections import namedtuple
+from http import HTTPStatus
 
 from django.db import transaction
 from django.http import JsonResponse
 from django.views import View, generic
-from requests import codes
 
 from edd.search.registry import StrainRegistry
 from edd.utilities import guess_extension
@@ -50,7 +50,11 @@ class ICEFolderView(View):
             )
 
     def _build_simple_err_response(
-        self, category, title, status=codes.internal_server_error, detail=None
+        self,
+        category,
+        title,
+        status=HTTPStatus.INTERNAL_SERVER_ERROR,
+        detail=None,
     ):
         err = importer.ImportErrorSummary(category, title)
         if detail:
@@ -99,7 +103,9 @@ class DescribeView(StudyObjectMixin, generic.DetailView):
 
     def _handle_exception(self, cc, options, e):
         cc.add_error(
-            constants.INTERNAL_EDD_ERROR_CATEGORY, constants.UNPREDICTED_ERROR, str(e),
+            constants.INTERNAL_EDD_ERROR_CATEGORY,
+            constants.UNPREDICTED_ERROR,
+            str(e),
         )
         logger.exception(
             "Unpredicted exception occurred during experiment description processing"
@@ -133,18 +139,18 @@ class DescribeView(StudyObjectMixin, generic.DetailView):
                     file_extension=upload.extension,
                     encoding=request.encoding or "utf8",
                 )
-            if status_code == codes.ok:
+            if status_code == HTTPStatus.OK:
                 self._finished_import(cc, options, reply_content)
                 return JsonResponse(reply_content)
         except DescribeAbortError:
             return JsonResponse(
                 importer._build_response_content(cc.errors, cc.warnings),
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )
         except Exception as e:
             self._handle_exception(cc, options, e)
             return JsonResponse(
                 importer._build_response_content(cc.errors, cc.warnings),
-                status=codes.internal_server_error,
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
-        return JsonResponse(reply_content, status=codes.bad_request)
+        return JsonResponse(reply_content, status=HTTPStatus.BAD_REQUEST)

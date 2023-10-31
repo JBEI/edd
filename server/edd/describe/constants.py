@@ -1,7 +1,6 @@
 from collections import OrderedDict
 from enum import Enum
-
-from requests import codes
+from http import HTTPStatus
 
 # error conditions that are detected / handled during Experiment Description upload process.
 # These values must remain unique, and are used both as dictionary keys within the back-end code
@@ -344,7 +343,7 @@ class IceErrCondition(Enum):
 
 
 SINGLE_ENTRY_LOOKUP_ERRS = {
-    codes.forbidden: {
+    HTTPStatus.FORBIDDEN: {
         IceErrCondition.COMBINATORIAL_STRAINS: (
             SINGLE_PART_ACCESS_ERROR_CATEGORY,
             STRAINS_REQUIRED_TITLE,
@@ -358,7 +357,7 @@ SINGLE_ENTRY_LOOKUP_ERRS = {
             FORBIDDEN_PART_KEY,
         ),
     },
-    codes.not_found: {
+    HTTPStatus.NOT_FOUND: {
         IceErrCondition.STRAIN_NAMES_REQUIRED: (
             NON_UNIQUE_LINE_NAMES_CATEGORY,
             STRAINS_REQUIRED_FOR_NAMES,
@@ -375,7 +374,7 @@ SINGLE_ENTRY_LOOKUP_ERRS = {
 }
 
 SINGLE_FOLDER_LOOKUP_ERRS = {
-    codes.forbidden: {
+    HTTPStatus.FORBIDDEN: {
         IceErrCondition.COMBINATORIAL_STRAINS: (
             SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
             FORBIDDEN_FOLDER_KEY,
@@ -387,7 +386,7 @@ SINGLE_FOLDER_LOOKUP_ERRS = {
             FORBIDDEN_FOLDER_KEY,
         ),
     },
-    codes.not_found: {
+    HTTPStatus.NOT_FOUND: {
         IceErrCondition.COMBINATORIAL_STRAINS: (
             SINGLE_FOLDER_ACCESS_ERROR_CATEGORY,
             FOLDER_NOT_FOUND,

@@ -1,6 +1,7 @@
 """Views for individual Study Overview actions."""
 
 import logging
+from http import HTTPStatus
 
 from django.contrib import messages
 from django.db import transaction
@@ -9,7 +10,6 @@ from django.template.loader import get_template
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views import generic
-from requests import codes
 
 from edd.export.forms import ExportSelectionForm
 
@@ -64,7 +64,7 @@ class StudyOverviewPartial(StudyObjectMixin, generic.DetailView):
             template = get_template(self.partial_error_template)
             return HttpResponse(
                 template.render(context),
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )
         elif message:
             messages.error(self.request, message)
@@ -254,7 +254,7 @@ class DeleteStudyView(StudyObjectMixin, generic.DetailView):
                 request,
                 _("There was a problem validating the Study to delete."),
             )
-            self._show_delete_page(form, status=codes.bad_request)
+            self._show_delete_page(form, status=HTTPStatus.BAD_REQUEST)
         elif confirm:
             return self._delete_study(request, form)
         return self._show_delete_page(form)
@@ -290,9 +290,9 @@ class DeleteStudyView(StudyObjectMixin, generic.DetailView):
                 request,
                 _("There was a problem completing the Study deletion."),
             )
-            return self._show_delete_page(form, status=codes.server_error)
+            return self._show_delete_page(form, status=HTTPStatus.SERVER_ERROR)
 
-    def _show_delete_page(self, form, status=codes.ok):
+    def _show_delete_page(self, form, status=HTTPStatus.OK):
         return self.render_to_response(
             self.get_context_data(form=form),
             status=status,
@@ -337,5 +337,5 @@ class RestoreStudyView(StudyObjectMixin, generic.edit.UpdateView):
             )
             return self.render_to_response(
                 self.get_context_data(),
-                status=codes.server_error,
+                status=HTTPStatus.SERVER_ERROR,
             )

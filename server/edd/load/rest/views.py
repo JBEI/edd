@@ -1,9 +1,9 @@
 import logging
+from http import HTTPStatus
 
 from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.utils.translation import gettext_lazy as _
-from requests import codes
 from rest_framework import parsers, viewsets
 from rest_framework.exceptions import ParseError as DRFParseError
 from rest_framework.permissions import IsAuthenticated
@@ -36,7 +36,7 @@ class ErrorListingMixin:
         :returns: a JsonResponse to send to the client
         """
         if status is None:
-            status = codes.internal_server_error
+            status = HTTPStatus.INTERNAL_SERVER_ERROR
         payload = {
             "errors": [
                 {
@@ -72,7 +72,7 @@ class ErrorListingMixin:
         return JsonResponse(
             payload,
             encoder=JSONEncoder,
-            status=codes.internal_server_error,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
@@ -137,12 +137,12 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             load.update(request.data)
             if load.path:
                 self._schedule_task(load, request)
-            return JsonResponse({}, status=codes.accepted)
+            return JsonResponse({}, status=HTTPStatus.ACCEPTED)
         except InvalidLoadRequestError:
             return self.send_error_response(
                 _("Not Found"),
                 _("A request matching {uuid} was not found."),
-                status=codes.not_found,
+                status=HTTPStatus.NOT_FOUND,
             )
         except EDDImportError as e:
             logger.exception("error in upload", e)
@@ -162,12 +162,12 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
         try:
             load = LoadRequest.fetch(pk)
             load.retire()
-            return JsonResponse({}, status=codes.ok)
+            return JsonResponse({}, status=HTTPStatus.OK)
         except InvalidLoadRequestError:
             return self.send_error_response(
                 _("Not Found"),
                 _("A request matching {uuid} was not found."),
-                status=codes.not_found,
+                status=HTTPStatus.NOT_FOUND,
             )
         except EDDImportError as e:
             return self.send_exception_response(e)
@@ -187,7 +187,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
             return self.send_error_response(
                 _("Not Allowed"),
                 _("You do not have permissions to modify this Study."),
-                status=codes.forbidden,
+                status=HTTPStatus.FORBIDDEN,
             )
 
     def _check_post_params(self, request):
@@ -195,7 +195,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
         if missing:
             raise DRFParseError(
                 f"Missing required parameters: {missing}",
-                code=codes.bad_request,
+                code=HTTPStatus.BAD_REQUEST,
             )
 
     def _schedule_task(self, load, request):
@@ -215,7 +215,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
                     "A data loading operation cannot be accessed through "
                     "a different study."
                 ),
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )
         if load.status == LoadRequest.Status.PROCESSING:
             return self.send_error_response(
@@ -224,7 +224,7 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
                     "Changes are not permitted while loaded data is processing. "
                     "Wait until processing is complete."
                 ),
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )
         if load.status == LoadRequest.Status.COMPLETED:
             return self.send_error_response(
@@ -233,5 +233,5 @@ class LoadRequestViewSet(ErrorListingMixin, viewsets.ViewSet):
                     "Modifications are not allowed once loaded data "
                     "reaches the Completed state."
                 ),
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )

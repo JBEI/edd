@@ -4,6 +4,7 @@ import json
 import logging
 import traceback
 from collections import OrderedDict, defaultdict
+from http import HTTPStatus
 from io import BytesIO
 from pprint import pformat
 from typing import Any
@@ -13,7 +14,6 @@ from django.core.exceptions import ValidationError
 from django.core.mail import mail_admins, send_mail
 from django.db import transaction
 from django.urls import reverse
-from requests import codes
 
 from edd.search.registry import RegistryError, RegistryValidator, StrainRegistry
 from main.models import Assay, Line, Strain
@@ -757,7 +757,7 @@ class CombinatorialCreationImporter:
         # is ok here since no DB changes have occurred yet
         if self.errors:
             return (
-                codes.bad_request,
+                HTTPStatus.BAD_REQUEST,
                 _build_response_content(self.errors, self.warnings),
             )
 
@@ -770,7 +770,7 @@ class CombinatorialCreationImporter:
         # attempting any database insertions
         if self.errors:
             return (
-                codes.bad_request,
+                HTTPStatus.BAD_REQUEST,
                 _build_response_content(self.errors, self.warnings),
             )
 
@@ -956,9 +956,9 @@ class CombinatorialCreationImporter:
 
         if self.errors:
             status_code = (
-                codes.bad_request
+                HTTPStatus.BAD_REQUEST
                 if self.has_error(PART_NUMBER_NOT_FOUND)
-                else codes.internal_server_error
+                else HTTPStatus.INTERNAL_SERVER_ERROR
             )
             return status_code, _build_response_content(self.errors, self.warnings)
 
@@ -977,13 +977,13 @@ class CombinatorialCreationImporter:
         if options.dry_run:
             content = {"count": len(planned_names), "lines": planned_names}
 
-            status = codes.ok
+            status = HTTPStatus.OK
             if self.errors and not options.allow_duplicate_names:
-                status = codes.bad_request
+                status = HTTPStatus.BAD_REQUEST
 
             elif not planned_names:
                 self.add_error(INTERNAL_EDD_ERROR_CATEGORY, EMPTY_RESULTS)
-                status = codes.internal_server_error
+                status = HTTPStatus.INTERNAL_SERVER_ERROR
 
             _build_response_content(self.errors, self.warnings, val=content)
             return status, content
@@ -991,7 +991,7 @@ class CombinatorialCreationImporter:
         # if we've detected errors before modifying the study, fail before attempting db mods
         if self.errors:
             return (
-                codes.bad_request,
+                HTTPStatus.BAD_REQUEST,
                 _build_response_content(self.errors, self.warnings),
             )
 
@@ -1032,7 +1032,9 @@ class CombinatorialCreationImporter:
             count=total_line_count,
         )
 
-        return codes.ok, _build_response_content(self.errors, self.warnings, content)
+        return HTTPStatus.OK, _build_response_content(
+            self.errors, self.warnings, content
+        )
 
     def _create_lines_and_assays(self, line_def_inputs, options):
         created_lines_list = []

@@ -1,13 +1,13 @@
 """Views used as AJAX calls by the front-end Typescript code in EDD."""
 
 import logging
+from http import HTTPStatus
 
 from django.db.models import Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic.base import TemplateView
-from requests import codes
 
 from edd import utilities
 
@@ -95,5 +95,5 @@ class InlineMetadataPartialView(TemplateView):
             return self.render_to_response(self.get_context_data(form=form))
         return self.render_to_response(
             self.get_context_data(form=init_form),
-            status=codes.bad_request,
+            status=HTTPStatus.BAD_REQUEST,
         )

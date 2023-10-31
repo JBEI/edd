@@ -3,6 +3,7 @@
 import collections
 import logging
 import uuid
+from http import HTTPStatus
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -14,7 +15,6 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views import generic
-from requests import codes
 
 from edd.export import forms as export_forms
 
@@ -70,14 +70,14 @@ class StudyDetailBaseView(StudyObjectMixin, generic.DetailView):
             messages.error(
                 request, _("You do not have permission to modify this study.")
             )
-            return self.render_to_response(context, status=codes.forbidden)
+            return self.render_to_response(context, status=HTTPStatus.FORBIDDEN)
 
     def post_response(self, request, context, form_valid):
         if form_valid:
             # redirect to the same location to avoid re-submitting forms with back/forward
             return HttpResponseRedirect(request.path)
         # set status code indicating request could not complete from invalid form
-        return self.render_to_response(context, status=codes.bad_request)
+        return self.render_to_response(context, status=HTTPStatus.BAD_REQUEST)
 
     def check_write_permission(self, request):
         if not self.get_object().user_can_write(request.user):

@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
@@ -5,7 +7,6 @@ from django.contrib.flatpages import views as flatpage_views
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import include, path, re_path
-from requests import codes
 
 from edd.branding.views import favicon as favicon_view
 
@@ -14,14 +15,14 @@ admin.autodiscover()
 
 def healthcheck(request):
     """Simplest possible view for healthcheck."""
-    return HttpResponse(status=codes.no_content)
+    return HttpResponse(status=HTTPStatus.NO_CONTENT)
 
 
 def ping(request):
     """Simplest possible view for login status."""
     if request.user.is_authenticated:
-        return HttpResponse(status=codes.no_content)
-    return HttpResponse(status=codes.forbidden)
+        return HttpResponse(status=HTTPStatus.NO_CONTENT)
+    return HttpResponse(status=HTTPStatus.FORBIDDEN)
 
 
 def legacy_issue_no_strain_url(request):

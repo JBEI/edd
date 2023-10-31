@@ -1,10 +1,10 @@
 """Tests used to validate the tutorial screencast functionality."""
 
 import uuid
+from http import HTTPStatus
 
 from django.http import QueryDict
 from django.urls import reverse
-from requests import codes
 
 from edd import TestCase
 from edd.profile.factory import UserFactory
@@ -69,7 +69,7 @@ class FBAExportDataTests(TestCase):
     def test_step1_sbml_export(self):
         "First step loads the SBML export page, and has some warnings."
         response = self.client.get(reverse("export:sbml"), data={"lineId": 998})
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(len(response.context["sbml_warnings"]), 6)
 
     def test_step2_sbml_export(self):
@@ -77,7 +77,7 @@ class FBAExportDataTests(TestCase):
         with factory.load_test_file("ExportData_FBA_step2.post") as fp:
             POST = QueryDict(fp.read())
         response = self.client.post(reverse("export:sbml"), data=POST)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(len(response.context["sbml_warnings"]), 5)
 
     def test_step3_sbml_export(self):
@@ -85,5 +85,5 @@ class FBAExportDataTests(TestCase):
         with factory.load_test_file("ExportData_FBA_step3.post") as fp:
             POST = QueryDict(fp.read())
         response = self.client.post(reverse("export:sbml"), data=POST)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         # TODO figure out how to test content of chunked responses

@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+from http import HTTPStatus
 
 from django.contrib import messages
 from django.db import transaction
@@ -9,7 +10,6 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.utils.translation import gettext as _
 from django.views import generic
-from requests import codes
 
 from edd import utilities
 from edd.export.forms import ExportSelectionForm
@@ -96,7 +96,7 @@ class StudyDescriptionAction(DescriptionMixin, generic.DetailView):
             return JsonResponse(
                 {"error": self.invalid_selection_message()},
                 encoder=utilities.JSONEncoder,
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )
         return self.execute_action(study, form.selection)
 
@@ -127,7 +127,7 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
         if self.inline:
             return self.render_to_response(
                 self.get_context_data(**kwargs),
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )
         messages.error(self.request, message)
         return self._redirect()
@@ -143,7 +143,7 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
                 self.request,
                 "main/include/error_message.html",
                 {"message": message},
-                status=codes.bad_request,
+                status=HTTPStatus.BAD_REQUEST,
             )
         messages.error(self.request, message)
         return self._redirect()
@@ -201,7 +201,7 @@ class InitialModifyLineView(DescriptionMixin, generic.DetailView):
             self.request,
             self.template_error,
             {"message": _("EDD encountered a problem preparing Lines to edit.")},
-            status=codes.bad_request,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
 
@@ -352,7 +352,7 @@ class InitialAddAssayView(DescriptionMixin, generic.DetailView):
             self.request,
             self.template_error,
             {"message": _("Must select at least one Line to add Assay.")},
-            status=codes.bad_request,
+            status=HTTPStatus.BAD_REQUEST,
         )
 
 

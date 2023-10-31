@@ -5,12 +5,12 @@ Views that handle search operations in EDD.
 import itertools
 import logging
 import re
+from http import HTTPStatus
 
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views import View
-from requests import codes
 
 from edd import utilities
 
@@ -120,7 +120,7 @@ def model_search(request, model_name):
             return autocomplete.search_generic(request, model_name)
 
     except ValidationError as v:
-        return JsonResponse(str(v), status=codes.bad_request)
+        return JsonResponse(str(v), status=HTTPStatus.BAD_REQUEST)
     # END uncovered
 
 
@@ -137,4 +137,4 @@ class AutocompleteView(View):
             auto = select2.Autocomplete(model)
             return JsonResponse(auto.search(request))
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=codes.bad_request)
+            return JsonResponse({"error": str(e)}, status=HTTPStatus.BAD_REQUEST)

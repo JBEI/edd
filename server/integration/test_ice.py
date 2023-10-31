@@ -1,6 +1,7 @@
 """Integration tests for ICE."""
 
 import itertools
+from http import HTTPStatus
 from io import BytesIO
 from unittest.mock import patch
 
@@ -8,7 +9,6 @@ from django.test import override_settings, tag
 from django.urls import reverse
 from faker import Faker
 from openpyxl.workbook import Workbook
-from requests import codes
 
 from edd import TestCase
 from edd.load.resolver import TypeResolver
@@ -173,7 +173,7 @@ class IceIntegrationTests(TestCase):
         )
         response = self._run_upload(self.entry_ids, admin_study, self.admin_ice_user)
         # should return OK from upload
-        self.assertEqual(response.status_code, codes.ok, response.content)
+        self.assertEqual(response.status_code, HTTPStatus.OK, response.content)
         # there should be 10 strains on the study
         self.assertEqual(
             models.Strain.objects.filter(line__study=admin_study).distinct().count(), 10
@@ -189,12 +189,12 @@ class IceIntegrationTests(TestCase):
         # should return 500 error on uploading admin-only strains
         # skip testing this until ICE-90 is resolved
         # response = self._run_upload(self.entry_ids, reader_study, self.read_ice_user)
-        # self.assertEqual(response.status_code, codes.server_error)
+        # self.assertEqual(response.status_code, HTTPStatus.SERVER_ERROR)
         # should return OK on uploading readable strains
         response = self._run_upload(
             self.entry_ids[:5], reader_study, self.read_ice_user
         )
-        self.assertEqual(response.status_code, codes.ok, response.content)
+        self.assertEqual(response.status_code, HTTPStatus.OK, response.content)
         # there should be 5 strains on the study
         self.assertEqual(
             models.Strain.objects.filter(line__study=reader_study).distinct().count(), 5
@@ -209,10 +209,10 @@ class IceIntegrationTests(TestCase):
         )
         # should return 400 error on uploading admin-only strains
         response = self._run_upload(self.entry_ids, none_study, self.none_ice_user)
-        self.assertEqual(response.status_code, codes.bad_request, response.content)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST, response.content)
         # should return 400 error on uploading reader-only strains
         response = self._run_upload(self.entry_ids[:5], none_study, self.none_ice_user)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         # there should be 0 strains on the study
         self.assertEqual(
             models.Strain.objects.filter(line__study=none_study).distinct().count(), 0

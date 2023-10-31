@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from unittest import mock
 from uuid import UUID
 
@@ -5,7 +6,6 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.paginator import Paginator
 from django.urls import reverse
 from faker import Faker
-from requests import codes
 
 from edd import TestCase
 from edd.profile.factory import GroupFactory, UserFactory
@@ -216,7 +216,7 @@ class CampaignIndexViewTests(TestCase):
         # verify no change in counts
         self.assertEqual(pre_count, models.Campaign.objects.count())
         self.assertTemplateUsed(response, "edd/campaign/create.html")
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
 
     def test_index_valid_post(self):
         fake_name = faker.catch_phrase()
@@ -271,14 +271,14 @@ class CampaignDetailViewTests(TestCase):
     def test_create_study_without_permission(self):
         # post without permission results in NOT FOUND
         response = self.client.post(self.detail_url)
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_create_study_without_add_study(self):
         # add a permission, but do not set the add study flag
         self._add_campaign_permission()
         # post without permission having Add Study results in FORBIDDEN
         response = self.client.post(self.detail_url)
-        self.assertEqual(response.status_code, codes.forbidden)
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_create_study_invalid(self):
         # empty post causes validation error, no study created
@@ -287,7 +287,7 @@ class CampaignDetailViewTests(TestCase):
         response = self.client.post(self.detail_url)
         post_count = edd_models.Study.objects.count()
         self.assertEqual(pre_count, post_count)
-        self.assertEqual(response.status_code, codes.bad_request)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
         self.assertTemplateUsed(response, "edd/campaign/detail.html")
 
     def test_create_study_valid(self):
@@ -317,7 +317,7 @@ class CampaignDetailViewTests(TestCase):
 
     def test_with_none_access(self):
         response = self.client.get(self.detail_url)
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_with_read_access(self):
         self._add_campaign_permission()
@@ -340,7 +340,7 @@ class CampaignDetailViewTests(TestCase):
             campaign_permission=models.CampaignPermission.WRITE
         )
         response = self.client.get(self.detail_url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "edd/campaign/detail.html")
         # does not have add study button, does have add permission button
         self.assertNotContains(response, 'id="addStudyButton"')
@@ -352,7 +352,7 @@ class CampaignDetailViewTests(TestCase):
         self.user1.save(update_fields=("is_superuser",))
         # can view campaign, add study, add permission
         response = self.client.get(self.detail_url)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTemplateUsed(response, "edd/campaign/detail.html")
         # does not have add study button, does have add permission button
         self.assertContains(response, 'id="addStudyButton"')
@@ -361,7 +361,7 @@ class CampaignDetailViewTests(TestCase):
     def test_without_campaign_read_permission(self):
         # absent permissions, page is not found
         response = self.client.get(self.detail_url)
-        self.assertEqual(response.status_code, codes.not_found)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_without_study_read_permission(self):
         # create permission on only campaign

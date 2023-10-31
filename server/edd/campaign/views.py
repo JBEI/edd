@@ -1,5 +1,6 @@
 import json
 import logging
+from http import HTTPStatus
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -8,7 +9,6 @@ from django.template.defaulttags import register
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views import View, generic
-from requests import codes
 
 from main import models as edd_models
 from main import views as edd_views
@@ -98,7 +98,8 @@ class CampaignCreateView(generic.edit.CreateView):
     def form_invalid(self, form):
         # base class defaults to returning 200 OK response instead of 400 BAD REQUEST
         return self.render_to_response(
-            self.get_context_data(form=form), status=codes.bad_request
+            self.get_context_data(form=form),
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     def get_success_url(self):
@@ -157,7 +158,8 @@ class CampaignDetailView(generic.edit.FormMixin, generic.DetailView):
     def form_invalid(self, form):
         # base class defaults to returning 200 OK response instead of 400 BAD REQUEST
         return self.render_to_response(
-            self.get_context_data(), status=codes.bad_request
+            self.get_context_data(),
+            status=HTTPStatus.BAD_REQUEST,
         )
 
     def form_valid(self, form):
@@ -165,7 +167,8 @@ class CampaignDetailView(generic.edit.FormMixin, generic.DetailView):
         self.study = form.save()
         # add to this campaign
         models.CampaignMembership.objects.create(
-            campaign=self.campaign, study=self.study
+            campaign=self.campaign,
+            study=self.study,
         )
         # follow parent class logic
         return super().form_valid(form)
@@ -175,23 +178,29 @@ class CampaignDetailView(generic.edit.FormMixin, generic.DetailView):
         # define some keys to check specific flags on a permission
         permission_keys = {
             "study_add": models.CampaignPermission.convert_link_type(
-                edd_models.Study, models.CampaignPermission.ADD
+                edd_models.Study,
+                models.CampaignPermission.ADD,
             ),
             "study_remove": models.CampaignPermission.convert_link_type(
-                edd_models.Study, models.CampaignPermission.REMOVE
+                edd_models.Study,
+                models.CampaignPermission.REMOVE,
             ),
         }
         # check if user can create studies at all
         study_create = edd_models.Study.user_can_create(self.request.user)
         # check if user can add studies to this specific campaign
         can_add_study = self.object.check_permissions(
-            edd_models.Study, models.CampaignPermission.ADD, self.request.user
+            edd_models.Study,
+            models.CampaignPermission.ADD,
+            self.request.user,
         )
         # if both, include modal to directly create study in campaign
         can_create_study = study_create and can_add_study
         # check if user can remove studies
         can_remove_study = self.object.check_permissions(
-            edd_models.Study, models.CampaignPermission.REMOVE, self.request.user
+            edd_models.Study,
+            models.CampaignPermission.REMOVE,
+            self.request.user,
         )
         # create paging object from CampaignStudyListView
         subview = CampaignStudyListView(campaign=self.object)
@@ -222,11 +231,12 @@ class CampaignDetailView(generic.edit.FormMixin, generic.DetailView):
         # some base class methods expect self.object to be set
         self.campaign = self.object = self.get_object()
         if not self.campaign.check_permissions(
-            edd_models.Study, models.CampaignPermission.ADD, request.user
+            edd_models.Study,
+            models.CampaignPermission.ADD,
+            request.user,
         ):
-            raise PermissionDenied(
-                _("You do not have permission to add a Study to this Campaign")
-            )
+            message = _("You do not have permission to add a Study to this Campaign")
+            raise PermissionDenied(message)
         form = self.get_form()
         if form.is_valid():
             return self.form_valid(form)
@@ -269,7 +279,6 @@ class CampaignStudyListView(PagingHelperMixin, generic.ListView):
 
 
 class CampaignPermissionView(generic.DetailView):
-
     model = models.Campaign
 
     def get_queryset(self):
@@ -286,7 +295,7 @@ class CampaignPermissionView(generic.DetailView):
 
     def head(self, request, *args, **kwargs):
         self.object = self.get_object()
-        return HttpResponse(status=codes.ok)
+        return HttpResponse(status=HTTPStatus.OK)
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -295,9 +304,7 @@ class CampaignPermissionView(generic.DetailView):
             payload = json.loads(request.POST.get("data", "[]"))
             # make requested changes as a group, or not at all
             with transaction.atomic():
-                success = all(
-                    self._set_permission(definition) for definition in payload
-                )
+                success = all(self._set_permission(defn) for defn in payload)
                 if not success:
                     raise PermissionDenied()
         except PermissionDenied:
@@ -306,8 +313,8 @@ class CampaignPermissionView(generic.DetailView):
             logger.exception(
                 f"Error modifying campaign ({self.object}) permissions: {e}"
             )
-            return HttpResponse(status=codes.server_error)
-        return HttpResponse(status=codes.no_content)
+            return HttpResponse(status=HTTPStatus.SERVER_ERROR)
+        return HttpResponse(status=HTTPStatus.NO_CONTENT)
 
     # treat PUT same as POST
     put = post
@@ -316,9 +323,8 @@ class CampaignPermissionView(generic.DetailView):
 
     def _check_write(self, request):
         if not self.object.user_can_write(request.user):
-            raise PermissionDenied(
-                _("You do not have permission to modify this Campaign.")
-            )
+            message = _("You do not have permission to modify this Campaign.")
+            raise PermissionDenied(message)
 
     def _set_permission(self, definition):
         ptype = definition.get("type", None)

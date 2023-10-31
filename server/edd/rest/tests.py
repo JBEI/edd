@@ -9,12 +9,11 @@ API code changes in EDD accidentally affect client code.
 import codecs
 import csv
 import logging
+from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from requests import codes
-from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 from threadlocals.threadlocals import set_thread_variable
@@ -131,47 +130,47 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
     def test_study_get_with_anonymous(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.logout()
-        self._check_status(self.client.get(url), status.HTTP_403_FORBIDDEN)
+        self._check_status(self.client.get(url), HTTPStatus.FORBIDDEN)
 
     def test_study_get_with_unprivleged(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.unprivileged_user)
-        self._check_status(self.client.get(url), status.HTTP_404_NOT_FOUND)
+        self._check_status(self.client.get(url), HTTPStatus.NOT_FOUND)
 
     def test_study_get_with_readonly(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.readonly_user)
-        self._check_status(self.client.get(url), status.HTTP_200_OK)
+        self._check_status(self.client.get(url), HTTPStatus.OK)
 
     def test_study_get_with_superuser(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.superuser)
-        self._check_status(self.client.get(url), status.HTTP_200_OK)
+        self._check_status(self.client.get(url), HTTPStatus.OK)
 
     def test_study_get_using_uuid(self):
         url = reverse("rest:studies-detail", args=[self.study.uuid])
         self.client.force_login(self.superuser)
-        self._check_status(self.client.get(url), status.HTTP_200_OK)
+        self._check_status(self.client.get(url), HTTPStatus.OK)
 
     def test_study_delete_with_anonymous(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.logout()
-        self._check_status(self.client.delete(url), status.HTTP_403_FORBIDDEN)
+        self._check_status(self.client.delete(url), HTTPStatus.FORBIDDEN)
 
     def test_study_delete_with_unprivleged(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.unprivileged_user)
-        self._check_status(self.client.delete(url), status.HTTP_405_METHOD_NOT_ALLOWED)
+        self._check_status(self.client.delete(url), HTTPStatus.METHOD_NOT_ALLOWED)
 
     def test_study_delete_with_staff(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.staff_user)
-        self._check_status(self.client.delete(url), status.HTTP_405_METHOD_NOT_ALLOWED)
+        self._check_status(self.client.delete(url), HTTPStatus.METHOD_NOT_ALLOWED)
 
     def test_study_delete_with_superuser(self):
         url = reverse("rest:studies-detail", args=[self.study.pk])
         self.client.force_login(self.superuser)
-        self._check_status(self.client.delete(url), status.HTTP_405_METHOD_NOT_ALLOWED)
+        self._check_status(self.client.delete(url), HTTPStatus.METHOD_NOT_ALLOWED)
 
     def _post_payload_new_study(self):
         return {
@@ -185,7 +184,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.logout()
         self._check_status(
             self.client.post(url, self._post_payload_new_study()),
-            status.HTTP_403_FORBIDDEN,
+            HTTPStatus.FORBIDDEN,
         )
 
     def test_study_add_only_superuser_setting_off(self):
@@ -196,7 +195,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.unprivileged_user)
             self._check_status(
                 self.client.post(url, self._post_payload_new_study()),
-                status.HTTP_201_CREATED,
+                HTTPStatus.CREATED,
             )
 
     def test_study_add_without_contact(self):
@@ -205,7 +204,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.unprivileged_user)
             self._check_status(
                 self.client.post(url, {"name": "contactless study", "description": ""}),
-                status.HTTP_400_BAD_REQUEST,
+                HTTPStatus.BAD_REQUEST,
             )
 
     def test_study_add_with_unprivledged_only_superuser_setting_on(self):
@@ -214,7 +213,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.unprivileged_user)
             self._check_status(
                 self.client.post(url, self._post_payload_new_study()),
-                status.HTTP_403_FORBIDDEN,
+                HTTPStatus.FORBIDDEN,
             )
 
     def test_study_add_with_staff_only_superuser_setting_on(self):
@@ -224,7 +223,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.staff_user)
             self._check_status(
                 self.client.post(url, self._post_payload_new_study()),
-                status.HTTP_403_FORBIDDEN,
+                HTTPStatus.FORBIDDEN,
             )
 
     def test_study_add_with_superuser_only_superuser_setting_on(self):
@@ -234,7 +233,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.superuser)
             self._check_status(
                 self.client.post(url, self._post_payload_new_study()),
-                status.HTTP_201_CREATED,
+                HTTPStatus.CREATED,
             )
 
     def test_study_add_with_unprivledged_only_superuser_setting_permission(self):
@@ -243,7 +242,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.unprivileged_user)
             self._check_status(
                 self.client.post(url, self._post_payload_new_study()),
-                status.HTTP_403_FORBIDDEN,
+                HTTPStatus.FORBIDDEN,
             )
 
     def test_study_add_with_staff_only_superuser_setting_permission(self):
@@ -253,7 +252,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.staff_user)
             self._check_status(
                 self.client.post(url, self._post_payload_new_study()),
-                status.HTTP_201_CREATED,
+                HTTPStatus.CREATED,
             )
 
     def test_study_add_with_superuser_only_superuser_setting_permission(self):
@@ -263,7 +262,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
             self.client.force_login(self.superuser)
             self._check_status(
                 self.client.post(url, self._post_payload_new_study()),
-                status.HTTP_201_CREATED,
+                HTTPStatus.CREATED,
             )
 
     def _put_payload_change_study_contact(self):
@@ -278,7 +277,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.logout()
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_403_FORBIDDEN,
+            HTTPStatus.FORBIDDEN,
         )
 
     def test_study_change_with_unprivledged(self):
@@ -286,7 +285,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.unprivileged_user)
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_404_NOT_FOUND,
+            HTTPStatus.NOT_FOUND,
         )
 
     def test_study_change_with_readonly(self):
@@ -294,7 +293,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.readonly_user)
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_403_FORBIDDEN,
+            HTTPStatus.FORBIDDEN,
         )
 
     def test_study_change_with_write(self):
@@ -302,7 +301,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.write_user)
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_200_OK,
+            HTTPStatus.OK,
         )
 
     def test_study_change_with_readonly_group(self):
@@ -310,7 +309,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.group_readonly_user)
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_403_FORBIDDEN,
+            HTTPStatus.FORBIDDEN,
         )
 
     def test_study_change_with_write_group(self):
@@ -318,7 +317,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.group_write_user)
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_200_OK,
+            HTTPStatus.OK,
         )
 
     def test_study_change_with_staff(self):
@@ -326,7 +325,7 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.staff_user)
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_404_NOT_FOUND,
+            HTTPStatus.NOT_FOUND,
         )
 
     def test_study_change_with_superuser(self):
@@ -335,18 +334,18 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.superuser)
         self._check_status(
             self.client.put(url, self._put_payload_change_study_contact()),
-            status.HTTP_200_OK,
+            HTTPStatus.OK,
         )
 
     def test_study_list_read_access_anonymous(self):
         url = reverse("rest:studies-list")
         self.client.logout()
-        self._check_status(self.client.get(url), status.HTTP_403_FORBIDDEN)
+        self._check_status(self.client.get(url), HTTPStatus.FORBIDDEN)
 
     def test_study_list_read_access_unprivledged(self):
         url = reverse("rest:studies-list")
         self.client.force_login(self.unprivileged_user)
-        self._check_status(self.client.get(url), status.HTTP_200_OK)
+        self._check_status(self.client.get(url), HTTPStatus.OK)
 
 
 class ExportTests(EddApiTestCaseMixin, APITestCase):
@@ -419,7 +418,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
     def test_export_login_required(self):
         url = reverse("rest:export-list")
         response = self.client.get(url, {"line_id": 8})
-        self.assertEqual(response.status_code, codes.forbidden)
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_export_as_normal_user(self):
         url = reverse("rest:export-list")
@@ -432,7 +431,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"in_study": self.study.slug})
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
 
@@ -447,7 +446,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url)
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
 
@@ -458,7 +457,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"in_study": self.study.slug})
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
 
@@ -469,7 +468,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"in_study": self.study.pk})
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
 
@@ -480,7 +479,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"in_study": self.study.uuid})
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
 
@@ -491,7 +490,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"line_id": self.line.pk, "page_size": 50})
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertIsNone(response.get("Link"))
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
@@ -505,7 +504,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"line_id": self.line.pk, "page_size": 5})
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertRegex(
             response.get("Link"), r'<https?://.*/rest/export/\?.*>; rel="next"'
         )
@@ -523,7 +522,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         )
         # validate
         table = self._read_normal_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertRegex(
             response.get("Link"), r'<https?://.*/rest/export/\?.*>; rel="prev"'
         )
@@ -538,7 +537,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"line_id": self.line.pk})
         # validate
         table = self._read_streaming_response(response)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
         # one row for header, plus 30 assays/measurements
@@ -548,14 +547,14 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:assays-list")
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": self.study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 30
 
     def test_measurements_list(self):
         url = reverse("rest:measurements-list")
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": self.study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 30
 
 
@@ -586,35 +585,35 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
         response = self.client.get(url)
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert "count" in response.data
 
     def test_lines_list_filter_by_slug(self):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
         response = self.client.get(url, {"in_study": self.study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 10
 
     def test_lines_list_filter_by_pk(self):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
         response = self.client.get(url, {"in_study": self.study.pk})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 10
 
     def test_lines_list_filter_by_uuid(self):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
         response = self.client.get(url, {"in_study": self.study.uuid})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 10
 
     def test_lines_list_filter_by_strain_uuid(self):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
         response = self.client.get(url, {"strain": self.strains[0].registry_id})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         # first strain will appear for 0th, 3rd, 6th, 9th
         assert response.data["count"] == 4
 
@@ -622,7 +621,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
         response = self.client.get(url, {"strain": self.strains[1].registry_url})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         # second strain will appear for 1st, 4th, 7th
         assert response.data["count"] == 3
 
@@ -635,7 +634,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
                 "strain": f"{self.strains[0].registry_url},{self.strains[1].registry_id}",
             },
         )
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         # first and second strain cover seven of the lines
         assert response.data["count"] == 7
 
@@ -653,7 +652,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(
             url, {"in_study": self.study.slug, "page_size": 50, "replicates": "yes"}
         )
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         # replicates only count as one more item in page
         assert response.data["count"] == 11
         # replicates have individual records in page
@@ -666,7 +665,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(
             url, {"in_study": self.study.slug, "replicates": "no"}
         )
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 10
 
 
@@ -685,13 +684,13 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
     def test_docs_view_renders_correctly(self):
         url = reverse("rest:docs")
         response = self.client.get(url)
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
 
     def test_metadata_types_list(self):
         url = reverse("rest:metadata_types-list")
         self.client.force_login(self.admin)
         response = self.client.get(url)
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert "count" in response.data
 
     def test_metadata_types_list_in_study(self):
@@ -699,14 +698,14 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:metadata_types-list")
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 0
 
     def test_protocols_list(self):
         url = reverse("rest:protocols-list")
         self.client.force_login(self.admin)
         response = self.client.get(url)
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert "count" in response.data
 
     def test_protocols_list_in_study(self):
@@ -714,14 +713,14 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:protocols-list")
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 0
 
     def test_types_list(self):
         url = reverse("rest:types-list")
         self.client.force_login(self.admin)
         response = self.client.get(url)
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert "count" in response.data
 
     def test_types_list_in_study(self):
@@ -729,14 +728,14 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:types-list")
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 0
 
     def test_units_list(self):
         url = reverse("rest:units-list")
         self.client.force_login(self.admin)
         response = self.client.get(url)
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert "count" in response.data
 
     def test_units_list_in_study(self):
@@ -744,19 +743,19 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:units-list")
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 0
 
     def test_users_list_without_study(self):
         url = reverse("rest:users-list")
         self.client.force_login(self.admin)
         response = self.client.get(url)
-        self._check_status(response, status.HTTP_400_BAD_REQUEST)
+        self._check_status(response, HTTPStatus.BAD_REQUEST)
 
     def test_users_list_with_study(self):
         study = factory.StudyFactory()
         url = reverse("rest:users-list")
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": study.slug})
-        self._check_status(response, status.HTTP_200_OK)
+        self._check_status(response, HTTPStatus.OK)
         assert "count" in response.data

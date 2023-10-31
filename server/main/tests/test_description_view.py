@@ -1,7 +1,8 @@
+from http import HTTPStatus
+
 from django.urls import reverse
 from pytest import fixture, mark
 from pytest_django import asserts
-from requests import codes
 
 from .. import models
 from . import factory
@@ -52,7 +53,7 @@ def test_empty_post(client, readable_session):
     response = client.post(url, data={})
 
     # no POST to initial view, using individual sub-views with own URLs now
-    assert response.status_code == codes.method_not_allowed
+    assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
 
 
 def test_create_line_get_without_permission(client, readable_session):
@@ -61,7 +62,7 @@ def test_create_line_get_without_permission(client, readable_session):
 
     response = client.get(url)
 
-    assert response.status_code == codes.forbidden
+    assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 @mark.parametrize(
@@ -88,7 +89,7 @@ def test_views_post_without_permission(client, readable_session, url_name):
 
     response = client.post(url)
 
-    assert response.status_code == codes.forbidden
+    assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 @mark.parametrize(
@@ -113,7 +114,7 @@ def test_get_on_post_only_views(client, readable_session, url_name):
 
     response = client.get(url)
 
-    assert response.status_code == codes.method_not_allowed
+    assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
 
 
 def test_create_line_get(client, writable_session):
@@ -122,7 +123,7 @@ def test_create_line_get(client, writable_session):
 
     response = client.get(url, follow=True)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     asserts.assertRedirects(response, writable_session.url("main:lines"))
     asserts.assertTemplateUsed(response, "main/study-description.html")
     # page only shows form when the form has errors
@@ -135,7 +136,7 @@ def test_create_line_get_ajax(client, writable_session):
 
     response = client.get(url)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
     asserts.assertTemplateUsed(response, "main/include/studydesc-line.html")
 
@@ -163,7 +164,7 @@ def test_create_line_post_ajax_without_payload(client, writable_session):
     assert writable_session.study.line_set.count() == 0
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
     asserts.assertTemplateUsed(response, "main/include/studydesc-line.html")
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_create_line_post_ajax(client, writable_session):
@@ -174,7 +175,7 @@ def test_create_line_post_ajax(client, writable_session):
     response = client.post(url, data={"name": name})
 
     assert writable_session.study.line_set.count() == 1
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
 
 
 def test_edit_line_without_selection(client, writable_session):
@@ -196,7 +197,7 @@ def test_edit_line_without_selection_inline(client, writable_session):
     asserts.assertContains(
         response,
         "EDD could not verify lines to modify.",
-        status_code=codes.bad_request,
+        status_code=HTTPStatus.BAD_REQUEST,
     )
     asserts.assertTemplateUsed(response, "main/include/error_message.html")
 
@@ -211,7 +212,7 @@ def test_edit_single_line(client, writable_session):
     response = client.post(url, data=payload)
 
     updated = models.Line.objects.get(pk=line.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert updated.name == new_name
 
 
@@ -227,7 +228,7 @@ def test_edit_single_line_with_invalid_form(client, writable_session):
     asserts.assertContains(
         response,
         "This field is required.",
-        status_code=codes.bad_request,
+        status_code=HTTPStatus.BAD_REQUEST,
     )
     asserts.assertTemplateUsed(response, "main/include/studydesc-line.html")
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
@@ -252,7 +253,7 @@ def test_edit_single_line_metadata_add_remove(client, writable_session):
     response = client.post(url, data=payload)
 
     updated = models.Line.objects.get(pk=line.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert updated.name == line.name
     assert len(updated.metadata) == 1
     assert updated.metadata_get(meta_b) == "bar"
@@ -264,7 +265,7 @@ def test_initial_edit_line_without_selection(client, writable_session):
 
     response = client.post(url, data={})
 
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     asserts.assertTemplateUsed(response, "main/include/error_message.html")
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
 
@@ -298,7 +299,7 @@ def test_edit_multiple_lines(client, writable_session):
     response = client.post(url, data=payload)
 
     found = models.Line.objects.filter(pk__in=[line1.id, line2.id], control=True)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found.count() == 2
 
 
@@ -308,7 +309,7 @@ def test_delete_line_without_selection(client, writable_session):
 
     response = client.post(url, data={})
 
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_delete_single_line_without_measurements(client, writable_session):
@@ -320,7 +321,7 @@ def test_delete_single_line_without_measurements(client, writable_session):
     response = client.post(url, data=payload)
 
     found = models.Line.objects.filter(pk=line.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found.count() == 0
 
 
@@ -334,7 +335,7 @@ def test_delete_multiple_lines_without_measurements(client, writable_session):
     response = client.post(url, data=payload)
 
     found = models.Line.objects.filter(pk__in=[line1.id, line2.id])
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found.count() == 0
 
 
@@ -347,7 +348,7 @@ def test_delete_multiple_lines_with_measurements(client, writable_session):
     payload = {"lineId": lines.values_list("id", flat=True)}
     response = client.post(url, data=payload)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert lines.count() == 3
     assert lines.filter(active=True).count() == 0
 
@@ -363,7 +364,7 @@ def test_delete_already_archived_line(client, writable_session):
     response = client.post(url, data=payload)
     response = client.post(url, data=payload)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert lines.count() == 3
     assert lines.filter(active=True).count() == 0
 
@@ -374,7 +375,7 @@ def test_restore_line_without_selection(client, writable_session):
 
     response = client.post(url, data={})
 
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_restore_single_line(client, writable_session):
@@ -385,7 +386,7 @@ def test_restore_single_line(client, writable_session):
     payload = {"lineId": [line.id]}
     response = client.post(url, data=payload)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert writable_session.study.line_set.filter(active=True).count() == 1
 
 
@@ -399,7 +400,7 @@ def test_restore_multiple_lines(client, writable_session):
     payload = {"lineId": lines.values_list("id", flat=True)}
     response = client.post(url, data=payload)
 
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert lines.filter(active=True).count() == 3
 
 
@@ -412,7 +413,7 @@ def test_restore_active_line(client, writable_session):
     response = client.post(url, data=payload)
 
     found = models.Line.objects.filter(pk=line.id, active=True)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found.count() == 1
 
 
@@ -422,7 +423,7 @@ def test_group_lines_without_selection(client, writable_session):
 
     response = client.post(url, data={})
 
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_group_single_line(client, writable_session):
@@ -435,7 +436,7 @@ def test_group_single_line(client, writable_session):
     response = client.post(url, data=payload)
 
     found = models.Line.objects.get(pk=line.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found.metadata_get(replicate) is not None
 
 
@@ -451,7 +452,7 @@ def test_group_multiple_lines(client, writable_session):
 
     found1 = models.Line.objects.get(pk=line1.id)
     found2 = models.Line.objects.get(pk=line2.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found1.metadata_get(replicate) is not None
     assert found1.metadata_get(replicate) == found2.metadata_get(replicate)
 
@@ -474,7 +475,7 @@ def test_group_already_grouped_lines(client, writable_session):
 
     found1 = models.Line.objects.get(pk=line1.id)
     found2 = models.Line.objects.get(pk=line2.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found1.metadata_get(replicate) != "foo"
     assert found2.metadata_get(replicate) != "bar"
     assert found1.metadata_get(replicate) == found2.metadata_get(replicate)
@@ -486,7 +487,7 @@ def test_ungroup_lines_without_selection(client, writable_session):
 
     response = client.post(url, data={})
 
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_ungroup_single_line(client, writable_session):
@@ -502,7 +503,7 @@ def test_ungroup_single_line(client, writable_session):
     response = client.post(url, data=payload)
 
     found = models.Line.objects.get(pk=line.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found.metadata_get(replicate) is None
 
 
@@ -524,7 +525,7 @@ def test_ungroup_multiple_lines(client, writable_session):
 
     found1 = models.Line.objects.get(pk=line1.id)
     found2 = models.Line.objects.get(pk=line2.id)
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     assert found1.metadata_get(replicate) is None
     assert found2.metadata_get(replicate) is None
 
@@ -535,7 +536,7 @@ def test_clone_line_without_selection(client, writable_session):
 
     response = client.post(url, data={})
 
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_clone_line(client, writable_session):
@@ -549,7 +550,7 @@ def test_clone_line(client, writable_session):
     assert writable_session.study.line_set.count() == 2
     values = writable_session.study.line_set.values_list("description", flat=True)
     assert values[0] == values[1]
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
 
 
 def test_initial_add_assay_without_selection(client, writable_session):
@@ -561,7 +562,7 @@ def test_initial_add_assay_without_selection(client, writable_session):
     asserts.assertContains(
         response,
         "Must select at least one Line to add Assay.",
-        status_code=codes.bad_request,
+        status_code=HTTPStatus.BAD_REQUEST,
     )
     asserts.assertTemplateUsed(response, "main/include/error_message.html")
 
@@ -576,7 +577,7 @@ def test_initial_add_assay(client, writable_session):
 
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
     asserts.assertTemplateUsed(response, "main/include/studydesc-assay.html")
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
 
 
 def test_add_assay_without_selection(client, writable_session):
@@ -598,7 +599,7 @@ def test_add_assay_ajax_without_selection(client, writable_session):
     asserts.assertContains(
         response,
         "Must select at least one Line to add Assay.",
-        status_code=codes.bad_request,
+        status_code=HTTPStatus.BAD_REQUEST,
     )
     asserts.assertTemplateUsed(response, "main/include/error_message.html")
 
@@ -627,7 +628,7 @@ def test_add_assay_ajax_with_invalid_form(client, writable_session):
 
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
     asserts.assertTemplateUsed(response, "main/include/studydesc-assay.html")
-    assert response.status_code == codes.bad_request
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_add_assay(client, writable_session):
@@ -640,7 +641,7 @@ def test_add_assay(client, writable_session):
     response = client.post(url, data=payload, follow=True)
 
     assert line.assay_set.count() == 1
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK
     asserts.assertRedirects(response, writable_session.url("main:lines"))
 
 
@@ -654,4 +655,4 @@ def test_add_assay_ajax(client, writable_session):
     response = client.post(url, data=payload)
 
     assert line.assay_set.count() == 1
-    assert response.status_code == codes.ok
+    assert response.status_code == HTTPStatus.OK

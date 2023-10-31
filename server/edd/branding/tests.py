@@ -1,6 +1,7 @@
+from http import HTTPStatus
+
 from django.template import Context, Template
 from django.urls import reverse
-from requests import codes
 
 from edd import TestCase
 from edd.profile.factory import UserFactory
@@ -125,12 +126,12 @@ class BrandingFaviconTests(TestCase):
     def test_favicon(self):
         response = self.client.get("/favicon.ico")
         self.assertEqual(response["Content-Type"], "image/x-icon")
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         # still a response with a bogus branding SITE_ID
         with self.settings(SITE_ID=9000):
             response = self.client.get("/favicon.ico")
             self.assertEqual(response["Content-Type"], "image/x-icon")
-            self.assertEqual(response.status_code, codes.ok)
+            self.assertEqual(response.status_code, HTTPStatus.OK)
 
 
 class BrandingModelsTests(TestCase):
@@ -162,5 +163,5 @@ class BrandingAdminTests(TestCase):
         }
         # use follow to go through redirect to final page
         response = self.client.post(url, data=data, follow=True)
-        self.assertEqual(response.status_code, codes.ok)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertContains(response, "set to current branding")
