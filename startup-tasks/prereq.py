@@ -189,14 +189,12 @@ def rabbitmq(context, limit=10):
 def owner(context):
     """Sets ownership on necessary directories."""
     dirs = [
-        # container copy of code
-        "/usr/local/edd",
+        # code directory
+        "/code",
         # container log directory
         "/var/log/edd",
-        # volume mount for static assets
-        "/var/www/static",
-        # volume mount for uploaded files
-        "/var/www/uploads",
+        # default upload/static-asset location
+        "/var/www",
     ]
     for directory in dirs:
         util.ensure_dir_owner(context, directory)

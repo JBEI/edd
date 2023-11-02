@@ -22,7 +22,7 @@ def ensure_dir_owner(context, directory):
         result = context.run(f"stat -c %U '{directory}'", warn=True, hide=True)
         owner = result.stdout.strip()
         if owner != "edduser":
-            context.run(f"chown -R edduser '{directory}'")
+            context.run(f"chown -R edduser:edduser '{directory}'")
 
 
 def get_pending_migrations(context):

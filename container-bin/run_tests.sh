@@ -2,6 +2,11 @@
 
 set -euxo pipefail
 
+# if running as `root`, drop privleges to `edduser`
+if [ "$(id -u)" = "0" ]; then
+  exec setpriv --reuid edduser --regid edduser --inh-caps=-all --init-groups "$0"
+fi
+
 # run tests -- always with debug disabled
 EDD_DEBUG=false && {
   # reuse database for efficiency
