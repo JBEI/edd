@@ -28,7 +28,7 @@ body > .navbar {
 .navbar-brand > img.eddLogo,
 .navbar-brand > img.companyLogo {
     display: inline-block;
-    height: 2.8em;
+    height: 2.8rem;
     width: auto;
 }
 .navbar-default .navbar-text,
@@ -36,7 +36,7 @@ body > .navbar {
     color: #727272;
 }
 #notification-list {
-    width: 30em;
+    width: 30rem;
 }
 #notification-list ul {
     list-style: none outside;
@@ -63,4 +63,11 @@ body > .navbar {
 .centered-form {
     margin: 3rem auto;
     max-width: 540px;
+}
+
+/* fontawesome fixes */
+/* normal rule uses em, which scales incorrectly; switch to rem instead */
+.fa-stack-2x {
+    height: 2rem !important;
+    width: 2.5rem !important;
 }
