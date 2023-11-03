@@ -53,5 +53,6 @@ class StudyObjectMixin(generic.detail.SingleObjectMixin):
         access = models.Study.access_filter(self.request.user)
         return qs.filter(access, active=True).distinct()
 
-    def study_reverse(self, name):
-        return reverse(name, kwargs={"slug": self.get_object().slug})
+    def study_reverse(self, name, **kwargs):
+        kwargs.update(slug=self.get_object().slug)
+        return reverse(name, kwargs=kwargs)
