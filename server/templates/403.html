@@ -1,13 +1,12 @@
-{% extends "edd_base.html" %}
-{% load static %}
-{% load i18n %}
+{% extends "edd_bs5.html" %}
+{% load i18n static %}
 
 {% block head_title %}
-  {% translate 'EDD - Error: Forbidden' %}
+  {% translate "EDD - Missing Permission" context "Browser tab title" %}
 {% endblock head_title %}
 
 {% block body_title %}
-  {% translate 'Error: Forbidden' %}
+  {% translate "Missing Permission" context "Top of page title" %}
 {% endblock body_title %}
 
 {% block content %}
