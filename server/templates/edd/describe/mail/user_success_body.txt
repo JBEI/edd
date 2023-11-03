@@ -4,5 +4,5 @@
 Adding lines to <a href="{{ study_uri }}">{{ study }}</a> succeeded. {{ lines_created }} lines were created in {{ duration }}.
 {% endblocktranslate %}
 
-{% include "edd/load/mail/_wizard_warnings.txt" %}
+{% include "edd/describe/mail/_warnings.txt" %}
 {% endblock body %}

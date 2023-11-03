@@ -49,6 +49,8 @@ function extraParams(select: JQuery): Params {
     switch (type) {
         case "Assay":
         case "AssayLine":
+            params.protocol = select.data("eddautoProtocol");
+        // fall through
         case "Line":
             params.study = select.data("eddautoStudy");
             break;

@@ -1,0 +1,19 @@
+{% extends "edd_bs5.html" %}
+{% load i18n static %}
+
+{% block js_css %}
+  {{ block.super }}
+  <script src="{% static "bs5/load.js" %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+  {{ study.name }} &ndash; {{ block.super }}
+{% endblock head_title %}
+
+{% block body_title %}
+   Load Data to <a href="{{ study_url }}">{{ study.name }}</a>
+{% endblock body_title %}
+
+{% block content %}
+{% include "edd/load/include/wizard_states.html" %}
+{% endblock content %}

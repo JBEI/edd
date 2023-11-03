@@ -142,6 +142,10 @@ class GeneFactory(MeasurementTypeFactory):
         model = models.GeneIdentifier
 
 
+class GenericTypeFactory(MeasurementTypeFactory):
+    type_group = models.MeasurementType.Group.GENERIC
+
+
 class UnitFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.MeasurementUnit
@@ -199,6 +203,14 @@ class MetadataTypeFactory(factory.django.DjangoModelFactory):
     for_context = factory.Iterator(
         (models.MetadataType.STUDY, models.MetadataType.LINE, models.MetadataType.ASSAY)
     )
+
+
+class AssayMetadataTypeFactory(MetadataTypeFactory):
+    for_context = models.MetadataType.ASSAY
+
+
+class LineMetadataTypeFactory(MetadataTypeFactory):
+    for_context = models.MetadataType.LINE
 
 
 class StrainFactory(factory.django.DjangoModelFactory):

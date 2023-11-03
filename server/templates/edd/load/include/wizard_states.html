@@ -1,0 +1,110 @@
+{% load i18n %}
+<ul class="nav nav-tabs justify-content-center my-2">
+  <li class="nav-item">
+    {% if uuid %}
+      {% url "main:load:start_edit" slug=study.slug uuid=uuid as start_url %}
+    {% else %}
+      {% url "main:load:start" slug=study.slug as start_url %}
+    {% endif %}
+    <a
+      {% if view.tab_key == "start" %}
+      class="nav-link active"
+      aria-current="step"
+      {% else %}
+      class="nav-link"
+      {% endif %}
+      href="{{ start_url }}"
+    >
+      <span class="fa-stack" id="edd-identify">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-marker fa-stack-1x fa-inverse"></span>
+      </span>
+      <span class="fa-stack d-none" id="edd-identify-done">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-check fa-stack-1x fa-inverse"></span>
+      </span>
+      {% translate "Identify" %}
+    </a>
+  </li>
+  <li class="nav-item">
+    {% if uuid %}
+      {% url "main:load:upload" slug=study.slug uuid=uuid as upload_url %}
+    {% endif %}
+    <a
+      {% if not load_request.is_upload_ready %}
+      class="nav-link disabled"
+      aria-disabled="true"
+      {% elif view.tab_key == "upload" %}
+      class="nav-link active"
+      aria-current="step"
+      {% else %}
+      class="nav-link"
+      {% endif %}
+      href="{{ upload_url|default_if_none:"" }}"
+    >
+      <span class="fa-stack" id="edd-upload">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-upload fa-stack-1x fa-inverse"></span>
+      </span>
+      <span class="fa-stack d-none" id="edd-upload-done">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-check fa-stack-1x fa-inverse"></span>
+      </span>
+      {% translate "Upload" %}
+    </a>
+  </li>
+  <li class="nav-item">
+    {% if uuid %}
+      {% url "main:load:interpret" slug=study.slug uuid=uuid as interpret_url %}
+    {% endif %}
+    <a
+      {% if not load_request.is_process_ready %}
+      class="nav-link disabled"
+      aria-disabled="true"
+      {% elif view.tab_key == "interpret" %}
+      class="nav-link active"
+      aria-current="step"
+      {% else %}
+      class="nav-link"
+      {% endif %}
+      href="{{ interpret_url|default_if_none:"" }}"
+    >
+      <span class="fa-stack" id="edd-interpret">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-wand-magic-sparkles fa-stack-1x fa-inverse"></span>
+      </span>
+      <span class="fa-stack d-none" id="edd-interpret-done">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-check fa-stack-1x fa-inverse"></span>
+      </span>
+      {% translate "Interpret" %}
+    </a>
+  </li>
+  <li class="nav-item">
+    {% if uuid %}
+      {% url "main:load:save" slug=study.slug uuid=uuid as save_url %}
+    {% endif %}
+    <a
+      {% if not load_request.is_save_ready %}
+      class="nav-link disabled"
+      aria-disabled="true"
+      {% elif view.tab_key == "save" %}
+      class="nav-link active"
+      aria-current="step"
+      {% else %}
+      class="nav-link"
+      {% endif %}
+      href="{{ save_url|default_if_none:"" }}"
+    >
+      <span class="fa-stack" id="edd-save">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-floppy-disk fa-stack-1x fa-inverse"></span>
+      </span>
+      <span class="fa-stack d-none" id="edd-save-done">
+        <span class="fas fa-circle fa-stack-2x"></span>
+        <span class="fas fa-check fa-stack-1x fa-inverse"></span>
+      </span>
+      {% translate "Save" %}
+    </a>
+  </li>
+</ul>

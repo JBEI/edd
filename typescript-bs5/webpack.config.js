@@ -27,6 +27,7 @@ module.exports = {
         ],
         "description": path.resolve(__dirname, "./src/description.ts"),
         "index": path.resolve(__dirname, "./src/index.ts"),
+        "load": path.resolve(__dirname, "./src/load.ts"),
         "login": path.resolve(__dirname, "./src/login.ts"),
         "overview": path.resolve(__dirname, "./src/overview.ts"),
     },

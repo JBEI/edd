@@ -1,0 +1,24 @@
+{% load i18n %}
+{% translate "Unknown File" as unknown %}
+<div class="container" id="edd-upload-progress">
+  <p>
+    {% blocktranslate with name=load_request.original_name|default_if_none:unknown resolved=load_request.progress.resolved unresolved=load_request.progress.unresolved %}
+    Processing <tt>{{ name }}</tt> …
+    Ready: <span class="edd-upload-resolved">{{ resolved }}</span>
+    Incomplete: <span class="edd-upload-unresolved">{{ unresolved }}</span>
+    {% endblocktranslate %}
+  </p>
+  <div class="progress">
+    {% blocktranslate with name=load_request.original_name|default_if_none:unknown asvar progress_label %}
+    Processing data from `{{ name }}`
+    {% endblocktranslate %}
+    <div
+      class="progress-bar progress-bar-striped progress-bar-animated w-100"
+      role="progressbar"
+      aria-label="{{ progress_label }}"
+      aria-valuemax="100"
+      aria-valuemin="0"
+      aria-valuenow="100"
+    ></div>
+  </div>
+</div>

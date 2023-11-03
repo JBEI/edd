@@ -1,0 +1,8 @@
+{% load i18n %}
+{% translate "Unknown File" as unknown %}
+<p>
+  {% blocktranslate with name=load_request.original_name|default_if_none:unknown %}
+  EDD didn't find any data to import in <tt>{{ name }}</tt>. Check any error
+  messages to fix the file, or contact your EDD administrators for assistance.
+  {% endblocktranslate %}
+</p>

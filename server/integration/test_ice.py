@@ -11,8 +11,6 @@ from faker import Faker
 from openpyxl.workbook import Workbook
 
 from edd import TestCase
-from edd.load.resolver import TypeResolver
-from edd.load.tests import factory as load_factory
 from edd.profile.factory import UserFactory
 from edd.search.registry import AdminRegistry, RegistryError, StrainRegistry
 from main import models
@@ -387,18 +385,23 @@ class IceIntegrationTests(TestCase):
                 folder.list_entries()
 
     def test_ice_protein_link(self):
-        category = load_factory.CategoryFactory.build(type_group="omics")
-        resolver = TypeResolver(self.read_ice_user, category)
-        protein = resolver.lookup_type(self.entry_ids[0])
+        protein = models.ProteinIdentifier.load_or_create(
+            self.entry_ids[0],
+            self.read_ice_user,
+        )
         assert isinstance(protein, models.ProteinIdentifier)
         assert protein.accession_id == self.entry_ids[0]
 
     def test_ice_protein_link_twice(self):
-        category = load_factory.CategoryFactory.build(type_group="omics")
-        resolver = TypeResolver(self.read_ice_user, category)
-        protein = resolver.lookup_type(self.entry_ids[0])
+        protein = models.ProteinIdentifier.load_or_create(
+            self.entry_ids[0],
+            self.read_ice_user,
+        )
         # running lookup_type again does not throw ValidationError
-        resolver.lookup_type(self.entry_ids[0])
+        protein = models.ProteinIdentifier.load_or_create(
+            self.entry_ids[0],
+            self.read_ice_user,
+        )
         assert isinstance(protein, models.ProteinIdentifier)
         assert protein.accession_id == self.entry_ids[0]
 

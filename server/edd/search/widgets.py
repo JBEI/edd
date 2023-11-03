@@ -54,16 +54,22 @@ class Select2Widget(Select2Mixin, forms.widgets.Select):
 class AssayAutocomplete(Select2Widget):
     kind = "Assay"
 
-    def __init__(self, *, study_id, attrs=None):
-        self.default_attrs = {"data-eddauto-study": study_id}
+    def __init__(self, *, study_id, protocol_id, attrs=None):
+        self.default_attrs = {
+            "data-eddauto-study": study_id,
+            "data-eddauto-protocol": protocol_id,
+        }
         super().__init__(attrs)
 
 
 class AssayLineAutocomplete(Select2Widget):
     kind = "AssayLine"
 
-    def __init__(self, *, study_id, attrs=None):
-        self.default_attrs = {"data-eddauto-study": study_id}
+    def __init__(self, *, study_id, protocol_id, attrs=None):
+        self.default_attrs = {
+            "data-eddauto-study": study_id,
+            "data-eddauto-protocol": protocol_id,
+        }
         super().__init__(attrs)
 
 

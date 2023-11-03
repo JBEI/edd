@@ -7,23 +7,36 @@ app_name = "edd.load"
 
 
 urlpatterns = [
-    path("wizard/", login_required(views.ImportView.as_view()), name="wizard"),
+    path(
+        "",
+        login_required(views.ImportStartView.as_view()),
+        name="start",
+    ),
+    # keeping the "wizard" URL in case someone happened to bookmark it
+    path("wizard/", login_required(views.ImportStartView.as_view())),
+    path(
+        "<slug:uuid>/",
+        login_required(views.ImportStartView.as_view()),
+        name="start_edit",
+    ),
+    path(
+        "<slug:uuid>/upload/",
+        login_required(views.ImportUploadView.as_view()),
+        name="upload",
+    ),
+    path(
+        "<slug:uuid>/interpret/",
+        login_required(views.ImportInterpretView.as_view()),
+        name="interpret",
+    ),
+    path(
+        "<slug:uuid>/interpret/<int:page>/",
+        login_required(views.ImportInterpretView.as_view()),
+        name="interpret-page",
+    ),
+    path(
+        "<slug:uuid>/save/",
+        login_required(views.ImportSaveView.as_view()),
+        name="save",
+    ),
 ]
-
-
-def register_rest_api_calls():
-    # plug into the REST API
-    from edd.rest.routers import router, study_router
-
-    from .rest import views as rest_views
-
-    study_router.register(
-        r"load",
-        rest_views.LoadRequestViewSet,
-        basename="study_load",
-    )
-    router.register(
-        r"load_categories",
-        rest_views.CategoriesViewSet,
-        basename="load_categories",
-    )

@@ -61,7 +61,7 @@
     </button>
     <a
       class="btn btn-primary btn-large"
-      href="{% url 'main:load:wizard' slug=study.slug %}"
+      href="{% url "main:load:start" slug=study.slug %}"
     >
       <i class="fas fa-cloud-upload-alt"></i>
       {% translate "Import Data" %}

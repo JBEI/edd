@@ -23,13 +23,14 @@ def setup_application():
     from channels.auth import AuthMiddlewareStack
     from channels.routing import ProtocolTypeRouter, URLRouter
 
-    from edd.load.notify.routing import url_patterns as load_notify
+    from edd.load.progress import url_patterns as load_progress
     from edd.notify.routing import url_patterns as edd_notify
 
+    urls = [*load_progress, *edd_notify]
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,
-            "websocket": AuthMiddlewareStack(URLRouter([] + load_notify + edd_notify)),
+            "websocket": AuthMiddlewareStack(URLRouter(urls)),
         }
     )
 

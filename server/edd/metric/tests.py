@@ -8,8 +8,6 @@ from rest_framework.test import APITestCase
 from edd import TestCase
 from edd.export.broker import ExportBroker
 from edd.export.tasks import export_table_task, export_worklist_task
-from edd.load.broker import ImportBroker, LoadRequest
-from edd.load.tasks import wizard_execute_loading
 from edd.rest.tests import EddApiTestCaseMixin
 from main import models as edd_models
 from main.tests import factory
@@ -228,50 +226,6 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
         sl = qs.get()
         # count is 3 + 5 from both studies
         assert sl.detail == {"count": 8}
-
-    def test_wizard_import_adds_entry(self):
-        study = self._writable_study()
-        line = factory.LineFactory(study=study)
-        protocol = factory.ProtocolFactory()
-        measurement_type = factory.MeasurementTypeFactory()
-        x_unit = factory.UnitFactory()
-        y_unit = factory.UnitFactory()
-        broker = ImportBroker()
-        load = LoadRequest(
-            protocol_uuid=protocol.uuid,
-            status=LoadRequest.Status.READY,
-            study_uuid=study.uuid,
-            x_units_name=x_unit.unit_name,
-            y_units_name=y_unit.unit_name,
-        )
-        # storing the LoadRequest in backend will allow transitions
-        load.store()
-        # minimal data to load into study
-        broker.set_context(
-            load.request,
-            {"loa_pks": {line.pk}, "matched_assays": False, "use_assay_times": False},
-        )
-        broker.add_page(
-            load.request,
-            [
-                {
-                    "compartment": edd_models.Measurement.Compartment.UNKNOWN,
-                    "data": [[[12], [42]]],
-                    "format": edd_models.Measurement.Format.SCALAR,
-                    "line_id": line.pk,
-                    "measurement_id": measurement_type.pk,
-                    "x_unit_id": x_unit.pk,
-                    "y_unit_id": y_unit.pk,
-                }
-            ],
-        )
-
-        wizard_execute_loading.s(load.request, self.user.id).apply()
-
-        qs = self._find_log(event=StudyLog.Event.IMPORTED, study=study)
-        assert qs.count() == 1
-        sl = qs.get()
-        assert sl.detail == {"count": 1, "protocol": str(protocol.uuid)}
 
     def test_adding_permission_adds_log(self):
         study = self._writable_study()

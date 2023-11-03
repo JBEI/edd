@@ -35,21 +35,12 @@ module.exports = {
         ],
         "ExperimentDescHelp": path.resolve(__dirname, "./src/Experiment-Desc-Help.ts"),
         "Export": path.resolve(__dirname, "./src/Export.ts"),
-        "LoadWizard": [
-            "react",
-            "react-dom",
-            "react-dropzone",
-            "react-stepzilla",
-            "react-stepzilla.css",
-            path.resolve(__dirname, "./src/LoadWizard.tsx"),
-        ],
         "StudyData": path.resolve(__dirname, "./src/Study-Data.ts"),
         "StudyLines": path.resolve(__dirname, "./src/Study-Lines.ts"),
         "StudyLinesAddCombos": path.resolve(
             __dirname,
             "./src/Study-Lines-Add-Combos.ts",
         ),
-        "WizardHelp": path.resolve(__dirname, "./src/WizardHelp.ts"),
     },
     "output": {
         "filename": "[name].js",

@@ -1,0 +1,25 @@
+{% extends "edd/load/wizard_base.html" %}
+{% load i18n static %}
+
+{% block content %}
+  {{ block.super }}
+  <form
+    action="{% url 'main:load:start' slug=study.slug %}"
+    class="centered-form"
+    method="POST"
+  >
+    {% csrf_token %}
+    {{ start }}
+    <div class="row mb-3">
+      <div class="col-auto ms-auto">
+        <button
+          class="btn btn-success"
+          type="submit"
+        >
+          <i class="fas fa-play"></i>
+          {% translate "Start Import" %}
+        </button>
+      </div>
+    </div>
+  </form>
+{% endblock content %}

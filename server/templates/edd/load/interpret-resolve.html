@@ -1,0 +1,101 @@
+{% load i18n %}
+{% translate "Unknown File" as unknown %}
+<form
+  action="{% url "main:load:interpret" slug=study.slug uuid=uuid %}"
+  class="centered-form"
+  method="POST"
+>
+  {% csrf_token %}
+  <p>
+    {% if progress.resolved == 0 %}
+      {% blocktranslate %}
+      EDD could not find any completed records ready to store into the
+      database. Fill in the missing data to enable the "Save" button.
+      {% endblocktranslate %}
+    {% else %}
+      {% blocktranslate with name=load_request.original_name|default_if_none:unknown count resolved=progress.resolved %}
+      EDD found {{ resolved }} record ready to save from <tt>{{ name }}</tt>.
+      This can be saved to the database with the "Save" button below. You may
+      throw away the record and start over with the "Discard" button.
+      {% plural %}
+      EDD found {{ resolved }} records ready to save from <tt>{{ name }}</tt>.
+      These can be saved to the database with the "Save" button below. You may
+      throw away the records and start over with the "Discard" button.
+      {% endblocktranslate %}
+    {% endif %}
+  </p>
+  <p>
+    {% blocktranslate count unresolved=progress.unresolved %}
+    There is also {{ unresolved }} record requiring further information
+    before it can be correctly saved.
+    {% plural %}
+    There are also {{ unresolved }} records requiring further information
+    before they can be correctly saved.
+    {% endblocktranslate %}
+    {% blocktranslate count tokens=progress.tokens %}
+    Found {{ tokens }} unknown value. Help EDD by choosing your intended value
+    in the search box below.
+    {% plural %}
+    Found {{ tokens }} unknown values. Help EDD by choosing your intended
+    values in the search boxes below.
+    {% endblocktranslate %}
+  </p>
+  {% if previous_url or next_url %}
+  <div class="row">
+    <div class="col-auto ms-auto">
+      <div
+        class="btn-group btn-group-sm"
+        id="edd-form-nav"
+        role="group"
+        aria-label="{% translate "Page navigation for unknown tokens" %}"
+      >
+        {% if previous_url %}
+        <a
+          class="btn btn-outline-secondary"
+          href="{{ previous_url }}"
+        >{% translate "Previous" %}</a>
+        {% endif %}
+        {% if next_url %}
+        <a
+          class="btn btn-outline-secondary"
+          href="{{ next_url }}"
+        >{% translate "Next" %}</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {{ form }}
+  <div class="row">
+    <div class="col-auto">
+      <button
+        class="btn btn-primary"
+        id="edd-update-button"
+        type="submit"
+      >
+        <i class="fas fa-check"></i>
+        {% translate "Update" %}
+      </button>
+    </div>
+    <div class="col-auto ms-auto">
+      <button
+        class="btn btn-outline-secondary"
+        {% if progress.resolved == 0 %}disabled="disabled"{% endif %}
+        id="edd-save-button"
+        name="save"
+        type="submit"
+      >
+        <i class="fas fa-floppy-disk"></i>
+        {% translate "Save Only Ready" %}
+      </button>
+      <button
+        class="btn btn-outline-secondary"
+        name="abort"
+        type="submit"
+      >
+        <i class="fas fa-trash-can"></i>
+        {% translate "Discard" %}
+      </button>
+    </div>
+  </div>
+</form>

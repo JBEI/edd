@@ -1072,12 +1072,13 @@ class Assay(EDDObject):
 @Select2("Assay")
 def assay_autocomplete(request):
     start, end = request.range
-    study = request["study"]
-    if not study:
-        message = "Must provide a study ID for Assay searches."
+    if not (study := request["study"]):
+        message = _("Must provide a study ID for Assay searches.")
         raise ValueError(message)
-    found = Assay.objects.filter(name__iregex=request.term, study_id=study)
-    found = found.order_by("name")
+    query = Q(name__iregex=request.term, study_id=study)
+    if protocol := request["protocol"]:
+        query &= Q(protocol_id=protocol)
+    found = Assay.objects.filter(query).order_by("name")
     count = found.count()
     items = [
         {"id": json.dumps(item), "text": item["name"]}
@@ -1090,13 +1091,15 @@ def assay_autocomplete(request):
 def assay_line_autocomplete(request):
     start, end = request.range
     value_fields = ("id", "line_id", "name", "type")
-    study = request["study"]
-    if not study:
-        message = "Must provide a study ID for Line/Assay searches."
+    if not (study := request["study"]):
+        message = _("Must provide a study ID for Line/Assay searches.")
         raise ValueError(message)
+    assay_query = line_query = Q(name__iregex=request.term, study_id=study)
+    if protocol := request["protocol"]:
+        assay_query &= Q(protocol_id=protocol)
     # basic queries
-    assay = Assay.objects.filter(name__iregex=request.term, study_id=study)
-    line = Line.objects.filter(name__iregex=request.term, study_id=study)
+    assay = Assay.objects.filter(assay_query)
+    line = Line.objects.filter(line_query)
     # using any "natural" fields can cause Django to order fields differently
     # in the query, thus we must use *only* annotation fields to get data out
     assay = assay.values(

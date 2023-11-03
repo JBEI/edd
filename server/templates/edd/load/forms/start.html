@@ -1,0 +1,26 @@
+{% load i18n %}
+{% if not fields %}
+  {% for field in hidden_fields %}{{ field }}{% endfor %}
+{% else %}
+  <div class="mb-3">
+    <label for="{{ form.protocol.id_for_label }}">
+      {{ form.protocol.label }}
+    </label>
+    {{ form.protocol }}
+    {% for error in form.protocol.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+  <div class="mb-3">
+    <label for="{{ form.layout.id_for_label }}">
+      {{ form.layout.label }}
+    </label>
+    {{ form.layout }}
+    {% for error in form.layout.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% for error in errors %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endfor %}

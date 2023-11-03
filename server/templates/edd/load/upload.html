@@ -1,0 +1,43 @@
+{% extends "edd/load/wizard_base.html" %}
+{% load i18n static %}
+
+{% block status %}
+  {{ block.super }}
+  {% if load_request.is_process_ready %}
+  <div class="alert alert-warning alert-dismissible my-2">
+    <h4>{% translate "You already uploaded a file" %}</h4>
+    {% translate "Unknown File" as unknown %}
+    <p>
+      {% blocktranslate with name=load_request.original_name|default_if_none:unknown %}
+      EDD is working with <tt>{{ name }}</tt>. Uploading a different file will
+      clear any progress and use the data from the new file instead.
+      {% endblocktranslate %}
+    </p>
+    <button
+      class="btn-close"
+      type="button"
+      aria-label="{% translate "Close" %}"
+      data-bs-dismiss="alert"
+    ></button>
+  </div>
+  {% endif %}
+{% endblock status %}
+
+{% block content %}
+  {{ block.super }}
+  <form
+    action="{% url "main:load:upload" slug=study.slug uuid=uuid %}"
+    class="dropzone"
+    enctype="multipart/form-data"
+    method="POST"
+  >
+    {% csrf_token %}
+    <div class="fallback">
+      <input name="file" type="file" multiple="multiple" required="required"/>
+      <button class="btn btn-primary" type="submit">
+        <i class="fas fa-cloud-upload-alt"></i>
+        {% translate "Upload Import File" %}
+      </button>
+    </div>
+  </form>
+{% endblock content %}

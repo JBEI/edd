@@ -1,9 +1,0 @@
-{% load i18n %}
-{% blocktranslate %}
-Your upload to {{ study }} requires more information to successfully complete.
-View the study at <{{ study_uri }}>. Correct the below issues, then re-submit
-the request to complete loading data into the EDD.
-{% endblocktranslate %}
-
-{% include "edd/load/mail/_wizard_errors.txt" %}
-{% include "edd/load/mail/_wizard_warnings.txt" %}

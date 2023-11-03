@@ -1,0 +1,36 @@
+{% load i18n %}
+{% translate "Unknown File" as unknown %}
+<form
+  action="{% url "main:load:interpret" slug=study.slug uuid=uuid %}"
+  class="centered-form"
+  method="POST"
+>
+  {% csrf_token %}
+  <p>
+    {% blocktranslate with name=load_request.original_name|default_if_none:unknown count resolved=load_request.progress.resolved %}
+    EDD found {{ resolved }} record ready to save from <tt>{{ name }}</tt>.
+    If this is correct, click "Save" to add this record to the database. You
+    may throw away the record and start over with the "Discard" button.
+    {% plural %}
+    EDD found {{ resolved }} records ready to save from <tt>{{ name }}</tt>.
+    If this is correct, click "Save" to add this data to the database. You
+    may throw away the data and start over with the "Discard" button.
+    {% endblocktranslate %}
+  </p>
+  <button
+    class="btn btn-primary"
+    name="save"
+    type="submit"
+  >
+    <i class="fas fa-floppy-disk"></i>
+    {% translate "Save" %}
+  </button>
+  <button
+    class="btn btn-outline-secondary"
+    name="abort"
+    type="submit"
+  >
+    <i class="fas fa-trash-can"></i>
+    {% translate "Discard" %}
+  </button>
+</form>

@@ -42,7 +42,6 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("describe/", include("edd.describe.flat_urls", namespace="describe_flat")),
     path("export/", include("edd.export.urls", namespace="export")),
-    path("load/", include("edd.load.flat_urls", namespace="load_flat")),
     path("profile/", include("edd.profile.urls", namespace="profile")),
     path("rest/", include(rest_urlpatterns)),
     path("search/", include("edd.search.urls", namespace="search")),
