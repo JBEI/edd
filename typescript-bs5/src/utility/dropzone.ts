@@ -68,79 +68,11 @@ interface DescriptionResponse {
 
 type dzClickOption = boolean | string | HTMLElement | (string | HTMLElement)[];
 
-interface DZOptions {
-    /** ID of the element to be set up as a Dropzone. */
-    element: JQuery<HTMLElement>;
-    /** URL target for upload requests. */
-    url: string;
-    /** Preprocess callback for import. */
-    fileInitFn?: (file: Dropzone.DropzoneFile, formData: FormData) => void;
-    /** Callback for error result returned from server. */
-    processErrorFn?: (
-        dropzone: Dropzone,
-        file: Dropzone.DropzoneFile,
-        response?: any,
-    ) => void;
-    /** Callback for successful result returned from server. */
-    processResponseFn?: (file: Dropzone.DropzoneFile, response: any) => void;
-    /** Callback for warning result returned from server. */
-    processWarningFn?: (file: Dropzone.DropzoneFile, response: any) => void;
-    /** Assign false to prevent clicking; otherwise defaults to clickable Dropzone. */
-    clickable?: dzClickOption;
-}
-
 function tryJSON(text: string): any {
     try {
         return JSON.parse(text);
     } catch {
         return undefined;
-    }
-}
-
-/**
- * Sets up a Dropzone element, with event handlers attached per the options.
- */
-export function createDropzone(options: DZOptions): void {
-    const clickable = options.clickable === undefined ? true : options.clickable;
-    if (options?.element?.length === 1) {
-        options.element.addClass("dropzone");
-        const csrftoken = findCSRFToken();
-        const dropzone = new Dropzone(options.element[0], {
-            "url": options.url,
-            "params": { "csrfmiddlewaretoken": csrftoken },
-            "maxFilesize": 2,
-            "acceptedFiles": ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
-            "clickable": clickable,
-        });
-        dropzone.on("sending", (file, xhr, formData) => {
-            options.fileInitFn?.(file, formData);
-        });
-        dropzone.on("error", (file, msg) => {
-            dropzone.removeAllFiles();
-            options.processErrorFn?.(dropzone, file, tryJSON(file.xhr.response));
-        });
-        dropzone.on("success", (file) => {
-            const response = tryJSON(file.xhr.response);
-            dropzone.removeAllFiles();
-            if (!response) {
-                options.processErrorFn?.(dropzone, file);
-            } else if (response.warnings) {
-                options.processWarningFn?.(file, response);
-            } else {
-                options.processResponseFn?.(file, response);
-            }
-        });
-        // listen for alert closes
-        $(document).on("closed.bs.alert", "#alert_placeholder", (event) => {
-            const parent = $("#alert_placeholder");
-            const alert = $(event.target).closest(".alert");
-            // if there's a next alert, focus it
-            alert.next(".alert").focus();
-            // if no alerts left, call clearAlerts to hide dismiss all button
-            if (parent.children(".alert:visible").length === 0) {
-                DescriptionDropzone.clearAlerts();
-            }
-        });
     }
 }
 
@@ -164,15 +96,41 @@ export class DescriptionDropzone {
      * Helper method to run setup on the dropzone and messages elements.
      */
     static initialize(dropElement: JQuery, clickable?: dzClickOption): void {
-        const url = dropElement.data("url");
-        createDropzone({
-            "element": dropElement,
-            "fileInitFn": DescriptionDropzone.clearAlerts,
-            "url": url,
-            "clickable": clickable,
-            "processResponseFn": DescriptionDropzone.success,
-            "processErrorFn": DescriptionDropzone.error,
-            "processWarningFn": DescriptionDropzone.warning,
+        const dropzone = new Dropzone(dropElement.addClass("dropzone").get(0), {
+            "url": dropElement.data("url"),
+            "params": { "csrfmiddlewaretoken": findCSRFToken() },
+            "maxFilesize": 2,
+            "acceptedFiles": ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
+            "clickable": clickable === undefined ? true : clickable,
+        });
+        dropzone.on("sending", (file, xhr, formData) => {
+            DescriptionDropzone.clearAlerts();
+        });
+        dropzone.on("error", (file, msg) => {
+            dropzone.removeAllFiles();
+            DescriptionDropzone.error(dropzone, file, tryJSON(file.xhr.response));
+        });
+        dropzone.on("success", (file) => {
+            const response = tryJSON(file.xhr.response);
+            dropzone.removeAllFiles();
+            if (!response) {
+                DescriptionDropzone.error(dropzone, file);
+            } else if (response.warnings) {
+                DescriptionDropzone.warning(file, response);
+            } else {
+                DescriptionDropzone.success(file, response);
+            }
+        });
+        // listen for alert closes
+        $(document).on("closed.bs.alert", "#alert_placeholder", (event) => {
+            const parent = $("#alert_placeholder");
+            const alert = $(event.target).closest(".alert");
+            // if there's a next alert, focus it
+            alert.next(".alert").focus();
+            // if no alerts left, call clearAlerts to hide dismiss all button
+            if (parent.children(".alert:visible").length === 0) {
+                DescriptionDropzone.clearAlerts();
+            }
         });
     }
 
