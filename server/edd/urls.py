@@ -5,9 +5,9 @@ from django.contrib import admin
 from django.contrib.auth.decorators import login_required
 from django.contrib.flatpages import views as flatpage_views
 from django.http import HttpResponse
-from django.template.response import TemplateResponse
 from django.urls import include, path, re_path
 
+from edd import views as legacy_view
 from edd.branding.views import favicon as favicon_view
 
 admin.autodiscover()
@@ -23,11 +23,6 @@ def ping(request):
     if request.user.is_authenticated:
         return HttpResponse(status=HTTPStatus.NO_CONTENT)
     return HttpResponse(status=HTTPStatus.FORBIDDEN)
-
-
-def legacy_issue_no_strain_url(request):
-    """Simplest possible view for the legacy_issue_no_strain_url page."""
-    return TemplateResponse(request, "main/legacy_issue_no_strain_url.html", {})
 
 
 rest_urlpatterns = [
@@ -55,8 +50,8 @@ urlpatterns = [
     # path('pages/', include('django.contrib.flatpages.urls', namespace='flatpage'))
     path("pages/<path:url>", flatpage_views.flatpage, name="flatpage"),
     path(
-        "legacy_issue_no_strain_url.html",
-        legacy_issue_no_strain_url,
+        "legacy_strain/<int:strain_id>/",
+        legacy_view.no_strain_url,
         name="legacy_issue_no_strain_url",
     ),
 ]

@@ -18,4 +18,16 @@
       was located.
     {% endblocktranslate %}
   </p>
+  <p>
+    {% blocktranslate %}
+      The strain is used in the following Studies:
+    {% endblocktranslate %}
+  </p>
+  <ul>
+    {% for s in studies %}
+    <li><a href="{% url "main:overview" slug=s.slug %}">{{ s.name }}</a></li>
+    {% empty %}
+    <li><i>{% translate "No studies found" %}</i></li>
+    {% endfor %}
+  </ul>
 {% endblock content %}

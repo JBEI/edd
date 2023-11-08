@@ -24,5 +24,8 @@ class Command(BaseCommand):
                         adminReg.search(hasNoURL.name)
                     ).registry_url
                 except StopIteration:
-                    hasNoURL.registry_url = reverse("legacy_issue_no_strain_url")
+                    hasNoURL.registry_url = reverse(
+                        "legacy_issue_no_strain_url",
+                        kwargs={"strain_id": hasNoURL.id},
+                    )
                 hasNoURL.save()

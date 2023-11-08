@@ -1154,7 +1154,7 @@ class StudyAjaxViewTests(StudyViewTestCase):
         assert payload["currentStudyID"] == self.target_study.pk
 
 
-def test_load_no_strain_url_page(client):
-    url = reverse("legacy_issue_no_strain_url")
+def test_load_no_strain_url_page(client, db):
+    url = reverse("legacy_issue_no_strain_url", kwargs={"strain_id": 1})
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
