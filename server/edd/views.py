@@ -11,5 +11,5 @@ def no_strain_url(request, strain_id):
     return TemplateResponse(
         request,
         "main/legacy_issue_no_strain_url.html",
-        {"studies": studies},
+        {"studies": studies.values()},
     )
