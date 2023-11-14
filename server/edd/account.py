@@ -1,7 +1,10 @@
 import logging
 
-from allauth import account, exceptions, socialaccount
-from allauth.account import forms
+from allauth.account import adapter, forms, utils
+from allauth.account.models import EmailAddress
+from allauth.core import exceptions
+from allauth.socialaccount import adapter as social
+from allauth.socialaccount.providers import registry
 from django.conf import settings
 from django.contrib import auth, messages, sites
 from django.contrib.auth.password_validation import password_validators_help_text_html
@@ -31,7 +34,7 @@ class AbortResetEmail(Exception):
     pass
 
 
-class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
+class EDDAccountAdapter(adapter.DefaultAccountAdapter):
     """
     Adapter overrides default behavior for username selection and email verification.
     """
@@ -51,7 +54,7 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
                 "current_site": current_site,
                 "user": user,
             }
-            account.adapter.get_adapter(request).send_mail(
+            adapter.get_adapter(request).send_mail(
                 "account/email/approval_requested",
                 contact,
                 context,
@@ -79,10 +82,10 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
         Takes a partial user, and sets the username, if missing,
         to user email.
         """
-        email = account.utils.user_email(user)
-        username = account.utils.user_username(user)
+        email = utils.user_email(user)
+        username = utils.user_username(user)
         if not username:
-            account.utils.user_username(user, email)
+            utils.user_username(user, email)
 
     def password_reset_request(self, request, email):
         """
@@ -110,7 +113,7 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
             "request": request,
             "user": user,
         }
-        account.adapter.get_adapter(request).send_mail(
+        adapter.get_adapter(request).send_mail(
             "account/email/ldap_reset_requested",
             email,
             context,
@@ -123,7 +126,7 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
             "request": request,
             "user": user,
         }
-        account.adapter.get_adapter(request).send_mail(
+        adapter.get_adapter(request).send_mail(
             "account/email/social_reset_requested",
             email,
             context,
@@ -152,7 +155,7 @@ class EDDAccountAdapter(account.adapter.DefaultAccountAdapter):
         )
 
 
-class EDDSocialAccountAdapter(socialaccount.adapter.DefaultSocialAccountAdapter):
+class EDDSocialAccountAdapter(social.DefaultSocialAccountAdapter):
     """
     Adapter overrides default behavior if a social account is using an email for
     an existing account.
@@ -163,13 +166,12 @@ class EDDSocialAccountAdapter(socialaccount.adapter.DefaultSocialAccountAdapter)
             return
         if "email" not in sociallogin.account.extra_data:
             return
-        qs = account.models.EmailAddress.objects.filter(
+        qs = EmailAddress.objects.filter(
             email__iexact=sociallogin.account.extra_data["email"]
         )
         if qs.exists():
             user = qs[0].user
             found = user.socialaccount_set.first()
-            registry = socialaccount.providers.registry
             provider = registry.by_id(found.provider) if found else None
             social = registry.by_id(sociallogin.account.provider)
             messages.error(
@@ -209,13 +211,13 @@ class ResetPasswordForm(forms.ResetPasswordForm):
         # base class will raise a user-visible error if no matching email found
         # we should not be confirming/denying any email exists via web
         email = self.cleaned_data["email"]
-        email = account.adapter.get_adapter().clean_email(email)
+        email = adapter.get_adapter().clean_email(email)
         # here is where base class would raise an error if no matches found
         return email
 
     def save(self, request, **kwargs):
         email = self.cleaned_data["email"]
-        account_adapter = account.adapter.get_adapter(request)
+        account_adapter = adapter.get_adapter(request)
         if callable(account_adapter.password_reset_request):
             try:
                 self.users = account_adapter.password_reset_request(request, email)
@@ -223,7 +225,7 @@ class ResetPasswordForm(forms.ResetPasswordForm):
                 return email
         else:
             # if adapter does not have password_reset_request, fall back to base behavior
-            self.users = account.utils.filter_users_by_email(email)
+            self.users = utils.filter_users_by_email(email)
         # base class .save() call generates reset token and sends email to self.users
         return super().save(request, **kwargs)
 

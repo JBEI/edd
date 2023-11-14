@@ -34,7 +34,7 @@ RUN bun install --non-interactive --ignore-optional
 
 # ---
 
-FROM library/python:3.11-slim-bookworm as pybase
+FROM library/python:3.12-slim-bookworm as pybase
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
@@ -50,7 +50,11 @@ RUN set -ex \
     netcat-openbsd \
     tini \
  && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && python -m ensurepip --upgrade \
+ && python -m pip install --upgrade pip setuptools wheel \
+ && rm -rf /var/lib/apt/lists/* \
+ && rm -rf /root/.cache
 
 # ---
 
@@ -121,7 +125,7 @@ RUN set -ex \
 
 # ---
 
-FROM library/python:3.11-slim-bookworm as docs-build
+FROM library/python:3.12-slim-bookworm as docs-build
 
 WORKDIR /usr/local/edd
 COPY . /usr/local/edd/

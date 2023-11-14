@@ -142,6 +142,7 @@ MIDDLEWARE = (
     "threadlocals.middleware.ThreadLocalMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 )
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 TEMPLATES = [
@@ -307,7 +308,11 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
 ]
 STATICFILES_MANIFEST = f"staticfiles.{EDD_VERSION_HASH}.json"
-STATICFILES_STORAGE = "edd.utilities.StaticFilesStorage"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "edd.load": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "edd.utilities.StaticFilesStorage"},
+}
 
 
 # File upload location

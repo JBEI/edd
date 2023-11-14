@@ -1,5 +1,5 @@
 [tool.black]
-target-version = ["py311"]
+target-version = ["py312"]
 
 [tool.poetry]
 name = "edd"
@@ -27,7 +27,7 @@ packages = [
 generate-setup-file = true
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 
 arrow = "^1.2.3"
 boto3 = "^1.26.148"
@@ -37,7 +37,7 @@ channels-redis = "^4.0.0"
 chardet = "^5.1.0"
 daphne = "^4.0.0"
 django = "^4.2.2"
-django-allauth = "^0.54.0"
+django-allauth = "^0.58.2"
 django-auth-ldap = "^4.3.0"
 django-environ = "^0.11.2"
 django-filter = "^23.2"

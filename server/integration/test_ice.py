@@ -21,7 +21,7 @@ from main.tests import factory
 faker = Faker()
 
 
-@tag("integration")
+@tag("ice_integration")
 class IceIntegrationTests(TestCase):
     """Sets of tests to validate communication between EDD and ICE."""
 

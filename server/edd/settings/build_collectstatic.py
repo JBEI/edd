@@ -1,4 +1,4 @@
-from .base import INSTALLED_APPS  # noqa: F401
+from .base import INSTALLED_APPS, MIDDLEWARE  # noqa: F401
 
 # Minimal settings module to use Django's collectstatic command during Dockerfile build
 # Bring in INSTALLED_APPS to find all Django's assets
