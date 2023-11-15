@@ -209,9 +209,9 @@ class MeasurementTypeSerializer(serializers.ModelSerializer):
     def get_url(self, obj):
         match obj.type_group:
             case models.MeasurementType.Group.METABOLITE:
-                return f"https://pubchem.ncbi.nlm.nih.gov/compound/${obj.metabolite.pubchem_cid}"
+                return f"https://pubchem.ncbi.nlm.nih.gov/compound/{obj.metabolite.pubchem_cid}"
             case models.MeasurementType.Group.PROTEINID:
-                return f"https://www.uniprot.org/uniprot/${obj.proteinidentifier.accession_code}"
+                return f"https://www.uniprot.org/uniprot/{obj.proteinidentifier.accession_code}"
             case _:
                 return
         return obj.measurement_type.type_name

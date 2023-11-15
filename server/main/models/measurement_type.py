@@ -276,13 +276,13 @@ class Metabolite(MeasurementType):
         """Convert the MeasurementType model to a dict structure formatted for Solr JSON."""
         return dict(
             super().to_solr_json(),
-            **{
-                "m_charge": self.charge,
-                "m_carbons": self.carbon_count,
-                "m_mass": self.molar_mass,
-                "m_formula": self.molecular_formula,
-                "m_tags": list(self.tags),
-            },
+            # fall back on PubChem when name not loaded
+            name=self.type_name or f"CID:{self.pubchem_cid}",
+            m_charge=self.charge,
+            m_carbons=self.carbon_count,
+            m_mass=self.molar_mass,
+            m_formula=self.molecular_formula,
+            m_tags=list(self.tags),
         )
 
     def save(self, *args, **kwargs):
@@ -573,7 +573,11 @@ class ProteinIdentifier(MeasurementType):
         Convert the MeasurementType model to a dict structure formatted for Solr JSON.
         """
         return dict(
-            super().to_solr_json(), **{"p_length": self.length, "p_mass": self.mass}
+            super().to_solr_json(),
+            # fall back to accession code when name is blank
+            name=self.type_name or self.accession_code,
+            p_length=self.length,
+            p_mass=self.mass,
         )
 
     def lookup_from_uniprot(self):

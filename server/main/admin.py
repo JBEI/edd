@@ -371,10 +371,21 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     search_fields = ("type_name", "alt_names")
 
     def get_fields(self, request, obj=None):
-        return [("type_name", "short_name"), "alt_names", "type_source", "study_list"]
+        return [
+            ("type_name", "short_name"),
+            "alt_names",
+            "type_source",
+            "study_list",
+        ]
 
     def get_list_display(self, request):
-        return ["type_name", "short_name", "_study_count", "type_source"]
+        return [
+            "type_name",
+            "short_name",
+            "provisional",
+            "_study_count",
+            "type_source",
+        ]
 
     def get_merge_autowidget(self):
         return MeasurementTypeAutocompleteWidget()
@@ -490,6 +501,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
             "type_name",
             "short_name",
             "pubchem_cid",
+            "provisional",
             "molecular_formula",
             "molar_mass",
             "charge",
@@ -560,9 +572,10 @@ class ProteinAdmin(MeasurementTypeAdmin):
     def get_list_display(self, request):
         # complete override
         return [
-            "type_name",
+            "_display_name",
             "short_name",
             "accession_id",
+            "provisional",
             "length",
             "mass",
             "_study_count",
@@ -576,9 +589,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        qs = qs.select_related("type_source")
-        return qs
+        return super().get_queryset(request).select_related("type_source")
 
     def get_readonly_fields(self, request, obj=None):
         # only allow editing accession ID when it is not already set
@@ -597,6 +608,9 @@ class ProteinAdmin(MeasurementTypeAdmin):
 
     refresh_uniprot_action.short_description = "Refresh UniProt Information"
 
+    def _display_name(self, obj):
+        return obj.type_name or obj.accession_code
+
 
 class GeneAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
@@ -607,7 +621,13 @@ class GeneAdmin(MeasurementTypeAdmin):
 
     def get_list_display(self, request):
         # complete override
-        return ["type_name", "gene_length", "_study_count", "type_source"]
+        return [
+            "type_name",
+            "provisional",
+            "gene_length",
+            "_study_count",
+            "type_source",
+        ]
 
     def get_merge_autowidget(self):
         opt = {"text_attr": {"class": "autocomp", "data-eddautocompletetype": "Gene"}}
