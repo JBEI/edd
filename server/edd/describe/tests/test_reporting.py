@@ -82,10 +82,7 @@ def test_raise_errors_multiple_errors():
             reporting.raise_errors(key, error3)
         # same types get merged
         assert reporting.error_count(key) == 2
-        assert (
-            reporting.error_count(key, ExampleException)
-            == 1
-        )
+        assert reporting.error_count(key, ExampleException) == 1
 
 
 def test_json_preserialize():
@@ -128,7 +125,8 @@ def test_warning_count_untracked():
 def test_log_reported_errors_simulated_error():
     key = str(uuid.uuid4())
     # simulate an error inside signal handler
-    with patch("edd.load.reporting.MessageAggregator") as ma, reporting.tracker(key):
+    track = reporting.tracker(key)
+    with patch("edd.describe.reporting.MessageAggregator") as ma, track:
         ma.return_value.add_errors.side_effect = AttributeError
         reporting.log_reported_errors(ma, key, exceptions.ReportableDescribeWarning())
     # exception was caught
@@ -137,7 +135,8 @@ def test_log_reported_errors_simulated_error():
 def test_log_reported_warnings_simulated_error():
     key = str(uuid.uuid4())
     # simulate an error inside signal handler
-    with patch("edd.load.reporting.MessageAggregator") as ma, reporting.tracker(key):
+    track = reporting.tracker(key)
+    with patch("edd.describe.reporting.MessageAggregator") as ma, track:
         ma.return_value.add_warnings.side_effect = AttributeError
         reporting.log_reported_warnings(ma, key, exceptions.ReportableDescribeWarning())
     # exception was caught
