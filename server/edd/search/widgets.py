@@ -3,8 +3,10 @@ from django.urls import reverse
 
 from edd.utilities import JSONEncoder
 
+from . import registry
 
-class Select2Widget(forms.widgets.Select):
+
+class Select2Mixin:
     """
     Widget class to handle the attributes of INPUT elements used with the
     Select2 library for autocompletion.
@@ -43,6 +45,10 @@ class Select2Widget(forms.widgets.Select):
         if hasattr(self.choices, "queryset"):
             self.choices.queryset = self.choices.queryset.filter(pk__in=selected)
         return super().optgroups(name, value, attrs)
+
+
+class Select2Widget(Select2Mixin, forms.widgets.Select):
+    pass
 
 
 class AssayAutocomplete(Select2Widget):
@@ -132,8 +138,7 @@ class ProtocolAutocomplete(Select2Widget):
     kind = "Protocol"
 
 
-class RegistryAutocomplete(Select2Widget):
-    default_attrs = {"multiple": "multiple"}
+class RegistryAutocomplete(Select2Mixin, forms.widgets.SelectMultiple):
     kind = "Registry"
 
     def optgroups(self, name, value, attrs=None):
@@ -142,7 +147,24 @@ class RegistryAutocomplete(Select2Widget):
         # filter queryset
         self.choices.queryset = self.choices.queryset.filter(registry_id__in=selected)
         # skipping over default implementation that assumes `id` field
-        return super(Select2Widget, self).optgroups(name, value, attrs)
+        return super(Select2Mixin, self).optgroups(name, value, attrs)
+
+
+class RegistryField(forms.ModelMultipleChoiceField):
+    """
+    Strain lookups happen outside of EDD, with local models linking to the true
+    source of the strain information. We would like it to act as a regular
+    lookup of a model, but the instance may not exist at the time. This variant
+    of a ModelMultipleChoiceField ensures that the RegistryValidator creates a
+    Strain model before any further operations.
+    """
+
+    def clean(self, value):
+        # validator creates Strain objects if not already in database
+        validator = registry.RegistryValidator()
+        for item in value:
+            validator.validate(item)
+        return super().clean(value)
 
 
 class SbmlExchange(Select2Widget):

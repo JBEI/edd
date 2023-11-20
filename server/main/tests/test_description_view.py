@@ -231,6 +231,21 @@ def test_edit_single_line_with_invalid_form(client, writable_session):
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
 
 
+def test_edit_single_line_with_strain(client, writable_session):
+    url = writable_session.url("main:line_edit")
+    line = factory.LineFactory(study=writable_session.study)
+    strain = factory.StrainFactory()
+    client.force_login(writable_session.user)
+
+    # name is required, form will be invalid
+    payload = {"lineId": [line.id], "name": line.name, "strains": [strain.registry_id]}
+    response = client.post(url, data=payload, headers=AJAX_HEADER)
+
+    updated = models.Line.objects.get(pk=line.id)
+    assert response.status_code == HTTPStatus.OK
+    assert updated.strains.count() == 1
+
+
 def test_edit_single_line_metadata_add_remove(client, writable_session):
     url = writable_session.url("main:line_edit")
     meta_a = factory.MetadataTypeFactory(for_context=models.MetadataType.LINE)

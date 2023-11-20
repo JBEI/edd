@@ -191,7 +191,14 @@ def strain_autocomplete(request):
         # NOTE: this API only supports starting index,
         # plus gives no indication of further elements
         search = ice.search_page(request.term, start)
-        return [{"text": entry.name, **entry.payload} for entry in search], False
+        return [
+            {
+                "id": entry.registry_id,
+                # TODO: include HTML version so users can see entry ID, url, etc
+                "text": entry.name,
+            }
+            for entry in search
+        ], False
 
 
 class AdminRegistry(StrainRegistry):

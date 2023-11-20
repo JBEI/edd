@@ -8,7 +8,6 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from edd.search import widgets as autocomplete
-from edd.search.registry import RegistryValidator
 
 from .. import models
 
@@ -60,13 +59,12 @@ class ModifyLineForm(forms.ModelForm):
         required=False,
         widget=autocomplete.UserAutocomplete(),
     )
-    strains = forms.ModelMultipleChoiceField(
+    strains = autocomplete.RegistryField(
         help_text="",
         label=_("Strains"),
         queryset=models.Strain.objects.all(),
         required=False,
         to_field_name="registry_id",
-        validators=[RegistryValidator()],
         widget=autocomplete.RegistryAutocomplete(),
     )
 
@@ -258,10 +256,9 @@ class MetadataUpdateForm(MetadataSelectForm):
         )
         match t.input_type:
             case "strain":
-                return forms.ModelMultipleChoiceField(
+                return autocomplete.RegistryField(
                     queryset=models.Strain.objects.all(),
                     to_field_name="registry_id",
-                    validators=[RegistryValidator()],
                     widget=autocomplete.RegistryAutocomplete(),
                     **base_kwargs,
                 )
