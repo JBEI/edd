@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from edd.search import widgets as autocomplete
+from edd.utilities import add_form_validation_classes
 
 from .. import models
 
@@ -28,6 +29,7 @@ class ModifyLineForm(forms.ModelForm):
                 "class": "form-control",
                 "data-validation-text": _("Line Name is required."),
                 "pattern": models.Line.strict_name_pattern,
+                "title": _("Please use only alphanumeric and hyphen characters."),
             },
         ),
     )
@@ -94,6 +96,8 @@ class ModifyLineForm(forms.ModelForm):
         # if no explicit experimenter is set, make the study contact the experimenter
         if "experimenter" not in cleaned:
             cleaned["experimenter"] = self._study.contact
+        # assign validation classes
+        add_form_validation_classes(self)
         return cleaned
 
     @classmethod
@@ -162,6 +166,8 @@ class AddAssayForm(forms.ModelForm):
         if "name" not in cleaned:
             protocol = cleaned["protocol"]
             cleaned["name"] = f"{self._line.name}-{protocol.name}"
+        # assign validation classes
+        add_form_validation_classes(self)
         return cleaned
 
 
@@ -209,6 +215,8 @@ class MetadataSelectForm(forms.Form):
         self.data = self.data.copy()
         self.data.pop("metatype", None)
         self.data.setlist("selected_meta", selected_meta)
+        # assign validation classes
+        add_form_validation_classes(self)
         return cleaned
 
     @property

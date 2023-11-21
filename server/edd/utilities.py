@@ -22,6 +22,16 @@ TYPE = "__type__"
 VALUE = "value"
 
 
+def add_form_validation_classes(form):
+    """Use in form clean() methods. Adds Bootstrap 5 `is-invalid` classes to failed fields."""
+    for fieldname in form.errors:
+        widget = form[fieldname].field.widget
+        if klass := widget.attrs.get("class", None):
+            widget.attrs["class"] = klass + " is-invalid"
+        else:
+            widget.attrs["class"] = "is-invalid"
+
+
 def guess_extension(mime_type):
     """Given a MIME type string, return a suggested file extension."""
     if not mimetypes.inited:

@@ -325,13 +325,15 @@ class LinesTable {
         } else {
             return true;
         }
-        if (event.currentTarget.checkValidity()) {
+        if (event.currentTarget.reportValidity()) {
             buttons.toggleClass("d-none").prop("disabled", true);
             $.ajax(this.ajaxPostForm(url, new FormData(form[0])))
                 .done(() => {
                     this.closeExistingForms().then(() => this.fullReload());
                 })
                 .fail((jqXHR) => this.formError(jqXHR));
+        } else {
+            form.addClass("was-validated");
         }
         return false;
     }
