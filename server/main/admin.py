@@ -372,7 +372,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
 
     def get_fields(self, request, obj=None):
         return [
-            ("type_name", "short_name"),
+            "type_name",
             "alt_names",
             "type_source",
             "study_list",
@@ -381,7 +381,6 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_list_display(self, request):
         return [
             "type_name",
-            "short_name",
             "provisional",
             "_study_count",
             "type_source",
@@ -414,9 +413,6 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         # TODO: need to make a custom ModelForm to properly handle alt_names
         return ["alt_names", "type_source", "study_list"]
-
-    def get_search_fields(self, request):
-        return ["type_name", "short_name", "alt_names"]
 
     def merge_with_action(self, request, queryset):
         MergeForm = self.get_merge_form(request)
@@ -484,6 +480,13 @@ class TagListFilter(admin.SimpleListFilter):
 
 class MetaboliteAdmin(MeasurementTypeAdmin):
     list_filter = [TagListFilter]
+    search_fields = (
+        "type_name",
+        "alt_names",
+        "pubchem_cid",
+        "smiles",
+        "molecular_formula",
+    )
 
     def get_fields(self, request, obj=None):
         return super().get_fields(request, obj) + [
@@ -499,7 +502,6 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
         # complete override
         return [
             "type_name",
-            "short_name",
             "pubchem_cid",
             "provisional",
             "molecular_formula",
@@ -535,6 +537,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
 
 class ProteinAdmin(MeasurementTypeAdmin):
     actions = ["refresh_uniprot_action"]
+    search_fields = ("type_name", "alt_names", "accession_id")
 
     def get_form(self, request, obj=None, **kwargs):
         """
@@ -573,7 +576,6 @@ class ProteinAdmin(MeasurementTypeAdmin):
         # complete override
         return [
             "_display_name",
-            "short_name",
             "accession_id",
             "provisional",
             "length",
@@ -646,7 +648,6 @@ class PhosphorAdmin(MeasurementTypeAdmin):
         # complete override
         return [
             "type_name",
-            "short_name",
             "excitation_wavelength",
             "emission_wavelength",
             "reference_type",

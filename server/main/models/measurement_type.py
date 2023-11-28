@@ -609,6 +609,7 @@ class ProteinIdentifier(MeasurementType):
             protein = cls.objects.create(
                 accession_code=uniprot_id,
                 accession_id=accession_id,
+                provisional=True,
                 type_source=Datasource.objects.create(name="UniProt", url=url),
             )
         return protein
@@ -781,7 +782,7 @@ class ProteinIdentifier(MeasurementType):
         super().save(*args, **kwargs)
 
 
-@app.task(ignore_result=True, rate_limit="6/m")
+@app.task(ignore_result=True, rate_limit="30/m")
 def lookup_protein_in_uniprot(pk):
     """Background task to fetch UniProt metadata for a ProteinIdentifier."""
     try:
