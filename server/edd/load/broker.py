@@ -382,6 +382,7 @@ class LoadRequest:
                         pipe.delete(self._subkey("saving"))
                     pipe.execute()
                     self.status = new_status
+                    self.send_update()
                     return True
                 # execute() will unset watch,
                 # but it might not run,
@@ -463,7 +464,6 @@ class LoadRequest:
 
     def _postcommit(self, user):
         self.transition(self.Status.COMPLETED, raise_errors=True)
-        self.send_update()
         lines = edd_models.Line.objects.filter(
             assay__protocol=self.protocol,
             assay__updated_id=self.study.updated_id,
@@ -480,7 +480,6 @@ class LoadRequest:
     def _postprocessing(self):
         self.sort_tokens()
         self.transition(LoadRequest.Status.PROCESSED, raise_errors=True)
-        self.send_update()
 
     def _precommit(self):
         if self.status != self.Status.SAVING:

@@ -11,7 +11,7 @@ from main.models import Measurement, StudyPermission
 from main.tests import factory as main_factory
 
 from .. import tasks
-from ..broker import LoadRequest
+from ..broker import DatabaseWriter, LoadRequest
 from ..forms import ResolveTokensForm, name_from_token
 from . import factory
 
@@ -657,7 +657,7 @@ def test_task_save_with_transaction_error(writable_session):
         records = list(writable_session.create_ready_records(10))
         assert lr.ok_to_process()
         lr.process(records, writable_session.user)
-        with patch.object(LoadRequest, "send_update") as stub_method:
+        with patch.object(DatabaseWriter, "persist_batch") as stub_method:
             stub_method.side_effect = Exception("Oops, transaction error")
             tasks.submit_save(lr, writable_session.user, background=False)
         updated_lr = LoadRequest.fetch(lr.request)
