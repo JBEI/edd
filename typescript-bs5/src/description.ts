@@ -297,13 +297,18 @@ class LinesTable {
     private exportClick(event): void {
         const button = $(event.currentTarget);
         const url = button.data("eddForm");
-        const form = this.table.closest("form");
+        const form = button.closest("form");
         const data = this.formData();
-        // treating nothing selected as entire study selected
-        if (data.getAll("lineId").length === 0 || this.selectState === "all") {
-            form.append(
-                `<input type="hidden" name="studyId" value="${this.lazy.studyPK()}"/>`,
-            );
+        const lineIds = data.getAll("lineId");
+        if (lineIds.length === 0 || this.selectState === "all") {
+            // treating nothing selected as entire study selected
+            const value = this.lazy.studyPK();
+            form.append(`<input type="hidden" name="studyId" value="${value}"/>`);
+        } else {
+            // add hidden fields for all selected line(s)
+            for (const value of lineIds) {
+                form.append(`<input type="hidden" name="lineId" value="${value}"/>`);
+            }
         }
         form.attr("action", url).trigger("submit");
     }
@@ -321,6 +326,7 @@ class LinesTable {
         const buttons = form.find(".edd-save-btn,.edd-saving-btn");
         const url = form.attr("action");
         if (url !== undefined) {
+            // when the action isn't set, do further handling below
             event.preventDefault();
         } else {
             return true;
@@ -462,7 +468,11 @@ class LinesTable {
             .on("click", "#edd-filter-line-menu button", (event) => {
                 this.pressedFilterButton(event);
             });
-        $(document).on("submit", "form", (event) => this.formSubmit(event));
+        $(document).on(
+            "submit",
+            "form#edd-studydesc-form, #edd-inline-form form",
+            (event) => this.formSubmit(event),
+        );
         $("#edd-export-group").on("click", "[data-edd-form]", (event) => {
             this.exportClick(event);
         });

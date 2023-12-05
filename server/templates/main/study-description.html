@@ -284,40 +284,43 @@
       {% translate "Import Data" %}
     </a>
     {% endif %}
-    <div class="btn-group" id="edd-export-group">
-      <button
-        class="btn btn-primary"
-        type="button"
-        data-edd-form="{% url 'export:export' %}"
-      >
-        <i class="fas fa-cloud-download-alt"></i>
-        {% translate "Export Data" %}
-      </button>
-      <button
-        class="btn btn-primary dropdown-toggle dropdown-toggle-split"
-        type="button"
-        aria-expanded="false"
-        data-bs-toggle="dropdown"
-      >
-        <span class="visually-hidden">{% translate "Toggle Dropdown" %}</span>
-      </button>
-      <ul class="dropdown-menu">
-        <li>
-          <button
-            class="dropdown-item"
-            type="button"
-            data-edd-form="{% url 'main:create_study' %}"
-          >{% translate "to New Study" %}</button>
-        </li>
-        <li>
-          <button
-            class="dropdown-item"
-            type="button"
-            data-edd-form="{% url 'export:worklist' %}"
-          >{% translate "Generate Worklist" %}</button>
-        </li>
-      </ul>
-    </div>
+    <form action="{% url "export:export" %}" class="d-inline" id="edd-export-form" method="POST">
+      {% csrf_token %}
+      <div class="btn-group" id="edd-export-group">
+        <button
+          class="btn btn-primary"
+          type="button"
+          data-edd-form="{% url "export:export" %}"
+        >
+          <i class="fas fa-cloud-download-alt"></i>
+          {% translate "Export Data" %}
+        </button>
+        <button
+          class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+          type="button"
+          aria-expanded="false"
+          data-bs-toggle="dropdown"
+        >
+          <span class="visually-hidden">{% translate "Toggle Dropdown" %}</span>
+        </button>
+        <ul class="dropdown-menu">
+          <li>
+            <button
+              class="dropdown-item"
+              type="button"
+              data-edd-form="{% url "main:create_study" %}"
+            >{% translate "to New Study" %}</button>
+          </li>
+          <li>
+            <button
+              class="dropdown-item"
+              type="button"
+              data-edd-form="{% url "export:worklist" %}"
+            >{% translate "Generate Worklist" %}</button>
+          </li>
+        </ul>
+      </div>
+    </form>
   </div>
 </div>
 {% if writable %}
