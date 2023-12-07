@@ -409,6 +409,30 @@ def test_reactless_import_interpret_post_save(client, writable_session):
     save_task.delay.assert_called_once()
 
 
+def test_reactless_import_interpret_post_save_on_aborted(client, writable_session):
+    client.force_login(writable_session.user)
+    locator_name, records = writable_session.create_unresolved_records()
+    with writable_session.start() as lr:
+        assert lr.ok_to_process()
+        lr.process(records, writable_session.user)
+        lr.transition(lr.Status.ABORTED)
+        url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
+        save_task = patch("edd.load.tasks.wizard_save")
+        # patching to avoid actually submitting task
+        with save_task as save_task:
+            response = client.post(
+                url,
+                {"save": "1"},
+                follow=True,
+            )
+    asserts.assertContains(
+        response,
+        "EDD detected an inconsistent state",
+        status_code=HTTPStatus.CONFLICT,
+    )
+    save_task.delay.assert_not_called()
+
+
 def test_reactless_import_interpret_all_resolved(client, writable_session):
     client.force_login(writable_session.user)
     records = writable_session.create_resolved_records()
@@ -650,6 +674,26 @@ def test_task_save_with_ready_records(writable_session):
 
     saved_measurements = Measurement.objects.filter(study_id=writable_session.study.id)
     assert saved_measurements.count() == 10
+
+
+def test_task_save_multiple_imports(writable_session):
+    with writable_session.start() as lr:
+        # save one set of measurements
+        records = list(writable_session.create_ready_records(10))
+        assert lr.ok_to_process()
+        lr.process(records, writable_session.user)
+        tasks.submit_save(lr, writable_session.user, background=False)
+        # transition back to allow adding more
+        lr = lr.fetch(lr.request_uuid)
+        lr.transition(lr.Status.PROCESSED)
+        # save another set of measurements
+        records = list(writable_session.create_ready_records(10))
+        assert lr.ok_to_process()
+        lr.process(records, writable_session.user)
+        tasks.submit_save(lr, writable_session.user, background=False)
+
+    saved_measurements = Measurement.objects.filter(study_id=writable_session.study.id)
+    assert saved_measurements.count() == 20
 
 
 def test_task_save_with_transaction_error(writable_session):

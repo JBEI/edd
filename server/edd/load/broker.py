@@ -463,7 +463,10 @@ class LoadRequest:
             self.original_name = None
 
     def _postcommit(self, user):
-        self.transition(self.Status.COMPLETED, raise_errors=True)
+        if 0 < self.db().llen(self._subkey("unresolved")):
+            self.transition(self.Status.PROCESSED, raise_errors=True)
+        else:
+            self.transition(self.Status.COMPLETED, raise_errors=True)
         lines = edd_models.Line.objects.filter(
             assay__protocol=self.protocol,
             assay__updated_id=self.study.updated_id,
@@ -517,6 +520,9 @@ class DatabaseWriter:
             study_id=self.study_id,
             protocol_id=self.protocol_id,
         ).exists()
+        # track added / updated
+        self.added = 0
+        self.updated = 0
 
     def persist_batch(self, batch: Iterable["Record"]) -> tuple[int, int]:
         # find existing assay records
@@ -527,20 +533,14 @@ class DatabaseWriter:
             study_id=self.study_id,
         )
         existing_assays = queryset.in_bulk(assay_ids)
-        # store measurements
-        total_added = 0
-        total_updated = 0
         for record in batch:
             if assay := existing_assays.get(record.assay_id, None):
-                if self._write_measurement(assay, record):
-                    total_added += 1
-                else:
-                    total_updated += 1
+                self._write_measurement(assay, record)
             else:
                 logger.warning(f"No existing assay found for {record}")
-        return total_added, total_updated
+        return self.added, self.updated
 
-    def _write_measurement(self, assay, record) -> bool:
+    def _write_measurement(self, assay, record) -> None:
         find = {
             "active": True,
             "compartment": self.compartment,
@@ -558,12 +558,13 @@ class DatabaseWriter:
         }
         if self.quick_insert:
             measurement = assay.measurement_set.create(**defaults)
-            return self._write_value(assay, measurement, record, True)
-        qs = assay.measurement_set.filter(**find)
-        measurement, created = qs.get_or_create(defaults=defaults)
-        return self._write_value(assay, measurement, record, created)
+            self._write_value(assay, measurement, record, True)
+        else:
+            qs = assay.measurement_set.filter(**find)
+            measurement, created = qs.get_or_create(defaults=defaults)
+            self._write_value(assay, measurement, record, created)
 
-    def _write_value(self, assay, measurement, record, is_new):
+    def _write_value(self, assay, measurement, record, is_new) -> None:
         find = {
             "study_id": assay.study_id,
             "x": record.x,
@@ -575,9 +576,12 @@ class DatabaseWriter:
         }
         if is_new:
             measurement.measurementvalue_set.create(**defaults)
-            return True
+            self.added += 1
         _, created = measurement.measurementvalue_set.update_or_create(
             defaults=defaults,
             **find,
         )
-        return created
+        if created:
+            self.added += 1
+        else:
+            self.updated += 1
