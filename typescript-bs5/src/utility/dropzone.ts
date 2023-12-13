@@ -97,11 +97,10 @@ export class DescriptionDropzone {
      */
     static initialize(dropElement: JQuery, clickable?: dzClickOption): void {
         const dropzone = new Dropzone(dropElement.addClass("dropzone").get(0), {
-            "url": dropElement.data("url"),
-            "params": { "csrfmiddlewaretoken": findCSRFToken() },
-            "maxFilesize": 2,
-            "acceptedFiles": ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
             "clickable": clickable === undefined ? true : clickable,
+            "params": { "csrfmiddlewaretoken": findCSRFToken() },
+            "timeout": 0,
+            "url": dropElement.data("url"),
         });
         dropzone.on("sending", (file, xhr, formData) => {
             DescriptionDropzone.clearAlerts();

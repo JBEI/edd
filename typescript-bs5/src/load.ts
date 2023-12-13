@@ -86,7 +86,10 @@ function setupDropzone(): void {
     // if the current page has a dropzone, set it up
     const form = $("form.dropzone");
     if (form.length) {
-        const options = { "params": { "csrfmiddlewaretoken": findCSRFToken() } };
+        const options = {
+            "params": { "csrfmiddlewaretoken": findCSRFToken() },
+            "timeout": 0,
+        };
         const dz = new Dropzone(form[0], options);
         dz.on("success", (file) => {
             try {
