@@ -86,7 +86,11 @@ WORKDIR /install
 RUN set -ex \
 # install pipx and poetry
  && python -m pip install pipx \
- && pipx install poetry
+ && pipx install poetry \
+# warnings say the export sub-command is moving to a plugin and will not be installed by default
+ && pipx inject poetry poetry-plugin-export \
+# ... but, installing the plugin doesn't disable the warning, so need this
+ && poetry config warnings.export false
 
 # ---
 
