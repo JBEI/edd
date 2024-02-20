@@ -96,6 +96,9 @@ export class DescriptionDropzone {
      * Helper method to run setup on the dropzone and messages elements.
      */
     static initialize(dropElement: JQuery, clickable?: dzClickOption): void {
+        if (dropElement.length !== 1) {
+            return;
+        }
         const dropzone = new Dropzone(dropElement.addClass("dropzone").get(0), {
             "clickable": clickable === undefined ? true : clickable,
             "params": { "csrfmiddlewaretoken": findCSRFToken() },
