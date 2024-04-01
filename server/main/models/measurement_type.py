@@ -209,7 +209,8 @@ class Metabolite(MeasurementType):
         db_table = "metabolite"
 
     charge = models.IntegerField(
-        help_text=_("The charge of this molecule."), verbose_name=_("Charge")
+        help_text=_("The charge of this molecule."),
+        verbose_name=_("Charge"),
     )
     carbon_count = models.IntegerField(
         help_text=_("Count of carbons present in this molecule."),
@@ -222,7 +223,8 @@ class Metabolite(MeasurementType):
         verbose_name=_("Molar Mass"),
     )
     molecular_formula = models.TextField(
-        help_text=_("Formula string defining this molecule."), verbose_name=_("Formula")
+        help_text=_("Formula string defining this molecule."),
+        verbose_name=_("Formula"),
     )
     smiles = VarCharField(
         blank=True,
@@ -539,10 +541,14 @@ class ProteinIdentifier(MeasurementType):
         blank=True,
         help_text=_("Required portion of Accession ID for easier lookup."),
         null=True,
+        unique=True,
         verbose_name=_("Accession Code"),
     )
     length = models.IntegerField(
-        blank=True, help_text=_("sequence length"), null=True, verbose_name=_("Length")
+        blank=True,
+        help_text=_("sequence length"),
+        null=True,
+        verbose_name=_("Length"),
     )
     mass = models.DecimalField(
         blank=True,
@@ -604,14 +610,24 @@ class ProteinIdentifier(MeasurementType):
     def _get_or_create_from_uniprot(cls, uniprot_id, accession_id):
         try:
             protein = cls.objects.get(accession_code=uniprot_id)
-        except cls.DoesNotExist:
-            url = cls._uniprot_url(uniprot_id)
-            protein = cls.objects.create(
+            defaults = {
+                "accession_code": uniprot_id,
+                "accession_id": accession_id,
+                "provisional": True,
+            }
+            protein, created = cls.objects.get_or_create(
                 accession_code=uniprot_id,
-                accession_id=accession_id,
-                provisional=True,
-                type_source=Datasource.objects.create(name="UniProt", url=url),
+                defaults=defaults,
             )
+            if created:
+                protein.type_source = Datasource.objects.create(
+                    name="UniProt",
+                    url=cls._uniprot_url(uniprot_id),
+                )
+                protein.save()
+        except cls.MultipleObjectsReturned:
+            logger.error(f"Protein for `{uniprot_id}` has multiple possible results.")
+            raise
         return protein
 
     @classmethod
@@ -837,10 +853,14 @@ class ProteinStrainLink(StrainLinkMixin, models.Model):
         db_table = "protein_strain"
 
     protein = models.OneToOneField(
-        ProteinIdentifier, related_name="strainlink", on_delete=models.CASCADE
+        ProteinIdentifier,
+        related_name="strainlink",
+        on_delete=models.CASCADE,
     )
     strain = models.OneToOneField(
-        "main.Strain", related_name="proteinlink", on_delete=models.CASCADE
+        "main.Strain",
+        related_name="proteinlink",
+        on_delete=models.CASCADE,
     )
 
     def __str__(self):
@@ -854,10 +874,14 @@ class GeneStrainLink(StrainLinkMixin, models.Model):
         db_table = "gene_strain"
 
     gene = models.OneToOneField(
-        GeneIdentifier, related_name="strainlink", on_delete=models.CASCADE
+        GeneIdentifier,
+        related_name="strainlink",
+        on_delete=models.CASCADE,
     )
     strain = models.OneToOneField(
-        "main.Strain", related_name="genelink", on_delete=models.CASCADE
+        "main.Strain",
+        related_name="genelink",
+        on_delete=models.CASCADE,
     )
 
     def __str__(self):
