@@ -7,7 +7,7 @@ from django.urls import reverse
 from pytest import mark
 from pytest_django import asserts
 
-from main.models import Measurement, StudyPermission
+from main.models import Measurement, MeasurementType, StudyPermission
 from main.tests import factory as main_factory
 
 from .. import tasks
@@ -227,7 +227,7 @@ def test_task_process_with_error(writable_session):
         progress = LoadRequest.fetch(lr.request).progress
     assert progress["resolved"] == 0
     assert progress["unresolved"] == 0
-    assert progress["status"] == "Failed"
+    assert progress["status"] == str(LoadRequest.Status.FAILED)
 
 
 def test_reactless_import_interpret_with_no_data(client, writable_session):
@@ -326,6 +326,25 @@ def test_reactless_import_interpret_with_tokens_to_resolve_later_page(
     asserts.assertTemplateUsed(next_response, "edd/load/interpret-resolve.html")
     asserts.assertContains(first_response, next_url)
     asserts.assertContains(next_response, prev_url)
+
+
+@override_settings(EDD_ALLOW_IMPORT_ANONYMOUS_LINES=False)
+@override_settings(EDD_ALLOW_IMPORT_PROVISIONAL_TYPES=False)
+def test_reactless_import_interpret_with_tokens_to_resolve_without_bulk_create(
+    client,
+    writable_session,
+):
+    client.force_login(writable_session.user)
+    locator_name, records = writable_session.create_unresolved_records()
+    with writable_session.start() as lr:
+        assert lr.ok_to_process()
+        lr.process(records, writable_session.user)
+        url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
+        response = client.get(url)
+    asserts.assertTemplateUsed(response, "edd/load/interpret.html")
+    asserts.assertTemplateUsed(response, "edd/load/interpret-resolve.html")
+    asserts.assertNotContains(response, "Bulk create missing Lines")
+    asserts.assertNotContains(response, "Bulk create missing Measurement Types")
 
 
 def test_reactless_import_interpret_post_with_errors(client, writable_session):
@@ -506,9 +525,86 @@ def test_task_update(writable_session, save):
     assert save_task.delay.called == save
     # overall status doesn't change from Processed when not saving
     # but does change to Saving when flag is set
-    expected_status = "Saving" if save else "Processed"
-    assert progress["status"] == expected_status
+    if save:
+        assert progress["status"] == str(LoadRequest.Status.SAVING)
+    else:
+        assert progress["status"] == str(LoadRequest.Status.PROCESSED)
     assert save_task.delay.call_count == int(save)
+
+
+def test_task_update_using_new_items(writable_session):
+    locator_name, records = writable_session.create_unresolved_records()
+    with writable_session.start() as lr:
+        assert lr.ok_to_process()
+        lr.process(records, writable_session.user)
+        locator_field = name_from_token(f"locator:{locator_name}".encode())
+        type_field = name_from_token(b"type:unknown type")
+        value_field = name_from_token(b"x:")
+        x_field = name_from_token(b"unit:unknown unit x")
+        y_field = name_from_token(b"unit:unknown unit y")
+        payload_key = lr.form_payload_save(
+            {
+                locator_field: '{"new": true}',
+                type_field: '{"new": true}',
+                value_field: "42",
+                x_field: '{"new": true}',
+                y_field: '{"new": true}',
+                "some_input_id": "",
+            }
+        )
+        assert lr.ok_to_process()
+        tasks.wizard_update(
+            lr.request,
+            payload_key,
+            writable_session.user.pk,
+            save_when_done=False,
+        )
+        progress = LoadRequest.fetch(lr.request).progress
+    assert progress["resolved"] == 1
+    assert progress["unresolved"] == 0
+    assert progress["status"] == str(LoadRequest.Status.PROCESSED)
+    # created a new line entry
+    assert writable_session.study.line_set.filter(name=locator_name).count() == 1
+    # and a new provisional measurement type
+    found = MeasurementType.objects.filter(provisional=True, type_name="unknown type")
+    assert found.count() == 1
+
+
+def test_task_update_using_bulk_create(writable_session):
+    locator_name, records = writable_session.create_unresolved_records()
+    with writable_session.start() as lr:
+        assert lr.ok_to_process()
+        lr.process(records, writable_session.user)
+        payload_key = lr.form_payload_save(
+            {
+                name_from_token(b"form:locator"): True,
+                name_from_token(b"form:type"): True,
+            }
+        )
+        assert lr.ok_to_process()
+        tasks.wizard_update(
+            lr.request,
+            payload_key,
+            writable_session.user.pk,
+            save_when_done=False,
+        )
+        progress = LoadRequest.fetch(lr.request).progress
+    assert progress["resolved"] == 0
+    assert progress["unresolved"] == 1
+    assert progress["status"] == str(LoadRequest.Status.PROCESSED)
+    # created a new line entry
+    assert writable_session.study.line_set.filter(name=locator_name).count() == 1
+    # and a new provisional measurement type
+    found = MeasurementType.objects.filter(provisional=True, type_name="unknown type")
+    assert found.count() == 1
+
+
+# TODO: test an import with both resolved and unresolved records can save the
+#   resolved ones
+# TODO: test an import saving partial records can save the remaining records
+#   once resolved
+# TODO: test submitting the flag for bulk creating when the instance disables
+#   bulk creation will *not* bulk create lines or types
 
 
 def test_form_resolve_locator_to_assay(writable_session):

@@ -10,6 +10,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import Case, Count, F, Q, When
 from django.template.defaultfilters import slugify
+from django.template.loader import get_template
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import FileField, VarCharField
@@ -988,6 +989,7 @@ class Line(EDDObject):
 
 @Select2("Line")
 def line_autocomplete(request):
+    template = get_template("main/autocomplete/assayline.html")
     start, end = request.range
     study = request["study"]
     if not study:
@@ -997,9 +999,21 @@ def line_autocomplete(request):
     found = found.order_by("name")
     count = found.count()
     items = [
-        {"id": json.dumps(item), "text": item["name"]}
+        {
+            "html": template.render({"item": item}),
+            "id": json.dumps(item),
+            "text": item["name"],
+        }
         for item in found.values("id", "name")[start:end]
     ]
+    if request.allow_create:
+        create = {"new": True}
+        entry = {
+            "html": template.render({"item": create}),
+            "id": json.dumps(create),
+            "text": _("+ Create Line"),
+        }
+        items.insert(0, entry)
     return items, count > end
 
 
@@ -1089,6 +1103,7 @@ def assay_autocomplete(request):
 
 @Select2("AssayLine")
 def assay_line_autocomplete(request):
+    template = get_template("main/autocomplete/assayline.html")
     start, end = request.range
     value_fields = ("id", "line_id", "name", "type")
     if not (study := request["study"]):
@@ -1121,11 +1136,21 @@ def assay_line_autocomplete(request):
     values = [{k.removeprefix("union_"): v for k, v in x.items()} for x in prefixed]
     items = [
         {
+            **value,
+            "html": template.render({"item": value}),
             "id": json.dumps(value),
             "text": value["name"],
         }
         for value in values
     ]
+    if request.allow_create:
+        create = {"new": True}
+        entry = {
+            "html": template.render({"item": create}),
+            "id": json.dumps(create),
+            "text": _("+ Create Line"),
+        }
+        items.insert(0, entry)
     return items, count > end
 
 

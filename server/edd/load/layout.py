@@ -107,8 +107,10 @@ class Record:
     def resolve(self, resolver) -> set[str]:
         failed: set[str] = set()
         if missing_locator := self._resolve_locator(resolver):
+            failed.add("form:locator")
             failed.add(f"locator:{missing_locator}")
         if missing_type := self._resolve_type(resolver):
+            failed.add("form:type")
             failed.add(f"type:{missing_type}")
         if missing_x_unit := self._resolve_x_unit(resolver):
             failed.add(f"unit:{missing_x_unit}")

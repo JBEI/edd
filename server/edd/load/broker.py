@@ -486,11 +486,15 @@ class LoadRequest:
 
     def _precommit(self):
         if self.status != self.Status.SAVING:
-            raise exceptions.ResolveError()
+            raise exceptions.ResolveError(
+                summary=f"Invalid state prior to saving: {self.status}",
+            )
 
     def _preprocessing(self):
         if self.status != self.Status.UPDATING:
-            raise exceptions.ResolveError()
+            raise exceptions.ResolveError(
+                summary=f"Invalid state prior to processing: {self.status}",
+            )
 
     def _save_count_update(self, added, updated):
         db = self.db()
@@ -575,8 +579,10 @@ class DatabaseWriter:
             **find,
         }
         if is_new:
+            # when the measurement is just created, can skip querying for any existing value
             measurement.measurementvalue_set.create(**defaults)
             self.added += 1
+            return
         _, created = measurement.measurementvalue_set.update_or_create(
             defaults=defaults,
             **find,

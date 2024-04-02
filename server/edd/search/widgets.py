@@ -51,26 +51,41 @@ class Select2Widget(Select2Mixin, forms.widgets.Select):
     pass
 
 
+class Select2CreateWidget(Select2Widget):
+    """
+    An input that includes an `allow_create` flag, which can be checked by the
+    request on a searcher decorated by the `Select2` class; if the flag is set,
+    the searcher may return a special item entry to indicate that a new record
+    should be created by EDD.
+    """
+
+    def __init__(self, *, allow_create=False, attrs=None):
+        self.default_attrs.update({"data-eddauto-create": allow_create})
+        super().__init__(attrs=attrs)
+
+
 class AssayAutocomplete(Select2Widget):
     kind = "Assay"
 
     def __init__(self, *, study_id, protocol_id, attrs=None):
-        self.default_attrs = {
+        default = {
             "data-eddauto-study": study_id,
             "data-eddauto-protocol": protocol_id,
         }
-        super().__init__(attrs)
+        self.default_attrs.update(default)
+        super().__init__(attrs=attrs)
 
 
-class AssayLineAutocomplete(Select2Widget):
+class AssayLineAutocomplete(Select2CreateWidget):
     kind = "AssayLine"
 
-    def __init__(self, *, study_id, protocol_id, attrs=None):
-        self.default_attrs = {
+    def __init__(self, *, study_id, protocol_id, attrs=None, **kwargs):
+        default = {
             "data-eddauto-study": study_id,
             "data-eddauto-protocol": protocol_id,
         }
-        super().__init__(attrs)
+        self.default_attrs.update(default)
+        super().__init__(attrs=attrs, **kwargs)
 
 
 class CategoryAutocomplete(Select2Widget):
@@ -81,7 +96,7 @@ class CompartmentAutocomplete(Select2Widget):
     kind = "Compartment"
 
 
-class GeneAutocomplete(Select2Widget):
+class GeneAutocomplete(Select2CreateWidget):
     kind = "Gene"
 
 
@@ -89,19 +104,19 @@ class GroupAutocomplete(Select2Widget):
     kind = "Group"
 
 
-class LineAutocomplete(Select2Widget):
+class LineAutocomplete(Select2CreateWidget):
     kind = "Line"
 
-    def __init__(self, *, study_id, attrs=None):
-        self.default_attrs = {"data-eddauto-study": study_id}
-        super().__init__(attrs)
+    def __init__(self, *, study_id, attrs=None, **kwargs):
+        self.default_attrs.update({"data-eddauto-study": study_id})
+        super().__init__(attrs=attrs, **kwargs)
 
 
-class MeasurementAutocomplete(Select2Widget):
+class MeasurementAutocomplete(Select2CreateWidget):
     kind = "GenericOrMetabolite"
 
 
-class MetaboliteAutocomplete(Select2Widget):
+class MetaboliteAutocomplete(Select2CreateWidget):
     kind = "Metabolite"
 
 
@@ -121,7 +136,6 @@ class MetadataAutocomplete(Select2Widget):
     kind = "MetadataType"
 
     def __init__(self, *, attrs=None, includeField=None, typeFilter=None):
-        self.default_attrs = {}
         if includeField is not None:
             value = "true" if includeField else "false"
             self.default_attrs["data-eddauto-field-types"] = value
@@ -129,14 +143,14 @@ class MetadataAutocomplete(Select2Widget):
             # dump to JSON to handle multiple values; frontend will deserialize
             value = JSONEncoder.dumps(typeFilter)
             self.default_attrs["data-eddauto-type-filter"] = value
-        super().__init__(attrs)
+        super().__init__(attrs=attrs)
 
 
 class PermissionAutocomplete(Select2Widget):
     kind = "Permission"
 
 
-class ProteinAutocomplete(Select2Widget):
+class ProteinAutocomplete(Select2CreateWidget):
     kind = "Protein"
 
 
@@ -178,7 +192,7 @@ class SbmlExchange(Select2Widget):
 
     def __init__(self, template_id, *, attrs=None):
         self.default_attrs = {"data-eddauto-template": template_id}
-        super().__init__(attrs)
+        super().__init__(attrs=attrs)
 
 
 class SbmlSpecies(Select2Widget):
@@ -186,15 +200,11 @@ class SbmlSpecies(Select2Widget):
 
     def __init__(self, template_id, *, attrs=None):
         self.default_attrs = {"data-eddauto-template": template_id}
-        super().__init__(attrs)
+        super().__init__(attrs=attrs)
 
 
-class UnitAutocomplete(Select2Widget):
+class UnitAutocomplete(Select2CreateWidget):
     kind = "Unit"
-
-    def __init__(self, *, allow_create=False, attrs=None):
-        self.default_attrs = {"data-eddauto-create": allow_create}
-        super().__init__(attrs)
 
 
 class UserAutocomplete(Select2Widget):

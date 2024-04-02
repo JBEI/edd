@@ -7,12 +7,13 @@ from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db.models import Count, F, Prefetch
 from django.template.loader import get_template
+from django.utils.translation import gettext_lazy as _
 from django_auth_ldap.backend import _LDAPUser
 
 from edd import utilities
 from main import models
 
-from .select2 import Select2
+from .select2 import Select2, autocomplete_create_entry
 
 logger = logging.getLogger(__name__)
 # tuple for request connection and read timeouts, respectively, in seconds
@@ -651,4 +652,11 @@ def metaboliteish_autocomplete(request):
         }
         for item in items
     ]
+    create_permission = request.user.has_perm("main.add_measurementtype")
+    if request.allow_create and create_permission:
+        entry = autocomplete_create_entry(
+            plain_label=_("+ Create Provisional Type"),
+            template=template,
+        )
+        items.insert(0, entry)
     return items, count > end

@@ -1,6 +1,5 @@
 """Models describing measurement types."""
 
-import json
 import logging
 import re
 from uuid import uuid4
@@ -21,7 +20,11 @@ from rdflib.term import URIRef
 from edd.celery import app
 from edd.fields import VarCharField
 from edd.search.registry import StrainRegistry
-from edd.search.select2 import Select2, autocomplete_from_queryset
+from edd.search.select2 import (
+    Select2,
+    autocomplete_create_entry,
+    autocomplete_from_queryset,
+)
 
 from .common import EDDSerialize
 from .update import Datasource
@@ -396,6 +399,13 @@ def metabolite_autocomplete(request):
         template=template,
         text_field="type_name",
     )
+    create_permission = request.user.has_perm("main.add_metabolite")
+    if request.allow_create and create_permission:
+        entry = autocomplete_create_entry(
+            plain_label=_("+ Create Provisional Metabolite"),
+            template=template,
+        )
+        items.insert(0, entry)
     return items, has_next
 
 
@@ -517,6 +527,13 @@ def gene_autocomplete(request):
         template=template,
         text_field="type_name",
     )
+    create_permission = request.user.has_perm("main.add_geneidentifier")
+    if request.allow_create and create_permission:
+        entry = autocomplete_create_entry(
+            plain_label=_("+ Create Provisional Gene"),
+            template=template,
+        )
+        items.insert(0, entry)
     return items, has_next
 
 
@@ -819,6 +836,13 @@ def protein_autocomplete(request):
         template=template,
         text_field="type_name",
     )
+    create_permission = request.user.has_perm("main.add_proteinidentifier")
+    if request.allow_create and create_permission:
+        entry = autocomplete_create_entry(
+            plain_label=_("+ Create Provisional Protein"),
+            template=template,
+        )
+        items.insert(0, entry)
     return items, has_next
 
 
@@ -992,11 +1016,9 @@ def unit_autocomplete(request):
     )
     create_permission = request.user.has_perm("main.add_measurementunit")
     if request.allow_create and create_permission:
-        create = {"new": True}
-        entry = {
-            "html": template.render({"item": create}),
-            "id": json.dumps(create),
-            "text": _("+ Create Unit"),
-        }
+        entry = autocomplete_create_entry(
+            plain_label=_("+ Create Unit"),
+            template=template,
+        )
         items.insert(0, entry)
     return items, has_next

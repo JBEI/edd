@@ -2,13 +2,19 @@
 <div class="edd-typeauto-item row">
   {% if item.id %}
     <div class="edd-typeauto-name col-11">{{ item.name }}</div>
-    {% if item.family in "gmp" %}
-    <div class="col-1"><i class="fas fa-{{ item.family }}"></i></div>
+    {% if item.type %}
+    <div class="col-1">
+      {% if item.type == "Assay" %}
+        <i class="fas fa-flask-vial" aria-label="{% translate "an Assay" %}"></i>
+      {% elif item.type == "Line" %}
+        <i class="fas fa-flask" aria-label="{% translate "a Line" %}"></i>
+      {% endif %}
+    </div>
     {% endif %}
   {% elif item.new %}
     <div class="col-12 text-end">
       <i class="fas fa-plus"></i>
-      <span class="edd-typeauto-name">{% translate "Create Provisional Type" %}</span>
+      <span class="edd-typeauto-name">{% translate "Create Line" %}</span>
     </div>
   {% else %}
     <div class="col-12">

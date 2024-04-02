@@ -4,6 +4,7 @@ import functools
 import logging
 
 from django import forms
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from edd.search import widgets as autocomplete
@@ -116,15 +117,23 @@ class ResolveTokensForm(forms.Form):
             )
 
     def _add_field(self, load_request, name, token):
-        family, value = split_token(token)
-        if family == "locator":
-            self.fields[name] = self._create_locator_field(value)
-        elif family == "type":
-            self.fields[name] = self._create_type_field(value)
-        elif family == "unit":
-            self.fields[name] = self._create_unit_field(value)
-        elif family == "x":
-            self.fields[name] = self._create_value_field()
+        match split_token(token):
+            case ("locator", value):
+                self.fields[name] = self._create_locator_field(value)
+            case ("type", value):
+                self.fields[name] = self._create_type_field(value)
+            case ("unit", value):
+                self.fields[name] = self._create_unit_field(value)
+            case ("x", value):
+                self.fields[name] = self._create_value_field()
+            case ("form", "locator"):
+                if self._is_bulk_line_allowed():
+                    self.fields[name] = self._create_bulk_locator_field()
+            case ("form", "type"):
+                if self._is_bulk_type_allowed():
+                    self.fields[name] = self._create_bulk_type_field()
+            case _:
+                logger.warning(f"Unknown field from {name}:{token}")
 
     @functools.cache
     def locator_ids(self, locator: str) -> (int | None, int | None):
@@ -134,8 +143,16 @@ class ResolveTokensForm(forms.Form):
                 return self._validate_assay(assay_id)
             case {"type": "Line", "id": line_id}:
                 return self._validate_line(line_id, locator)
+            case {"new": _}:
+                return self._new_line(locator)
+            case None:
+                # avoid excessive logging by ignoring None
+                pass
             case _:
                 logger.warning(f"Failed to match locator {value}")
+        bulk = name_from_token(b"form:locator")
+        if self.cleaned_data.get(bulk, False) and self._is_bulk_line_allowed():
+            return self._new_line(locator)
         return (None, None)
 
     @functools.cache
@@ -145,8 +162,16 @@ class ResolveTokensForm(forms.Form):
             case int(type_id):
                 obj = edd_models.MeasurementType.objects.get(id=type_id)
                 return obj.id
+            case {"new": _}:
+                return self._new_type(type_name)
+            case None:
+                # avoid excessive logging by ignoring None
+                pass
             case _:
                 logger.warning(f"Failed to match type {value}")
+        bulk = name_from_token(b"form:type")
+        if self.cleaned_data.get(bulk, False) and self._is_bulk_type_allowed():
+            return self._new_type(type_name)
         return None
 
     @functools.cache
@@ -159,6 +184,9 @@ class ResolveTokensForm(forms.Form):
             case {"new": _}:
                 obj = edd_models.MeasurementUnit.objects.create(unit_name=unit)
                 return obj.id
+            case None:
+                # avoid excessive logging by ignoring None
+                pass
             case _:
                 logger.warning(f"Failed to match unit {value}")
         return None
@@ -178,6 +206,29 @@ class ResolveTokensForm(forms.Form):
         data = self.cleaned_data or {}
         return filter(bool, (token_from_name(n) for n in data.keys()))
 
+    def _create_bulk_locator_field(self):
+        help_text = _(
+            "Create new Lines from all unmatched names. These will have no "
+            "metadata! Be sure this is the correct Study."
+        )
+        return forms.BooleanField(
+            help_text=help_text,
+            label=_("Bulk create missing Lines"),
+            required=False,
+        )
+
+    def _create_bulk_type_field(self):
+        help_text = _(
+            "Create provisional measurement types for all unmatched names. "
+            "These will not match up with any other data in EDD! Any tools "
+            "pulling the data from EDD may not be able to use this data."
+        )
+        return forms.BooleanField(
+            help_text=help_text,
+            label=_("Bulk create missing Measurement Types"),
+            required=False,
+        )
+
     def _create_locator_field(self, value):
         help_text = _("Choose a line or assay to match {token}").format(token=value)
         return forms.JSONField(
@@ -185,6 +236,7 @@ class ResolveTokensForm(forms.Form):
             label=value,
             required=False,
             widget=autocomplete.AssayLineAutocomplete(
+                allow_create=True,
                 protocol_id=self.protocol.id,
                 study_id=self.study.id,
             ),
@@ -196,7 +248,7 @@ class ResolveTokensForm(forms.Form):
             help_text=help_text,
             label=value,
             required=False,
-            widget=autocomplete.MeasurementAutocomplete(),
+            widget=autocomplete.MeasurementAutocomplete(allow_create=True),
         )
 
     def _create_unit_field(self, value):
@@ -214,6 +266,35 @@ class ResolveTokensForm(forms.Form):
             required=False,
             widget=forms.NumberInput(attrs={"class": "form-control"}),
         )
+
+    def _is_bulk_line_allowed(self):
+        return getattr(settings, "EDD_ALLOW_IMPORT_ANONYMOUS_LINES", True)
+
+    def _is_bulk_type_allowed(self):
+        return getattr(settings, "EDD_ALLOW_IMPORT_PROVISIONAL_TYPES", True)
+
+    def _new_line(self, locator):
+        try:
+            line = edd_models.Line.objects.create(
+                name=locator,
+                study_id=self.study.id,
+            )
+            assay = line.new_assay(locator, self.protocol)
+            return (assay.id, line.id)
+        except Exception as e:
+            logger.warning(f"Failed to bulk create for {locator}: {e}")
+        return (None, None)
+
+    def _new_type(self, type_name):
+        try:
+            t = edd_models.MeasurementType.objects.create(
+                provisional=True,
+                type_name=type_name,
+            )
+            return t.id
+        except Exception as e:
+            logger.warning(f"Failed to create provisional type for {type_name}: {e}")
+        return None
 
     def _validate_assay(self, assay_id):
         try:

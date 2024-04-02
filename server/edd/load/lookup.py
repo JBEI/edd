@@ -3,7 +3,7 @@ import functools
 import logging
 import typing
 
-from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.core.exceptions import ValidationError
 
 from main import models
 
@@ -47,23 +47,20 @@ class Resolver:
 
     @functools.cache
     def locator_ids(self, locator: str) -> (int | None, int | None):
-        try:
-            # search assays
-            found_assay_qs = self.assay_queryset().filter(name=locator)
-            # limit results
-            found = found_assay_qs.values_list("id", "line_id")[:2]
-            if len(found) == 1:
-                return found[0]
-            # try looking for line name
-            found_line_qs = self.line_queryset().filter(name=locator)
-            # limit results
-            lines = found_line_qs[:2]
-            if len(lines) == 1:
-                line = lines[0]
-                assay = line.new_assay(locator, self.protocol)
-                return (assay.id, line.id)
-        except Exception as e:
-            logger.debug(f"Resolver error matching locator {locator}: {e}")
+        # search assays
+        found_assay_qs = self.assay_queryset().filter(name=locator)
+        # limit results
+        found = found_assay_qs.values_list("id", "line_id")[:2]
+        if len(found) == 1:
+            return found[0]
+        # try looking for line name
+        found_line_qs = self.line_queryset().filter(name=locator)
+        # limit results
+        lines = found_line_qs[:2]
+        if len(lines) == 1:
+            line = lines[0]
+            assay = line.new_assay(locator, self.protocol)
+            return (assay.id, line.id)
         return (None, None)
 
     @functools.cached_property
@@ -80,16 +77,13 @@ class Resolver:
 
     @functools.cache
     def type_id(self, type_name: str) -> int | None:
-        try:
-            if found := (
-                self.__typename(type_name)
-                or self.__pubchem(type_name)
-                or self.__uniprot(type_name)
-                or self.__gene(type_name)
-            ):
-                return found.pk
-        except Exception as e:
-            logger.exception(f"Resolver error matching type {type_name}", exc_info=e)
+        if found := (
+            self.__typename(type_name)
+            or self.__pubchem(type_name)
+            or self.__uniprot(type_name)
+            or self.__gene(type_name)
+        ):
+            return found.pk
         return None
 
     @functools.cache
@@ -97,8 +91,6 @@ class Resolver:
         try:
             found = models.MeasurementUnit.objects.get(unit_name__iexact=unit)
             return found.pk
-        except MultipleObjectsReturned:
-            logger.warning(f"Multiple matches on unit {unit}")
         except Exception:
             logger.debug(f"Resolver error matching unit {unit}")
         return None
@@ -130,9 +122,6 @@ class Resolver:
                 type_name__iexact=token,
                 type_group=models.MeasurementType.Group.GENERIC,
             )
-        except MultipleObjectsReturned as e:
-            msg = f'Multiple Measurement Types found matching "{token}"'
-            raise ValidationError(msg) from e
         except models.MeasurementType.DoesNotExist:
             pass
 

@@ -9,12 +9,10 @@ logger = get_task_logger(__name__)
 User = get_user_model()
 
 
-def submit_process(load_request, user, background=True) -> bool:
+def submit_process(load_request, user, background=True) -> None:
     task = wizard_process.delay if background else wizard_process
     if load_request.ok_to_process():
         task(load_request.request_uuid, user.pk)
-        return True
-    return False
 
 
 def submit_update(
@@ -23,7 +21,7 @@ def submit_update(
     user,
     background=True,
     save_when_done=False,
-) -> bool:
+) -> None:
     task = wizard_update.delay if background else wizard_update
     if load_request.ok_to_process():
         task(
@@ -32,8 +30,6 @@ def submit_update(
             user.pk,
             save_when_done=save_when_done,
         )
-        return True
-    return False
 
 
 def submit_save(load_request, user, background=True) -> bool:

@@ -1,4 +1,5 @@
 import functools
+import json
 import logging
 import re
 from collections.abc import Callable, Iterable
@@ -75,6 +76,20 @@ class Select2:
             return search_registry[key]
         except KeyError as e:
             raise ValueError(f"Unsupported model for autocomplete: '{key}'") from e
+
+
+def autocomplete_create_entry(
+    *,
+    plain_label,
+    template,
+):
+    create = {"new": True}
+    entry = {
+        "html": template.render({"item": create}),
+        "id": json.dumps(create),
+        "text": plain_label,
+    }
+    return entry
 
 
 def autocomplete_from_queryset(
