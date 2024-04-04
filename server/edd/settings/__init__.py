@@ -22,20 +22,6 @@ except Exception as e:
     print(f"Failed to register ICE authenticator; connection to ICE may not work: {e}")
 
 
-def validate_settings():
-    try:
-        g = globals()
-        if "VERIFY_ICE_CERT" in g:
-            print(
-                "WARNING: the setting VERIFY_ICE_CERT is deprecated. "
-                "Use ICE_VERIFY_CERT instead."
-            )
-            if "ICE_VERIFY_CERT" not in g:
-                g["ICE_VERIFY_CERT"] = VERIFY_ICE_CERT  # noqa: F405
-    except Exception as e:
-        print(f"Error in validating EDD settings: {e}")
-
-
 def monkeypatch_force_text():
     """
     The graphene-django package is slow to update, and is still using a
@@ -51,7 +37,5 @@ def monkeypatch_force_text():
 
 
 # check the settings, then remove the check function from the namespace
-validate_settings()
 monkeypatch_force_text()
-del validate_settings
 del monkeypatch_force_text
