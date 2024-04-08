@@ -18,7 +18,6 @@ from .measurement_type import (
     MeasurementType,
     MeasurementUnit,
     Metabolite,
-    Phosphor,
     ProteinIdentifier,
 )
 from .metadata import EDDMetadata, MetadataGroup, MetadataType
@@ -53,7 +52,6 @@ __all__ = [
     MetaboliteSpecies,
     MetadataGroup,
     MetadataType,
-    Phosphor,
     ProteinIdentifier,
     Protocol,
     SBMLTemplate,

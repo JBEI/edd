@@ -636,31 +636,6 @@ class GeneAdmin(MeasurementTypeAdmin):
         return MeasurementTypeAutocompleteWidget(opt=opt)
 
 
-class PhosphorAdmin(MeasurementTypeAdmin):
-    def get_fields(self, request, obj=None):
-        return super().get_fields(request, obj) + [
-            ("excitation_wavelength", "emission_wavelength"),
-            "reference_type",
-            "study_list",
-        ]
-
-    def get_list_display(self, request):
-        # complete override
-        return [
-            "type_name",
-            "excitation_wavelength",
-            "emission_wavelength",
-            "reference_type",
-            "_study_count",
-        ]
-
-    def get_merge_autowidget(self):
-        opt = {
-            "text_attr": {"class": "autocomp", "data-eddautocompletetype": "Phosphor"}
-        }
-        return MeasurementTypeAutocompleteWidget(opt=opt)
-
-
 class UserPermissionInline(admin.TabularInline):
     """Inline submodel for editing user permissions"""
 
@@ -845,7 +820,6 @@ admin.site.register(models.MeasurementUnit, MeasurementUnitAdmin)
 admin.site.register(models.Metabolite, MetaboliteAdmin)
 admin.site.register(models.MetadataGroup, MetadataGroupAdmin)
 admin.site.register(models.MetadataType, MetadataTypeAdmin)
-admin.site.register(models.Phosphor, PhosphorAdmin)
 admin.site.register(models.ProteinIdentifier, ProteinAdmin)
 admin.site.register(models.Protocol, ProtocolAdmin)
 admin.site.register(models.SBMLTemplate, SBMLTemplateAdmin)

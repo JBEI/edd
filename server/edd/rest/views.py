@@ -257,8 +257,7 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
     API endpoint that provides search/detail access to all MeasurementTypes.
     Clients can filter results to the desired type, and can get additional
     type-specific details by setting the 'type_group' parameter:
-    GeneIdentifiers ('g'), Metabolites ('m'), Phosphors ('h'),
-    and ProteinIdentifiers ('p').
+    GeneIdentifiers ('g'), Metabolites ('m'), and ProteinIdentifiers ('p').
     """
 
     filterset_class = filters.MeasurementTypesFilter

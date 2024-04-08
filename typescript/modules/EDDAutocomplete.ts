@@ -534,18 +534,6 @@ export class Gene extends BaseAuto {
     }
 }
 
-export class Phosphor extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
-
-    constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
-        super(opt, search_options);
-        this.modelName = "Phosphor";
-        this.columns = Phosphor.columns;
-        this.cacheId = "Phosphors";
-        this.visibleInput.attr("size", 45);
-    }
-}
-
 export class GenericOrMetabolite extends BaseAuto {
     static columns = [
         new MultiColumnAuto.AutoColumn("Name", "300px", "name"),
@@ -713,7 +701,6 @@ export const class_lookup: { [name: string]: typeof BaseAuto } = {
     "Metabolite": Metabolite,
     "Protein": Protein,
     "Gene": Gene,
-    "Phosphor": Phosphor,
     "GenericOrMetabolite": GenericOrMetabolite,
     "MeasurementType": MeasurementType,
     "MeasurementCompartment": MeasurementCompartment,

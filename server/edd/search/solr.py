@@ -597,7 +597,6 @@ class MeasurementTypeSearch(SolrSearch):
             "metabolite",
             "proteinidentifier",
             "geneidentifier",
-            "phosphor",
         )
 
     def get_queryopt(self, query, **kwargs):

@@ -53,13 +53,11 @@ class MeasurementType(EDDSerialize, models.Model):
         METABOLITE = "m"
         GENEID = "g"
         PROTEINID = "p"
-        PHOSPHOR = "h"
         GROUP_CHOICE = (
             (GENERIC, _("Generic")),
             (METABOLITE, _("Metabolite")),
             (GENEID, _("Gene Identifier")),
             (PROTEINID, _("Protein Identifier")),
-            (PHOSPHOR, _("Phosphor")),
         )
 
     type_name = VarCharField(
@@ -164,9 +162,6 @@ class MeasurementType(EDDSerialize, models.Model):
 
     def is_gene(self):
         return self.type_group == MeasurementType.Group.GENEID
-
-    def is_phosphor(self):
-        return self.type_group == MeasurementType.Group.PHOSPHOR
 
     def export_name(self):
         return self.type_name
@@ -910,49 +905,6 @@ class GeneStrainLink(StrainLinkMixin, models.Model):
 
     def __str__(self):
         return self.strain.name
-
-
-class Phosphor(MeasurementType):
-    """Defines metadata for phosphorescent measurements."""
-
-    class Meta:
-        db_table = "phosphor_type"
-
-    excitation_wavelength = models.DecimalField(
-        blank=True,
-        decimal_places=5,
-        help_text=_("Excitation wavelength for the material."),
-        max_digits=16,
-        null=True,
-        verbose_name=_("Excitation"),
-    )
-    emission_wavelength = models.DecimalField(
-        blank=True,
-        decimal_places=5,
-        help_text=_("Emission wavelength for the material."),
-        max_digits=16,
-        null=True,
-        verbose_name=_("Emission"),
-    )
-    reference_type = models.ForeignKey(
-        MeasurementType,
-        blank=True,
-        help_text=_(
-            "Link to another Measurement Type used as a reference for this type."
-        ),
-        null=True,
-        on_delete=models.PROTECT,
-        related_name="phosphor_set",
-        verbose_name=_("Reference"),
-    )
-
-    def __str__(self):
-        return self.type_name
-
-    def save(self, *args, **kwargs):
-        # force PHOSPHOR group
-        self.type_group = MeasurementType.Group.PHOSPHOR
-        super().save(*args, **kwargs)
 
 
 class MeasurementUnit(models.Model):

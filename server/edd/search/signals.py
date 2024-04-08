@@ -20,7 +20,6 @@ measurement_types = [
     models.Metabolite,
     models.GeneIdentifier,
     models.ProteinIdentifier,
-    models.Phosphor,
 ]
 all_indexed_types = measurement_types + [models.Study, get_user_model()]
 logger = logging.getLogger(__name__)
