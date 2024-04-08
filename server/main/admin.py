@@ -371,12 +371,14 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     search_fields = ("type_name", "alt_names")
 
     def get_fields(self, request, obj=None):
-        return [
+        fields = [
             "type_name",
             "alt_names",
             "type_source",
-            "study_list",
         ]
+        if obj is not None:
+            return fields + ["study_list"]
+        return fields
 
     def get_list_display(self, request):
         return [
