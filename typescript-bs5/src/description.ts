@@ -1,8 +1,7 @@
 "use strict";
 
 import Collapse from "bootstrap/js/dist/collapse";
-import "datatables.net";
-import "datatables.net-bs5";
+import * as DataTables from "datatables.net-bs5";
 import "jquery";
 
 import { LazyAccess, Query, QueryFilter, ReplicateFilter } from "./utility/access";
@@ -10,6 +9,13 @@ import * as EDDAuto from "./utility/autocomplete";
 import { DescriptionDropzone } from "./utility/dropzone";
 import "./utility/style";
 import * as Time from "./utility/time";
+
+// This is not exported from DataTables, so defining here
+type FunctionAjax = (
+    data: object,
+    callback: (callback_data: any) => void,
+    settings: object,
+) => void;
 
 // see: https://datatables.net/reference/option/dom
 const domLayout =
@@ -28,7 +34,7 @@ function computePage(start: number, length: number): number {
     }
 }
 
-function computeOrder(request: DataTables.AjaxDataRequest): string[] {
+function computeOrder(request: DataTables.AjaxData): string[] {
     try {
         return request.order.map((o) => {
             const dir = o.dir === "desc" ? "-" : "";
@@ -80,7 +86,8 @@ function strainToLink(strain: StrainRecord): string {
 }
 
 class LinesTable {
-    private api: DataTables.Api;
+    // NOTE: `any` type is gross, but can't figure out the type argument right now
+    private api: DataTables.Api<any>;
     private collapse: JQuery;
     private controls: JQuery;
     // default start with showing only active / not-deleted lines
@@ -193,7 +200,7 @@ class LinesTable {
         };
     }
 
-    private buildLanguageSettings(): DataTables.LanguageSettings {
+    private buildLanguageSettings(): DataTables.ConfigLanguage {
         // fetch the i18n values from HTML data-* attributes
         return {
             "aria": {
@@ -236,7 +243,7 @@ class LinesTable {
     private createColumns(
         metaTypes: MetadataTypeRecord[],
         users: UserRecord[],
-    ): DataTables.ColumnSettings[] {
+    ): DataTables.ConfigColumns[] {
         return [
             {
                 "orderable": false,
@@ -283,7 +290,7 @@ class LinesTable {
     private createDynamicColumns(
         metaTypes: MetadataTypeRecord[],
         users: UserRecord[],
-    ): DataTables.ColumnSettings[] {
+    ): DataTables.ConfigColumns[] {
         const visibleMeta = metaTypes.filter((meta) => meta.input_type !== "replicate");
         return visibleMeta.map((meta: MetadataTypeRecord) => ({
             // use function form, as metadata may not exist on given row
@@ -404,7 +411,7 @@ class LinesTable {
         }
     }
 
-    private queryFromRequest(request: DataTables.AjaxDataRequest): Query {
+    private queryFromRequest(request: DataTables.AjaxData): Query {
         return {
             "page": computePage(request.start, request.length),
             "size": request.length,
@@ -413,8 +420,10 @@ class LinesTable {
         };
     }
 
-    private queryLines(): DataTables.FunctionAjax {
-        return (request: DataTables.AjaxDataRequest, callback, settings) => {
+    // DataTables.FunctionAjax is not exported
+    // private queryLines(): DataTables.FunctionAjax {
+    private queryLines(): FunctionAjax {
+        return (request: DataTables.AjaxData, callback, settings) => {
             const query = this.queryFromRequest(request);
             $.when(this.lazy.line.fetch(query)).done((rpi) => {
                 const rf = new ReplicateFilter();

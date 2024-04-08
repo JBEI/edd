@@ -21,8 +21,6 @@
         "classnames": "^2.3.1",
         "css-loader": "^6.7.1",
         "d3": "^7.4.2",
-        "datatables.net": "^1.11.5",
-        "datatables.net-bs5": "^1.11.5",
         "dropzone": "=5.7.2",
         "eslint": "^8.12.0",
         "eslint-config-prettier": "^8.5.0",
