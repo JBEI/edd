@@ -1,5 +1,4 @@
 import math
-import warnings
 from unittest.mock import patch
 
 import pytest
@@ -241,24 +240,6 @@ def study_field_metadata():
     # fake setting a primary key; avoiding database use
     meta.pk = factory.fake.pyint()
     return meta
-
-
-def test_deprecation_models_SYSTEM_META_TYPES():
-    # test deprecation when reading from main.models
-    with warnings.catch_warnings(record=True) as w:
-        models.SYSTEM_META_TYPES.get("something", None)
-    assert len(w) == 1
-    assert issubclass(w[0].category, DeprecationWarning)
-
-
-def test_deprecation_metadata_SYSTEM_META_TYPES():
-    # test deprecation when reading from main.models.metadata
-    with warnings.catch_warnings(record=True) as w:
-        from main.models.metadata import SYSTEM_META_TYPES
-
-        SYSTEM_META_TYPES.get("something", None)
-    assert len(w) == 1
-    assert issubclass(w[0].category, DeprecationWarning)
 
 
 def test_MetadataType_system_lookup(db):

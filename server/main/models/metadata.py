@@ -16,19 +16,6 @@ from .common import EDDSerialize
 logger = logging.getLogger(__name__)
 
 
-# TODO: Remove on release of EDD 2.8.0 or greater
-def __getattr__(name):
-    from warnings import warn
-
-    if name == "SYSTEM_META_TYPES":
-        warn(
-            "SYSTEM_META_TYPES is deprecated; use MetadataType.system() instead.",
-            DeprecationWarning,
-        )
-        return globals()["MetadataType"].SYSTEM
-    raise AttributeError(f"module {__name__} has no attribute {name}")
-
-
 class MetadataGroup(models.Model):
     """Group together types of metadata with a label."""
 
