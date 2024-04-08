@@ -24,6 +24,7 @@ docker cp "$${CONTAINER_ID}:/code/coverage.json" . || true
 /$
 def tests = swarmDeploy([
     "deployEnv": ["ESE_BUILD_TAG=${result.buildTag}"],
+    "email": "edd-dev@lbl.gov",
     "name": "Integration",
     "target": "inttest",
     "teardown": true,
