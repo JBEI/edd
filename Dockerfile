@@ -90,7 +90,7 @@ RUN set -ex \
 # warnings say the export sub-command is moving to a plugin and will not be installed by default
  && pipx inject poetry poetry-plugin-export \
 # ... but, installing the plugin doesn't disable the warning, so need this
- && poetry config warnings.export false
+ && /root/.local/bin/poetry config warnings.export false
 
 # ---
 
