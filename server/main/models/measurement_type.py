@@ -621,7 +621,6 @@ class ProteinIdentifier(MeasurementType):
     @classmethod
     def _get_or_create_from_uniprot(cls, uniprot_id, accession_id):
         try:
-            protein = cls.objects.get(accession_code=uniprot_id)
             defaults = {
                 "accession_code": uniprot_id,
                 "accession_id": accession_id,
