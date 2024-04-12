@@ -1,4 +1,5 @@
 import base64
+import collections
 import decimal
 import functools
 import logging
@@ -99,6 +100,8 @@ class ResolveTokensForm(forms.Form):
         self.study = load_request.study
         # re-using for value lookup doesn't need a User set
         self.resolver = lookup.Resolver(load=load_request, user=None)
+        # track counts of created items
+        self.counter = collections.Counter()
         if data:
             # when getting data, try to build fields directly from data,
             # as current unresolved tokens can change over time, and page
@@ -135,6 +138,21 @@ class ResolveTokensForm(forms.Form):
             case _:
                 logger.warning(f"Unknown field from {name}:{token}")
 
+    def get_count_created_bulk_lines(self):
+        return self.counter["bulk_line"]
+
+    def get_count_created_bulk_types(self):
+        return self.counter["bulk_type"]
+
+    def get_count_created_lines(self):
+        return self.counter["line"]
+
+    def get_count_created_types(self):
+        return self.counter["type"]
+
+    def get_count_created_units(self):
+        return self.counter["unit"]
+
     @functools.cache
     def locator_ids(self, locator: str) -> (int | None, int | None):
         name = name_from_token(f"locator:{locator}".encode())
@@ -152,6 +170,7 @@ class ResolveTokensForm(forms.Form):
                 logger.warning(f"Failed to match locator {value}")
         bulk = name_from_token(b"form:locator")
         if self.cleaned_data.get(bulk, False) and self._is_bulk_line_allowed():
+            self.counter["bulk_line"] += 1
             return self._new_line(locator)
         return (None, None)
 
@@ -160,8 +179,7 @@ class ResolveTokensForm(forms.Form):
         name = name_from_token(f"type:{type_name}".encode())
         match value := self.cleaned_data.get(name, None):
             case int(type_id):
-                obj = edd_models.MeasurementType.objects.get(id=type_id)
-                return obj.id
+                return self._validate_type(type_id)
             case {"new": _}:
                 return self._new_type(type_name)
             case None:
@@ -171,6 +189,7 @@ class ResolveTokensForm(forms.Form):
                 logger.warning(f"Failed to match type {value}")
         bulk = name_from_token(b"form:type")
         if self.cleaned_data.get(bulk, False) and self._is_bulk_type_allowed():
+            self.counter["bulk_type"] += 1
             return self._new_type(type_name)
         return None
 
@@ -179,11 +198,9 @@ class ResolveTokensForm(forms.Form):
         name = name_from_token(f"unit:{unit}".encode())
         match value := self.cleaned_data.get(name, None):
             case int(unit_id):
-                obj = edd_models.MeasurementUnit.objects.get(id=unit_id)
-                return obj.id
+                return self._validate_unit(unit_id)
             case {"new": _}:
-                obj = edd_models.MeasurementUnit.objects.create(unit_name=unit)
-                return obj.id
+                return self._new_unit(unit)
             case None:
                 # avoid excessive logging by ignoring None
                 pass
@@ -280,6 +297,7 @@ class ResolveTokensForm(forms.Form):
                 study_id=self.study.id,
             )
             assay = line.new_assay(locator, self.protocol)
+            self.counter["line"] += 1
             return (assay.id, line.id)
         except Exception as e:
             logger.warning(f"Failed to bulk create for {locator}: {e}")
@@ -291,9 +309,19 @@ class ResolveTokensForm(forms.Form):
                 provisional=True,
                 type_name=type_name,
             )
+            self.counter["type"] += 1
             return t.id
         except Exception as e:
             logger.warning(f"Failed to create provisional type for {type_name}: {e}")
+        return None
+
+    def _new_unit(self, unit):
+        try:
+            obj = edd_models.MeasurementUnit.objects.create(unit_name=unit)
+            self.counter["unit"] += 1
+            return obj.id
+        except Exception as e:
+            logger.warning(f"Failed to create unit for {unit}: {e}")
         return None
 
     def _validate_assay(self, assay_id):
@@ -314,3 +342,21 @@ class ResolveTokensForm(forms.Form):
         except Exception as e:
             logger.warning(f"Failed to validate {line_id} for {locator}: {e}")
             return (None, None)
+
+    def _validate_type(self, type_id):
+        try:
+            # verify type exists
+            obj = edd_models.MeasurementType.objects.get(id=type_id)
+            return obj.id
+        except Exception as e:
+            logger.warning(f"Failed to validate unit {type_id}: {e}")
+            return None
+
+    def _validate_unit(self, unit_id):
+        try:
+            # verify unit exists
+            obj = edd_models.MeasurementUnit.objects.get(id=unit_id)
+            return obj.id
+        except Exception as e:
+            logger.warning(f"Failed to validate unit {unit_id}: {e}")
+            return None

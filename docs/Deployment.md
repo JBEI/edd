@@ -146,6 +146,10 @@ The following configuration options are specific to EDD and [may be overridden][
     number of occurrences of any single type of error reported to clients of
     the prototype import via websocket notifications. Error occurrences beyond
     this limit are not reported to clients.
+-   `EDD_IMPORT_BULK_ABUSE_CONTACTS` -- list of email addresses, approprite
+    for passing in `django.core.mail.send_mail`. These contacts will get an
+    email whenever a user uses the bulk create Lines or MeasurementTypes
+    checkbox in an import. Defaults to empty.
 -   `EDD_LATEST_CACHE` -- string value; the name of the Django cache to use for
     storing a user's latest viewed studies.
 -   `EDD_ONLY_SUPERUSER_CREATE` -- boolean flag, or the string "permission"

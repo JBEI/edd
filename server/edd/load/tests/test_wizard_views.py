@@ -2,6 +2,7 @@ from decimal import Decimal
 from http import HTTPStatus
 from unittest.mock import patch
 
+from django.core import mail
 from django.test import override_settings
 from django.urls import reverse
 from pytest import mark
@@ -552,14 +553,19 @@ def test_task_update_using_new_items(writable_session):
                 "some_input_id": "",
             }
         )
-        assert lr.ok_to_process()
-        tasks.wizard_update(
-            lr.request,
-            payload_key,
-            writable_session.user.pk,
-            save_when_done=False,
-        )
+        # patching to avoid actually submitting task
+        with patch("edd.load.tasks.send_bulk_abuse_email") as email_task:
+            assert lr.ok_to_process()
+            tasks.wizard_update(
+                lr.request,
+                payload_key,
+                writable_session.user.pk,
+                save_when_done=False,
+            )
         progress = LoadRequest.fetch(lr.request).progress
+    # email task is not called
+    assert email_task.delay.called is False
+    # progress is as expected
     assert progress["resolved"] == 1
     assert progress["unresolved"] == 0
     assert progress["status"] == str(LoadRequest.Status.PROCESSED)
@@ -581,6 +587,43 @@ def test_task_update_using_bulk_create(writable_session):
                 name_from_token(b"form:type"): True,
             }
         )
+        # patching to avoid actually submitting task
+        with patch("edd.load.tasks.send_bulk_abuse_email") as email_task:
+            assert lr.ok_to_process()
+            tasks.wizard_update(
+                lr.request,
+                payload_key,
+                writable_session.user.pk,
+                save_when_done=False,
+            )
+        progress = LoadRequest.fetch(lr.request).progress
+    # email task gets called
+    assert email_task.delay.called is True
+    # progress is as expected
+    assert progress["resolved"] == 0
+    assert progress["unresolved"] == 1
+    assert progress["status"] == str(LoadRequest.Status.PROCESSED)
+    # created a new line entry
+    assert writable_session.study.line_set.filter(name=locator_name).count() == 1
+    # and a new provisional measurement type
+    found = MeasurementType.objects.filter(provisional=True, type_name="unknown type")
+    assert found.count() == 1
+
+
+@override_settings(EDD_ALLOW_IMPORT_ANONYMOUS_LINES=False)
+@override_settings(EDD_ALLOW_IMPORT_PROVISIONAL_TYPES=False)
+def test_task_update_using_bulk_create_when_disabled(writable_session):
+    locator_name, records = writable_session.create_unresolved_records()
+    with writable_session.start() as lr:
+        assert lr.ok_to_process()
+        lr.process(records, writable_session.user)
+        payload_key = lr.form_payload_save(
+            {
+                name_from_token(f"locator:{locator_name}".encode()): "",
+                name_from_token(b"form:locator"): True,
+                name_from_token(b"form:type"): True,
+            }
+        )
         assert lr.ok_to_process()
         tasks.wizard_update(
             lr.request,
@@ -592,19 +635,101 @@ def test_task_update_using_bulk_create(writable_session):
     assert progress["resolved"] == 0
     assert progress["unresolved"] == 1
     assert progress["status"] == str(LoadRequest.Status.PROCESSED)
-    # created a new line entry
-    assert writable_session.study.line_set.filter(name=locator_name).count() == 1
-    # and a new provisional measurement type
+    # NOT created a new line entry
+    assert writable_session.study.line_set.filter(name=locator_name).count() == 0
+    # and NOT a new provisional measurement type
     found = MeasurementType.objects.filter(provisional=True, type_name="unknown type")
-    assert found.count() == 1
+    assert found.count() == 0
 
 
-# TODO: test an import with both resolved and unresolved records can save the
-#   resolved ones
-# TODO: test an import saving partial records can save the remaining records
-#   once resolved
-# TODO: test submitting the flag for bulk creating when the instance disables
-#   bulk creation will *not* bulk create lines or types
+def test_task_update_partial_then_full(writable_session):
+    resolved = writable_session.create_resolved_records()
+    locator_name, unresolved = writable_session.create_unresolved_records()
+    with writable_session.start() as lr:
+        assert lr.ok_to_process()
+        lr.process(resolved + unresolved, writable_session.user)
+        payload_key = lr.form_payload_save({name_from_token(b"form:type"): False})
+        assert lr.ok_to_process()
+        tasks.wizard_update(
+            lr.request,
+            payload_key,
+            writable_session.user.pk,
+            save_when_done=False,
+        )
+        # reload to get new status after task run
+        lr = LoadRequest.fetch(lr.request)
+
+        # partial update state checks out
+        assert lr.progress["resolved"] == 1
+        assert lr.progress["unresolved"] == 1
+        assert lr.progress["status"] == str(LoadRequest.Status.PROCESSED)
+
+        # saving will save the resolved one
+        assert lr.ok_to_save()
+        tasks.wizard_save(lr.request, writable_session.user.pk)
+        # reload to get new status after task run
+        lr = LoadRequest.fetch(lr.request)
+
+        assert lr.progress["resolved"] == 0
+        assert lr.progress["unresolved"] == 1
+        assert lr.progress["status"] == str(LoadRequest.Status.PROCESSED)
+
+        # updating the remaining record will work
+        locator_field = name_from_token(f"locator:{locator_name}".encode())
+        type_field = name_from_token(b"type:unknown type")
+        value_field = name_from_token(b"x:")
+        x_field = name_from_token(b"unit:unknown unit x")
+        y_field = name_from_token(b"unit:unknown unit y")
+        payload_key = lr.form_payload_save(
+            {
+                locator_field: '{"new": true}',
+                type_field: '{"new": true}',
+                value_field: "42",
+                x_field: '{"new": true}',
+                y_field: '{"new": true}',
+                "some_input_id": "",
+            }
+        )
+        assert lr.ok_to_process()
+        tasks.wizard_update(
+            lr.request,
+            payload_key,
+            writable_session.user.pk,
+            save_when_done=False,
+        )
+        # reload to get new status after task run
+        lr = LoadRequest.fetch(lr.request)
+
+        assert lr.progress["resolved"] == 1
+        assert lr.progress["unresolved"] == 0
+        assert lr.progress["status"] == str(LoadRequest.Status.PROCESSED)
+
+        # saving again will complete the import
+        assert lr.ok_to_save()
+        tasks.wizard_save(lr.request, writable_session.user.pk)
+        # reload to get new status after task run
+        lr = LoadRequest.fetch(lr.request)
+
+        assert lr.progress["resolved"] == 0
+        assert lr.progress["unresolved"] == 0
+        assert lr.progress["status"] == str(LoadRequest.Status.COMPLETED)
+
+
+@override_settings(EDD_IMPORT_BULK_ABUSE_CONTACTS=["abuse@example.org"])
+def test_task_email_bulk_abuse(writable_session):
+    with writable_session.start() as lr:
+        tasks.send_bulk_abuse_email(writable_session.user.pk, lr.study_uuid)
+        assert len(mail.outbox) == 1
+        sent = mail.outbox[0]
+        assert "abuse@example.org" in sent.to
+        assert lr.study.name in sent.body
+
+
+@override_settings(EDD_IMPORT_BULK_ABUSE_CONTACTS=[])
+def test_task_email_bulk_abuse_with_no_recipients(writable_session):
+    with writable_session.start() as lr:
+        tasks.send_bulk_abuse_email(writable_session.user.pk, lr.study_uuid)
+        assert len(mail.outbox) == 0
 
 
 def test_form_resolve_locator_to_assay(writable_session):
@@ -714,6 +839,7 @@ def test_form_resolve_unit(writable_session):
         )
     assert form.is_valid()
     assert form.unit_id("unit name") == a_unit.id
+    assert form.get_count_created_units() == 0
 
 
 def test_form_resolve_unit_to_new_unit(writable_session):
@@ -725,6 +851,7 @@ def test_form_resolve_unit_to_new_unit(writable_session):
         )
     assert form.is_valid()
     assert form.unit_id("unit name") is not None
+    assert form.get_count_created_units() == 1
 
 
 def test_form_resolve_unit_failure(writable_session):
@@ -736,6 +863,7 @@ def test_form_resolve_unit_failure(writable_session):
         )
     assert form.is_valid()
     assert form.unit_id("unit name") is None
+    assert form.get_count_created_units() == 0
 
 
 def test_form_resolve_value_blank(writable_session):

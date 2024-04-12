@@ -60,6 +60,8 @@ ICE_URL = env("ICE_URL", default=None)
 # EDD_ALLOW_IMPORT_PROVISIONAL_TYPES: flag to allow the import to create
 #   provisional types for unknown measurements
 # EDD_ALLOW_IMPORT_PROVISIONAL_TYPES = True
+# EDD_IMPORT_BULK_ABUSE_CONTACTS: people to nag when users check the bulk create boxes
+# EDD_IMPORT_BULK_ABUSE_CONTACTS = []
 
 
 ### Index page related settings

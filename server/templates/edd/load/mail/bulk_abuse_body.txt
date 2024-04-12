@@ -1,0 +1,8 @@
+{% load i18n %}
+{% blocktranslate with site_name=current_site.name|default:"EDD" %}
+Hello from {{ site_name }}!
+
+You are set to receive notifications when any user runs an import with the bulk creation of Lines or Measurement Types. We're letting you know that {{ user }} just processed an import file and created these bulk records in the Study {{ study_name }} at <{{ study_uri }}>. You may want to follow up with {{ user }} to see if the Study needs any correction.
+
+Please contact the administrators of {{ site_name }} and request removal from the EDD_IMPORT_BULK_ABUSE_CONTACTS setting if you no longer wish to receive these updates.
+{% endblocktranslate %}
