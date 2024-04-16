@@ -1,6 +1,7 @@
 "use strict";
 
 import Collapse from "bootstrap/js/dist/collapse";
+import "datatables.net";
 import * as DataTables from "datatables.net-bs5";
 import "jquery";
 
