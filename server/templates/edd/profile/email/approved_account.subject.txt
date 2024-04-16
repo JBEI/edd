@@ -1,0 +1,1 @@
+{% load i18n %}{% autoescape off %}{% blocktranslate with site_name=current_site.name|default:"EDD" %}{{ site_name }} account is approved{% endblocktranslate %}{% endautoescape %}

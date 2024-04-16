@@ -7,19 +7,20 @@ from django.contrib.auth.admin import UserAdmin
 from django.forms.widgets import TextInput
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import ngettext
 from django_auth_ldap.backend import LDAPBackend
 
 from edd.fields import VarCharField
 from edd.search.registry import StrainRegistry
 from edd.search.solr import UserSearch
 
-from .models import Institution, InstitutionID, UserProfile
+from . import models, tasks
 
 logger = logging.getLogger(__name__)
 
 
 class InstitutionInline(admin.TabularInline):
-    model = InstitutionID
+    model = models.InstitutionID
     extra = 1
 
 
@@ -47,11 +48,40 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     @admin.action(description=_("Disable selected accounts"))
     def disable_account_action(self, request, queryset):
-        queryset.update(approved=False)
+        # filter to currently approved accounts, and count the total changed
+        updated = queryset.filter(approved=True).update(approved=False)
+        self.message_user(
+            request,
+            ngettext(
+                "Updated {updated} account to unapproved status.",
+                "Updated {updated} accounts to unapproved status.",
+                updated,
+            ).format(updated=updated),
+            messages.SUCCESS,
+        )
 
     @admin.action(description=_("Enable selected accounts"))
     def enable_account_action(self, request, queryset):
-        queryset.update(approved=True)
+        # filter to currently unapproved accounts
+        to_approve = queryset.filter(approved=False)
+        updated = to_approve.update(approved=True)
+        # send approval emails out
+        for profile in to_approve:
+            tasks.send_approved_account_email.delay(profile.user_id)
+        self.message_user(
+            request,
+            ngettext(
+                "Updated {updated} account to approved status.",
+                "Updated {updated} accounts to approved status.",
+                updated,
+            ).format(updated=updated),
+            messages.SUCCESS,
+        )
+
+    def get_form(self, request, obj=None, **kwargs):
+        # stashing whether the profile was originally not approved
+        self.was_unapproved = obj and obj.approved is False
+        return super().get_form(request, obj, **kwargs)
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -64,6 +94,12 @@ class UserProfileAdmin(admin.ModelAdmin):
             name = profile.user.get_full_name() or profile.user.username
             profile.display_name = name
             profile.save(update_fields=["display_name"])
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # only sending email when updating a profile, not creating
+        if change and self.was_unapproved and form.cleaned_data["approved"]:
+            tasks.send_approved_account_email.delay(obj.user_id)
 
 
 class InstitutionAdmin(admin.ModelAdmin):
@@ -100,6 +136,7 @@ class EDDUserAdmin(UserAdmin):
     list_display = UserAdmin.list_display + ("date_joined", "last_login")
     list_filter = UserAdmin.list_filter + (UserHasLocalLoginFilter,)
 
+    @admin.action(description=_("Index in Solr"))
     def solr_index(self, request, queryset):
         solr = UserSearch()
         # optimize queryset to fetch profile with JOIN, and single
@@ -108,8 +145,7 @@ class EDDUserAdmin(UserAdmin):
         q = q.prefetch_related("groups", "userprofile__institutions")
         solr.update(q)
 
-    solr_index.short_description = _("Index in Solr")
-
+    @admin.action(description=_("Update Groups from LDAP"))
     def update_groups_from_ldap(self, request, queryset):
         backend = LDAPBackend()
         for user in queryset:
@@ -120,8 +156,7 @@ class EDDUserAdmin(UserAdmin):
                 # _mirror_groups fails when ldap_user is not Active, so delete all groups
                 user.groups.clear()
 
-    update_groups_from_ldap.short_description = _("Update Groups from LDAP")
-
+    @admin.action(description=_("Search ICE as User"))
     def search_ice_as_action(self, request, queryset):
         # intentionally throw error when multiple users selected
         user = queryset.get()
@@ -144,8 +179,7 @@ class EDDUserAdmin(UserAdmin):
                 )
         return render(request, "admin/strain_impersonate_search.html", context=context)
 
-    search_ice_as_action.short_description = _("Search ICE as User")
-
+    @admin.action(description=_("Deactivate Users"))
     def deactivate_user_action(self, request, queryset):
         try:
             count = queryset.update(is_active=False)
@@ -162,8 +196,7 @@ class EDDUserAdmin(UserAdmin):
                 messages.ERROR,
             )
 
-    deactivate_user_action.short_description = _("Deactivate Users")
-
+    @admin.action(description=_("Migrate account to LDAP"))
     def migrate_local_to_ldap(self, request, queryset):
         backend = LDAPBackend()
         for user in queryset:
@@ -192,9 +225,7 @@ class EDDUserAdmin(UserAdmin):
                     messages.ERROR,
                 )
 
-    migrate_local_to_ldap.short_description = _("Migrate account to LDAP")
 
-
-admin.site.register(UserProfile, UserProfileAdmin)
-admin.site.register(Institution, InstitutionAdmin)
+admin.site.register(models.UserProfile, UserProfileAdmin)
+admin.site.register(models.Institution, InstitutionAdmin)
 admin.site.register(get_user_model(), EDDUserAdmin)

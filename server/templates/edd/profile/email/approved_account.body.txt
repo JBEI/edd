@@ -1,0 +1,4 @@
+{% load account i18n %}{% user_display user as user_display %}{% autoescape off %}{% blocktranslate with site_name=current_site.name|default:"EDD" site_domain=current_site.domain %}Hello {{ user_display }}!
+
+Your {{ site_name }} account has been approved, and you may now log in and use the system at {{ site_domain }}. Thank you for your interest in {{ site_name }}!
+{% endblocktranslate %}{% endautoescape %}
