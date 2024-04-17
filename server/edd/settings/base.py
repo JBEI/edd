@@ -104,7 +104,6 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 # Application definition
 INSTALLED_APPS = (
     "django.forms",
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.sites",
     "django.contrib.contenttypes",
@@ -123,6 +122,7 @@ INSTALLED_APPS = (
     "channels",  # channels in pip
     "graphene_django",  # graphene-django in pip
     # EDD apps
+    "edd.admin.AdminConfig",
     "main.apps.EDDConfig",
     "edd.rest.apps.RESTConfig",
     "edd.describe.apps.DescribeConfig",
@@ -165,7 +165,7 @@ TEMPLATES = [
                 # http://stackoverflow.com/questions/2882490
                 # also required for django-allauth
                 "django.template.context_processors.request",
-            ]
+            ],
         },
     }
 ]

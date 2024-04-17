@@ -71,3 +71,11 @@ body > .navbar {
     height: 2rem !important;
     width: 2.5rem !important;
 }
+
+/* Bootstrap tweaks */
+/* Django Admin uses CAPTION elements on TABLE for app groups, and Bootstrap
+    defaults to putting these on the bottom, which looks weird in Django
+    Admin. Switch it to instead be on top. */
+table {
+    caption-side: top;
+}

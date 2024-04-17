@@ -1,8 +1,20 @@
-{% extends "admin/base.html" %}
-
-{% block title %}{{ title }} | {{ site_title|default:_('EDD admin') }}{% endblock %}
-
-
-{% block branding %}
-<h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('EDD administration') }}</a></h1>
+{% extends "admin/base_site.html" %}
+{% load branding i18n static %}
+{% comment %}<!-- "stylesheet" block is *only* the base stylesheet URL -->{% endcomment %}
+{% block stylesheet %}{% static "bs5/vendor.css" %}{% endblock %}
+{% comment %}
+<!-- Replaced the admin stylesheet above with our Bootstrap+extras, but add it
+  back in here. That way the Django light/dark mode toggle will continue to
+  function, and the color schemes are preserved, as the later Django admin
+  style will override the Bootstrap variables. -->
+{% endcomment %}
+{% block extrastyle %}
+  <script src="{% static "bs5/vendor.js" %}"></script>
+  <link rel="stylesheet" type="text/css" href="{% static "base.css" %}" />
+  <link rel="stylesheet" type="text/css" href="{% static "admin/css/base.css" %}" />
+  {% stylesheet as branding_css %}
+  {% if branding_css %}
+  <link rel="stylesheet" type="text/css" href="{{ branding_css }}" />
+  {% endif %}
+  <script src="{% static "bs5/common.js" %}"></script>
 {% endblock %}

@@ -10,8 +10,6 @@ from django.urls import include, path, re_path
 from edd import views as legacy_view
 from edd.branding.views import favicon as favicon_view
 
-admin.autodiscover()
-
 
 def healthcheck(request):
     """Simplest possible view for healthcheck."""
