@@ -1,8 +1,8 @@
 "use strict";
 
 import Collapse from "bootstrap/js/dist/collapse";
-import "datatables.net";
-import * as DataTables from "datatables.net-bs5";
+import * as DataTables from "datatables.net";
+import "datatables.net-bs5";
 import "jquery";
 
 import { LazyAccess, Query, QueryFilter, ReplicateFilter } from "./utility/access";
