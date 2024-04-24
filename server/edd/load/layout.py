@@ -213,7 +213,7 @@ class ImportLayout(typing.Protocol):
 class RecordUpdater(typing.Protocol[V]):
     """Interface for updating a Record with values extracted from a Parser."""
 
-    def update(self, parser: ImportParser, record: Record, value: V) -> None:
+    def update(self, record: Record, value: V) -> None:
         ...
 
 
@@ -301,8 +301,8 @@ class ColumnHeading(typing.Generic[T]):
     def check(self, value: "Any") -> T:
         return self.prototype.check(value)
 
-    def save(self, parser: ImportParser, record: Record, value: T) -> None:
-        self.updater.update(parser, record, value)
+    def save(self, record: Record, value: T) -> None:
+        self.updater.update(record, value)
 
 
 class RegexHeading(HeadingPrototype[T]):
@@ -323,7 +323,7 @@ class RegexHeading(HeadingPrototype[T]):
         if isinstance(heading_value, str) and self.regex.fullmatch(heading_value):
             return self
 
-    def update(self, parser: ImportParser, record: Record, value: T) -> None:
+    def update(self, record: Record, value: T) -> None:
         setattr(record, self.property_name, value)
 
 
@@ -333,12 +333,7 @@ class DataHeading(RegexHeading[decimal.Decimal]):
     def check(self, value: "Any") -> decimal.Decimal:
         return convert_datum(super().check(value))
 
-    def update(
-        self,
-        parser: ImportParser,
-        record: Record,
-        value: decimal.Decimal,
-    ) -> None:
+    def update(self, record: Record, value: decimal.Decimal) -> None:
         getattr(record, self.property_name, []).append(value)
 
 
@@ -346,7 +341,7 @@ class MetadataUpdate:
     def __init__(self, metadata_type: models.MetadataType):
         self.metadata_type = metadata_type
 
-    def update(self, parser: ImportParser, record: Record, value: "Any") -> None:
+    def update(self, record: Record, value: "Any") -> None:
         meta = {self.metadata_type.pk: value}
         record.metadata.update(meta)
 
@@ -382,12 +377,7 @@ class MeasurementUpdate:
         self.measurement_type = measurement_type
         self.y_unit = y_unit
 
-    def update(
-        self,
-        parser: ImportParser,
-        record: Record,
-        value: decimal.Decimal,
-    ) -> None:
+    def update(self, record: Record, value: decimal.Decimal) -> None:
         record.type_name = self.measurement_type.type_name
         record.type_id = self.measurement_type.pk
         record.y_unit = self.y_unit.unit_name
@@ -595,11 +585,9 @@ class GenericLayout(BaseLayout):
             try:
                 if column:
                     value = column.check(self.parser.reader.value(cell))
-                    column.save(self.parser, record, value)
+                    column.save(record, value)
             except (exceptions.EDDImportError, exceptions.EDDImportWarning) as e:
-                logger.info(
-                    f"({self.parser.uuid}) Failed to process row {row_index}: {e}",
-                )
+                logger.info(f"Failed to process row {row_index}: {e}")
                 break
         return record
 
@@ -697,11 +685,9 @@ class SkylineLayout(BaseLayout):
             try:
                 if column:
                     value = column.check(self.parser.reader.value(cell))
-                    column.save(self.parser, record, value)
+                    column.save(record, value)
             except (exceptions.EDDImportError, exceptions.EDDImportWarning) as e:
-                logger.info(
-                    f"({self.parser.uuid}) Failed to process row {row_index}: {e}",
-                )
+                logger.info(f"Failed to process row {row_index}: {e}")
                 break
         return record
 
@@ -798,8 +784,8 @@ class AmbrLayout(ImportLayout):
             x = column_pair[0].check(self.reader.value(data_pair[0]))
             y = column_pair[1].check(self.reader.value(data_pair[1]))
             # only save values when both are valid (no Exception raised)
-            column_pair[0].save(self.parser, record, x)
-            column_pair[1].save(self.parser, record, y)
+            column_pair[0].save(record, x)
+            column_pair[1].save(record, y)
             return True
         except exceptions.InvalidValueWarning:
             # not assigning any values, but continue processing column

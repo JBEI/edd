@@ -161,7 +161,7 @@ class LoadRequest:
 
     @property
     def is_upload_ready(self):
-        """LoadRequest can begin upload() call when it has category, protocol, and layout."""
+        """LoadRequest can begin upload() call when it has protocol and layout."""
         return self.protocol_uuid and self.layout_key
 
     @property
@@ -260,11 +260,7 @@ class LoadRequest:
             raise exceptions.CommunicationError() from e
 
     def read(self) -> Iterable["Record"]:
-        parser = reader.Parser(
-            self._build_reader(),
-            self.layout,
-            load_uuid=self.request_uuid,
-        )
+        parser = reader.Parser(self._build_reader(), self.layout)
         with self.open() as file:
             yield from parser.parse(file)
 

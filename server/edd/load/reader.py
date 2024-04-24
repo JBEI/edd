@@ -1,7 +1,6 @@
 import csv
 import logging
 import typing
-import uuid
 from collections.abc import Iterable
 
 from openpyxl import load_workbook
@@ -60,12 +59,9 @@ class Parser:
         self,
         reader: "ImportReader",
         layout_class: type["ImportLayout"],
-        *,
-        load_uuid: uuid.UUID | None = None,
     ):
         self.reader = reader
         self.layout_class = layout_class
-        self.uuid = load_uuid or uuid.uuid4()
 
     def consume_stream(
         self,
