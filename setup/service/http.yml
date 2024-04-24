@@ -5,4 +5,3 @@ services:
         EDD_VERSION: development
     environment:
       EDD_CONTAINER: http
-version: "3.7"

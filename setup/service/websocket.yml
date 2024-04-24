@@ -2,4 +2,3 @@ services:
   websocket:
     environment:
       EDD_CONTAINER: websocket
-version: "3.7"

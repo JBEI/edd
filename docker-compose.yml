@@ -90,7 +90,6 @@ services:
     volumes:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
-version: "3.7"
 volumes:
   edd_attachments:
   edd_staticfiles:

@@ -2,4 +2,3 @@ services:
   worker:
     environment:
       EDD_CONTAINER: worker
-version: "3.7"
