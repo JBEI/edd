@@ -31,14 +31,9 @@ CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_DEFAULT_ROUTING_KEY = "default"
 
 # Queue lists
-# TODO: change "describe" to "setup" when the module name changes
 # TODO: regularize the naming schemes on method names
 CELERY_TASK_QUEUES = (
     Queue("default"),
-    Queue("edd.describe.tasks.clear_error_report"),
-    Queue("edd.describe.tasks.send_describe_failed_email_admin"),
-    Queue("edd.describe.tasks.send_describe_failed_email_user"),
-    Queue("edd.describe.tasks.send_describe_success_email"),
     Queue("edd.export.tasks.export_table_task"),
     Queue("edd.export.tasks.export_worklist_task"),
     Queue("edd.load.tasks.send_bulk_abuse_email"),
@@ -46,6 +41,9 @@ CELERY_TASK_QUEUES = (
     Queue("edd.load.tasks.wizard_save"),
     Queue("edd.load.tasks.wizard_update"),
     Queue("edd.profile.tasks.send_approved_account_email"),
+    Queue("edd.setup.tasks.setup_commit"),
+    Queue("edd.setup.tasks.setup_process"),
+    Queue("edd.setup.tasks.setup_update"),
     Queue("main.models.measurement_type.lookup_protein_in_uniprot"),
     Queue("main.models.measurement_type.metabolite_load_pubchem"),
     Queue("main.tasks.link_ice_entry_to_study"),

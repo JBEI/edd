@@ -1,0 +1,19 @@
+{% load i18n %}
+<div class="edd-metaauto-item">
+  {% if item.id %}
+    <span class="edd-metaauto-name">{{ item.type_name }}</span>
+  {% elif item.new %}
+    <div class="text-end">
+      <i class="fas fa-plus"></i>
+      <span class="edd-metaauto-name">{% translate "Create Metadata Type" %}</span>
+    </div>
+  {% elif item.ignore %}
+    <div class="text-end">
+      <i class="fas fa-eye-slash"></i>
+      <span class="edd-metaauto-name">{% translate "Ignore Metadata" %}</span>
+    </div>
+  {% else %}
+    <i class="fas fa-triangle-exclamation"></i>
+    <span class="edd-metaauto-name">{% translate "Unknown Record" %}</span>
+  {% endif %}
+</div>

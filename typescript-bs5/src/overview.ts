@@ -1,8 +1,19 @@
 "use strict";
 
 import "jquery";
+import { default as Dropzone } from "dropzone";
 
-import { DescriptionDropzone } from "./utility/dropzone";
+import { findCSRFToken } from "./utility/form";
+
+function errorReload() {
+    window.location.reload();
+}
+
+function redirect(url: string): void {
+    window.setTimeout(() => {
+        window.location.href = url;
+    }, 250);
+}
 
 function postAjax(form: JQuery): JQuery.AjaxSettings {
     return {
@@ -16,9 +27,23 @@ function postAjax(form: JQuery): JQuery.AjaxSettings {
 }
 
 function setupDropzone(): void {
-    const dropzoneDiv = $("#experimentDescDropZone");
-    DescriptionDropzone.initialize(dropzoneDiv, ".dz-browse-link");
-    $(".dz-message,.dz-browse-link").removeClass("d-none");
+    const element = $("#experimentSetupDrop").addClass("dropzone").get(0);
+    const options = {
+        "params": { "csrfmiddlewaretoken": findCSRFToken() },
+        "timeout": 0,
+    };
+    const dropzone = new Dropzone(element, options);
+    dropzone.on("success", (file) => {
+        try {
+            const payload = JSON.parse(file.xhr?.response);
+            // wait a bit, then change the window location to the redirect URL
+            redirect(payload?.url);
+        } catch {
+            errorReload();
+        }
+    });
+    dropzone.on("error", errorReload);
+    $(".dz-message").removeClass("d-none");
 }
 
 function switchStudyEditDisplay(): void {

@@ -32,7 +32,7 @@ export function initSelect2(elements?: JQuery): void {
                     return { ...params, ...extraParams(select) };
                 },
                 "dataType": "json",
-                "url": select.data("eddautocompleteurl"),
+                "url": url,
             };
             options.templateResult = entryTemplate;
         }
@@ -71,9 +71,12 @@ function extraParams(select: JQuery): Params {
             break;
     }
     // send back param "c" when autocomplete annotated with create
-    const create = select.data("eddautoCreate");
-    if (create !== undefined) {
+    if (select.data("eddautoCreate") !== undefined) {
         params.c = "1";
+    }
+    // send back param "x" when autocomplete annotated with ignore
+    if (select.data("eddautoIgnore") !== undefined) {
+        params.x = "1";
     }
     return params;
 }

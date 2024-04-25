@@ -4,7 +4,7 @@
 
 {% block js_css %}
   {{ block.super }}
-  <script src="{% static 'bs5/overview.js' %}"></script>
+  <script src="{% static "bs5/overview.js" %}"></script>
 {% endblock js_css %}
 
 
@@ -17,7 +17,7 @@
       <button
         class="btn-close"
         type="button"
-        aria-label="{% translate 'Close' %}"
+        aria-label="{% translate "Close" %}"
         data-bs-dismiss="alert"
       ></button>
     </div>
@@ -28,12 +28,12 @@
       <button
         class="btn-close"
         type="button"
-        aria-label="{% translate 'Close' %}"
+        aria-label="{% translate "Close" %}"
         data-bs-dismiss="alert"
       ></button>
     </div>
     {% endif %}
-    {% include 'main/include/dropzone_messages_bs5.html' %}
+    {% include "main/include/dropzone_messages_bs5.html" %}
   {% endif %}
 {% endblock status %}
 
@@ -43,17 +43,17 @@
 
 <div class="row mb-3">
   <div class="col-9" id="edd-studyinfo-readonly">
-    {% include 'main/include/studyinfo-readonly.html' %}
+    {% include "main/include/studyinfo-readonly.html" %}
   </div>
   {% if writable %}
   <div class="col-9 d-none" id="edd-studyinfo-editable">
-    {% include 'main/include/studyinfo-editable.html' %}
+    {% include "main/include/studyinfo-editable.html" %}
   </div>
   <div class="col-auto ms-auto">
     <button
       class="btn btn-outline-secondary btn-large"
       id="edd-studyinfo-edit"
-      title="{% translate 'Edit Study Details' %}"
+      title="{% translate "Edit Study Details" %}"
       type="button"
     >
       <i class="fas fa-pencil"></i>
@@ -72,90 +72,27 @@
 
 {% if writable %}
 <hr/>
-<div class="row mb-3">
-  <div class="col-2">
-    <p>
-      {% blocktranslate trimmed %}
-        An experiment description file is an Excel file that describes your experiment: which
-        strains you are using (part ID from ICE), how they are being cultured (lines and
-        metadata), the procedure for processing samples (protocol), and which samples are being
-        taken (assays).
-      {% endblocktranslate %}
+<form
+  action="{% url "main:setup:start" slug=study.slug %}"
+  class="mb-3 text-center"
+  id="experimentSetupDrop"
+  method="POST"
+>
+  {% csrf_token %}
+  <div class="dz-message d-none" data-dz-message="">
+    <p class="my-2">
+      {% translate "Drop file here to upload." %}
     </p>
-    <p>
-      <a
-        href="{% url 'main:describe:help' slug=study.slug %}#column_options"
-        target="_blank"
-      >
-        {% translate 'Click here for column options' %}
-      </a>
-    </p>
-  </div>
-  <div class="col text-center">
-    <div
-      data-url="{% url 'main:describe:describe' slug=study.slug %}"
-      id="experimentDescDropZone"
+    <a
+      class="btn btn-outline-secondary"
+      href="{% url "main:lines" slug=study.slug %}"
+      id="manualButton"
     >
-      <div class="dz-message d-none" data-dz-message="">
-        <div class="my-2">
-          {% translate 'Drop file here to upload.' %}
-          <a
-            class="btn btn-info btn-sm"
-            href="{% url 'main:describe:help' slug=study.slug %}"
-            id="helpExperimentDescription"
-            target="_blank"
-            title="{% translate 'Click for help on Experiment Description files' %}"
-          >
-            {% translate 'Help' %}
-          </a>
-        </div>
-        <div class="my-2">
-          <img
-            alt="{% translate 'Example description file preview' %}"
-            id="describeExampleImage"
-            src="{% describe_preview_img %}"
-          />
-        </div>
-        <div class="my-2">
-          <a
-            class="btn btn-sm btn-outline-secondary"
-            href="{% describe_example_file %}"
-          >
-            <i class="fas fa-download"></i>
-            {% translate 'Example File' %}
-          </a>
-        </div>
-      </div>
-    </div>
+      <span class="fas fa-pencil-alt"></span>
+      {% translate "Enter Lines Manually" %}
+    </a>
   </div>
-  <div class="col-2">
-    <div class="d-grid gap-2">
-      <a
-        class="btn btn-outline-secondary"
-        href="{% url 'main:describe:describe' slug=study.slug %}"
-      >
-        <span class="fas fa-random"></span>
-        {% translate "Add Line Combo's" %}
-      </a>
-      <a
-        class="btn btn-outline-secondary"
-        href="{% url 'main:lines' slug=study.slug %}"
-        id="manualButton"
-      >
-        <span class="fas fa-pencil-alt"></span>
-        {% translate 'Enter Manually' %}
-      </a>
-      <button
-        class="btn btn-outline-secondary dz-browse-link d-none"
-        id="browseButton"
-        type="button"
-      >
-        <span class="fas fa-folder-open"></span>
-        {% translate "Browse for file" %}
-      </button>
-    </div>
-  </div>
-</div>
+</form>
 {% endif %}
 
 <details class="mb-3" open>
@@ -164,12 +101,14 @@
     <div class="col-md-6" id="edd-studyperm-readonly">
       {% include "main/include/studyperm-readonly.html" %}
     </div>
-    {% if writable %}
+  </div>
+  {% if writable %}
+  <div class="row">
     <div class="col-md-6 d-none" id="edd-studyperm-editable">
       {% include "main/include/studyperm-editable.html" %}
     </div>
-    {% endif %}
   </div>
+  {% endif %}
 </details>
 
 <details class="mb-3">
@@ -212,7 +151,7 @@
     <span>{% translate "Manage Study" %}</span>
   </summary>
   <form
-    action="{% url 'main:delete_study' slug=study.slug %}"
+    action="{% url "main:delete_study" slug=study.slug %}"
     method="POST"
   >
     {% csrf_token %}

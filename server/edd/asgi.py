@@ -25,8 +25,9 @@ def setup_application():
 
     from edd.load.progress import url_patterns as load_progress
     from edd.notify.routing import url_patterns as edd_notify
+    from edd.setup.progress import url_patterns as setup_progress
 
-    urls = [*load_progress, *edd_notify]
+    urls = [*load_progress, *edd_notify, *setup_progress]
     application = ProtocolTypeRouter(
         {
             "http": django_asgi_app,

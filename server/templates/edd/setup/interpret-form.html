@@ -1,0 +1,67 @@
+{% load i18n %}
+{% translate "Unknown File" as unknown %}
+<form
+  action="{% url "main:setup:interpret" slug=study.slug uuid=uuid %}"
+  class="centered-form"
+  method="POST"
+>
+  {% csrf_token %}
+  {% if previous_url or next_url %}
+  <div class="row">
+    <div class="col-auto ms-auto">
+      <div
+        class="btn-group btn-group-sm"
+        id="edd-form-nav"
+        role="group"
+        aria-label="{% translate "Page navigation for unknown tokens" %}"
+      >
+        {% if previous_url %}
+        <a
+          class="btn btn-outline-secondary"
+          href="{{ previous_url }}"
+        >{% translate "Previous" %}</a>
+        {% endif %}
+        {% if next_url %}
+        <a
+          class="btn btn-outline-secondary"
+          href="{{ next_url }}"
+        >{% translate "Next" %}</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {{ form }}
+  <div class="row">
+    <div class="col-auto">
+      <button
+        class="btn btn-primary"
+        id="edd-update-button"
+        type="submit"
+      >
+        <i class="fas fa-check"></i>
+        {% translate "Update" %}
+      </button>
+    </div>
+    <div class="col-auto ms-auto">
+      <button
+        class="btn btn-outline-secondary"
+        {% if progress.resolved == 0 %}disabled="disabled"{% endif %}
+        id="edd-save-button"
+        name="save"
+        type="submit"
+      >
+        <i class="fas fa-floppy-disk"></i>
+        {% translate "Save Only Ready" %}
+      </button>
+      <button
+        class="btn btn-outline-secondary"
+        name="abort"
+        type="submit"
+      >
+        <i class="fas fa-trash-can"></i>
+        {% translate "Discard" %}
+      </button>
+    </div>
+  </div>
+</form>

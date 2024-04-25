@@ -1,11 +1,13 @@
 """Models for handling metadata."""
 
 import dataclasses
+import json
 import logging
 
 from django.db import models
 from django.db.models import F, Func, Q
 from django.db.models.functions import Cast
+from django.template.loader import get_template
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
@@ -328,6 +330,7 @@ class MetadataType(models.Model, EDDSerialize):
 
 @Select2("MetadataType")
 def metadata_autocomplete(request):
+    template = get_template("main/autocomplete/metadata.html")
     term = request.term
     start, end = request.range
     term_filter = Q(type_name__iregex=term) | Q(group__group_name__iregex=term)
@@ -345,13 +348,40 @@ def metadata_autocomplete(request):
         case "false":
             type_filter = type_filter & Q(type_field__isnull=True)
     found = MetadataType.objects.filter(term_filter, type_filter).order_by("type_name")
-    found = found.annotate(
-        group_name=F("group__group_name"),
-        text=F("type_name"),
-    )
+    found = found.annotate(group_name=F("group__group_name"))
     count = found.count()
-    values = found.values("id", "type_name", "description", "group_name", "text")
-    return values[start:end], count > end
+    values = found.values(
+        "description",
+        "for_context",
+        "group_name",
+        "id",
+        "type_name",
+    )
+    items = [
+        {
+            "html": template.render({"item": v}),
+            "id": v["id"],
+            "text": v["type_name"],
+        }
+        for v in values[start:end]
+    ]
+    if request.allow_ignore:
+        ignore = {"ignore": True}
+        entry = {
+            "html": template.render({"item": ignore}),
+            "id": json.dumps(ignore),
+            "text": _("Ignore Metadata"),
+        }
+        items.insert(0, entry)
+    if request.allow_create:
+        create = {"new": True}
+        entry = {
+            "html": template.render({"item": create}),
+            "id": json.dumps(create),
+            "text": _("+ Create Metadata Type"),
+        }
+        items.insert(0, entry)
+    return items, count > end
 
 
 class EDDMetadata(models.Model):

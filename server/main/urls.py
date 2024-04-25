@@ -30,6 +30,10 @@ study_url_patterns = [
         include("edd.describe.urls", namespace="describe"),
     ),
     path(
+        "setup/",
+        include("edd.setup.urls", namespace="setup"),
+    ),
+    path(
         "load/",
         include("edd.load.urls", namespace="load"),
     ),

@@ -1,0 +1,3 @@
+Line Name,Line Description,Media,Shaking speed,Starting OD,Culture Volume,Flask Volume,Growth Temperature,Replicate Count
+BW1,KEIO wild type,M9,1,0.1,50,200,30,1
+arcA,arcA ko,M9,1,0.1,50,200,30,1

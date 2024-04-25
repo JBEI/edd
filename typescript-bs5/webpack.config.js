@@ -30,6 +30,7 @@ module.exports = {
         "load": path.resolve(__dirname, "./src/load.ts"),
         "login": path.resolve(__dirname, "./src/login.ts"),
         "overview": path.resolve(__dirname, "./src/overview.ts"),
+        "setup": path.resolve(__dirname, "./src/setup.ts"),
     },
     "output": {
         "filename": "[name].js",

@@ -126,6 +126,7 @@ INSTALLED_APPS = (
     "main.apps.EDDConfig",
     "edd.rest.apps.RESTConfig",
     "edd.describe.apps.DescribeConfig",
+    "edd.setup.apps.ExperimentSetupConfig",
     "edd.load.apps.LoadConfig",
     "edd.export.apps.ExportConfig",
     "edd.profile.apps.ProfileConfig",
@@ -311,6 +312,7 @@ STATICFILES_MANIFEST = f"staticfiles.{EDD_VERSION_HASH}.json"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "edd.load": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "edd.setup": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "edd.utilities.StaticFilesStorage"},
 }
 

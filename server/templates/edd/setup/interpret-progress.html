@@ -1,0 +1,29 @@
+{% load i18n %}
+{% translate "Unknown File" as unknown %}
+<div
+  class="container"
+  id="edd-setup-progress"
+  data-progress-path="/ws/setup/{{ setup.request_uuid }}/"
+  data-progress-status="{{ setup.status }}"
+>
+  <p>
+    {% blocktranslate with name=setup.original_name|default_if_none:unknown resolved=setup.progress.resolved unresolved=setup.progress.unresolved %}
+    Processing <tt>{{ name }}</tt> …
+    Ready: <span class="edd-setup-resolved">{{ resolved }}</span>
+    Incomplete: <span class="edd-setup-unresolved">{{ unresolved }}</span>
+    {% endblocktranslate %}
+  </p>
+  <div class="progress">
+    {% blocktranslate with name=setup.original_name|default_if_none:unknown asvar progress_label %}
+    Processing data from `{{ name }}`
+    {% endblocktranslate %}
+    <div
+      class="progress-bar progress-bar-striped progress-bar-animated w-100"
+      role="progressbar"
+      aria-label="{{ progress_label }}"
+      aria-valuemax="100"
+      aria-valuemin="0"
+      aria-valuenow="100"
+    ></div>
+  </div>
+</div>

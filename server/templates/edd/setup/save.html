@@ -1,0 +1,43 @@
+{% extends "edd_bs5.html" %}
+{% load i18n static %}
+
+{% block js_css %}
+  {{ block.super }}
+  <script src="{% static "bs5/setup.js" %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+  {{ study.name }} &ndash; {{ block.super }}
+{% endblock head_title %}
+
+{% block body_title %}
+  {% blocktranslate with study_name=study.name %}
+  Experiment Setup for <a href="{{ study_url }}">{{ study_name }}</a>
+  {% endblocktranslate %}
+{% endblock body_title %}
+
+{% block content %}
+  <div
+    class="container"
+    id="edd-setup-save"
+    data-progress-path="/ws/setup/{{ setup.request_uuid }}/"
+    data-progress-status="{{ setup.status }}"
+    data-success-redirect="{{ study_url }}"
+  >
+    <p>
+      {% translate "Unknown File" as unknown %}
+      {% blocktranslate with name=setup.original_name|default_if_none:unknown %}
+      Creating lines from Experiment Setup file <tt>{{ name }}</tt> …
+      {% endblocktranslate %}
+    </p>
+    <div class="progress">
+      <div
+        class="progress-bar progress-bar-striped progress-bar-animated"
+        role="progressbar"
+        aria-valuemax="100"
+        aria-valuemin="0"
+        aria-valuenow="0"
+      ></div>
+    </div>
+  </div>
+{% endblock content %}

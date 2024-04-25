@@ -1,0 +1,23 @@
+{% extends "edd_bs5.html" %}
+{% load i18n static %}
+
+{% block js_css %}
+  {{ block.super }}
+  <script src="{% static "bs5/setup.js" %}"></script>
+{% endblock js_css %}
+
+{% block head_title %}
+  {{ study.name }} &ndash; {{ block.super }}
+{% endblock head_title %}
+
+{% block body_title %}
+  {% blocktranslate with study_name=study.name %}
+  Experiment Setup for <a href="{{ study_url }}">{{ study_name }}</a>
+  {% endblocktranslate %}
+{% endblock body_title %}
+
+{% block content %}
+  <div class="container">
+    {% include subtemplate %}
+  </div>
+{% endblock content %}

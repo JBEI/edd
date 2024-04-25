@@ -26,6 +26,11 @@ class SearchRequest:
         return bool(self.request.GET.get("c", None)) and start == 0
 
     @functools.cached_property
+    def allow_ignore(self):
+        start, end = self.range
+        return bool(self.request.GET.get("x", None)) and start == 0
+
+    @functools.cached_property
     def range(self):
         "Property containing the start, end indices for the search."
         page = int(self.request.GET.get("page", "1"))

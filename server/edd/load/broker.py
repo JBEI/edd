@@ -213,8 +213,8 @@ class LoadRequest:
 
     def form_payload_restore(self, payload_key):
         try:
-            self.db().get(payload_key)
-            return json.loads(self.db().get(payload_key), cls=JSONDecoder)
+            subkey = self._subkey(payload_key)
+            return json.loads(self.db().get(subkey), cls=JSONDecoder)
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
@@ -222,8 +222,8 @@ class LoadRequest:
         try:
             payload = json.dumps(payload, cls=JSONEncoder).encode("utf8")
             hash_object = hashlib.sha256(payload)
-            payload_key = self._subkey(hash_object.hexdigest()[:16])
-            self.db().set(payload_key, payload)
+            payload_key = hash_object.hexdigest()[:16]
+            self.db().set(self._subkey(payload_key), payload)
             return payload_key
         except Exception as e:
             raise exceptions.CommunicationError() from e
