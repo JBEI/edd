@@ -1,10 +1,10 @@
-{% extends "edd_base.html" %}
+{% extends "edd_bs5.html" %}
 {% load i18n static %}
 
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'dist/Export.js' %}"></script>
+  <script type="text/javascript" src="{% static 'bs5/export.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -44,20 +44,16 @@
       {{ worklist_form.as_p }}
       <input type="hidden" id="id_separator" value=","/>
       {% if defaults_form %}
-      <div class="disclose discloseHide">
-        <a href="#" class="discloseLink">{% translate 'Modify Column Default Values' %}</a>
-        <div class="discloseBody">
-          {{ defaults_form.as_p }}
-        </div>
-      </div>
+      <details>
+        <summary>{% translate "Modify Column Default Values" %}</summary>
+        {{ defaults_form }}
+      </details>
       {% endif %}
       {% if flush_form %}
-      <div class="disclose discloseHide">
-        <a href="#" class="discloseLink">{% translate 'Add Flush Rows' %}</a>
-        <div class="discloseBody">
-          {{ flush_form.as_p }}
-        </div>
-      </div>
+      <details>
+        <summary>{% translate "Add Flush Rows" %}</summary>
+        {{ flush_form }}
+      </details>
       {% endif %}
       <button
         class="btn btn-primary btn-lg"

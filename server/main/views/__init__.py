@@ -28,7 +28,7 @@ from .overview import (
     StudyAttachmentView,
     StudyOverviewView,
 )
-from .study import StudyDetailView, StudyLinesView
+from .study import StudyDetailView
 
 __all__ = [
     AddAssayView,
@@ -53,7 +53,6 @@ __all__ = [
     StudyDescriptionView,
     StudyDetailView,
     StudyIndexView,
-    StudyLinesView,
     StudyObjectMixin,
     StudyOverviewView,
 ]

@@ -26,22 +26,12 @@ study_url_patterns = [
         name="lines",
     ),
     path(
-        "describe/",
-        include("edd.describe.urls", namespace="describe"),
-    ),
-    path(
         "setup/",
         include("edd.setup.urls", namespace="setup"),
     ),
     path(
         "load/",
         include("edd.load.urls", namespace="load"),
-    ),
-    # kept verbose name of description for link backward-compatibility
-    # no longer generating URLs like this, so no `name` kwarg
-    path(
-        "experiment-description/",
-        login_required(views.StudyDescriptionView.as_view()),
     ),
     # deprecating these *data/ URLs in favor of access/ and REST API links
     path(
@@ -153,12 +143,6 @@ study_url_patterns = [
         "line-restore/",
         login_required(views.RemoveLineView.as_view(restore=True)),
         name="line_restore",
-    ),
-    # DEPRECATED
-    path(
-        "description-old/",
-        login_required(views.StudyLinesView.as_view()),
-        name="lines_old",
     ),
 ]
 

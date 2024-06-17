@@ -1,5 +1,5 @@
 {% extends "main/study_bs5.html" %}
-{% load describe i18n static %}
+{% load i18n static %}
 
 
 {% block js_css %}
@@ -11,38 +11,6 @@
 {% block status %}
   {{ block.super }}
   {% if writable %}
-    {% if show_table_dropzone_help %}
-      <div class="alert alert-info alert-dismissible my-2" role="alert">
-        <p>
-          {% blocktranslate trimmed %}
-          Drag-and-drop an Experiment Description file on the table below to add more lines.
-          {% endblocktranslate %}
-        </p>
-        <p>
-          <a
-            class="btn btn-sm btn-secondary"
-            href="{% describe_example_file %}"
-          >
-            <span class="fas fa-download"></span>
-            {% translate 'Example File' %}
-          </a>
-          <a
-            class="btn btn-sm btn-secondary"
-            href="{% url 'main:describe:help' slug=study.slug %}"
-            target="_blank"
-            title="{% translate 'Click to open help in a new tab' %}"
-          >
-            {% translate 'Help' %}
-          </a>
-        </p>
-        <button
-          class="btn-close"
-          type="button"
-          aria-label="{% translate 'Close' %}"
-          data-bs-dismiss="alert"
-        ></button>
-      </div>
-    {% endif %}
     {% include 'main/include/dropzone_messages_bs5.html' %}
   {% endif %}
 {% endblock status %}
@@ -56,16 +24,10 @@
   class="d-none position-absolute vh-100 vw-100 bg-secondary"
   id="edd-studydesc-dropzone"
   style="--bs-bg-opacity:.75;z-index:100;"
-  data-url="{% url 'main:describe:describe' slug=study.slug %}"
+  data-url="{% url 'main:setup:start' slug=study.slug %}"
 >
   <div class="dz-message my-5 text-center text-light" data-dz-message="">
     <h3>{% translate 'Drop file here to upload' %}</h3>
-    <img
-      alt="{% translate 'Example description file preview' %}"
-      class="my-2"
-      id="describeExampleImage"
-      src="{% describe_preview_img %}"
-    />
   </div>
 </div>
 {% endif %}
@@ -264,11 +226,6 @@
             data-edd-filter-off="{% translate "Hide Deleted" %}"
             data-edd-filter-on="{% translate "Show Deleted" %}"
           >{% translate "Show Deleted" %}</button>
-        </li>
-        <li>
-          <a class="dropdown-item" href="{% url 'main:lines_old' slug=study.slug %}">
-            {% translate "Switch to Legacy Table" %}
-          </a>
         </li>
       </ul>
     </div>

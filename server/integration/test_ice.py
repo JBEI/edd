@@ -1,14 +1,11 @@
 """Integration tests for ICE."""
 
 import itertools
-from http import HTTPStatus
 from io import BytesIO
 from unittest.mock import patch
 
 from django.test import override_settings, tag
-from django.urls import reverse
 from faker import Faker
-from openpyxl.workbook import Workbook
 
 from edd import TestCase
 from edd.profile.factory import UserFactory
@@ -163,58 +160,6 @@ class IceIntegrationTests(TestCase):
                 self.registry.get_entry(self.entry_ids[0])
             with self.assertRaises(RegistryError):
                 self.registry.get_entry(self.entry_ids[5])
-
-    def test_upload_links_admin(self):
-        admin_study = factory.StudyFactory()
-        admin_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.WRITE, user=self.admin_ice_user
-        )
-        response = self._run_upload(self.entry_ids, admin_study, self.admin_ice_user)
-        # should return OK from upload
-        self.assertEqual(response.status_code, HTTPStatus.OK, response.content)
-        # there should be 10 strains on the study
-        self.assertEqual(
-            models.Strain.objects.filter(line__study=admin_study).distinct().count(), 10
-        )
-        # TODO: cannot check links because tests in transaction that ultimately calls rollback()
-        # Celery task is only ever submitted when the transaction calls commit() successfully
-
-    def test_upload_links_reader(self):
-        reader_study = factory.StudyFactory()
-        reader_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.WRITE, user=self.read_ice_user
-        )
-        # should return 500 error on uploading admin-only strains
-        # skip testing this until ICE-90 is resolved
-        # response = self._run_upload(self.entry_ids, reader_study, self.read_ice_user)
-        # self.assertEqual(response.status_code, HTTPStatus.SERVER_ERROR)
-        # should return OK on uploading readable strains
-        response = self._run_upload(
-            self.entry_ids[:5], reader_study, self.read_ice_user
-        )
-        self.assertEqual(response.status_code, HTTPStatus.OK, response.content)
-        # there should be 5 strains on the study
-        self.assertEqual(
-            models.Strain.objects.filter(line__study=reader_study).distinct().count(), 5
-        )
-        # TODO: cannot check links because tests in transaction that ultimately calls rollback()
-        # Celery task is only ever submitted when the transaction calls commit() successfully
-
-    def test_upload_links_none(self):
-        none_study = factory.StudyFactory()
-        none_study.userpermission_set.update_or_create(
-            permission_type=models.StudyPermission.WRITE, user=self.none_ice_user
-        )
-        # should return 400 error on uploading admin-only strains
-        response = self._run_upload(self.entry_ids, none_study, self.none_ice_user)
-        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST, response.content)
-        # should return 400 error on uploading reader-only strains
-        response = self._run_upload(self.entry_ids[:5], none_study, self.none_ice_user)
-        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
-        # there should be 0 strains on the study
-        self.assertEqual(
-            models.Strain.objects.filter(line__study=none_study).distinct().count(), 0
-        )
 
     def test_get_folder_known_id_admin_user(self):
         with self.registry.login(self.admin_ice_user):
@@ -405,24 +350,6 @@ class IceIntegrationTests(TestCase):
         assert isinstance(protein, models.ProteinIdentifier)
         assert protein.accession_id == self.entry_ids[0]
 
-    def _create_workbook(self, parts):
-        upload = BytesIO()
-        wb = Workbook()
-        ws = wb.active
-        for i, title in enumerate(["Line Name", "Part ID", "Media"], 1):
-            ws.cell(row=1, column=i).value = title
-        for i, part in enumerate(parts, 2):
-            ws.cell(row=i, column=1).value = part
-            ws.cell(row=i, column=2).value = part
-            ws.cell(row=i, column=3).value = "M9"
-        wb.save(upload)
-        upload.name = "description.xlsx"
-        upload.content_type = (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        upload.seek(0)
-        return upload
-
     def _request_failure(self):
         """
         Use this in a context manager to simulate a failed HTTP request to ICE.
@@ -430,12 +357,3 @@ class IceIntegrationTests(TestCase):
         return patch.object(
             self.registry.session, "send", side_effect=ValueError("Dummy Exception")
         )
-
-    def _run_upload(self, part_ids, study, user):
-        upload = self._create_workbook(part_ids)
-        self.client.force_login(user)
-        response = self.client.post(
-            reverse("main:describe:describe", kwargs={"slug": study.slug}),
-            data={"file": upload},
-        )
-        return response

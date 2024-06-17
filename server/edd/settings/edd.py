@@ -51,9 +51,6 @@ ICE_URL = env("ICE_URL", default=None)
 
 
 ### Import related settings
-# EDD_IMPORT_ERR_REPORTING_LIMIT: number of occurrences for each unique error
-#   categorization after which further errors will be elided from the UI.
-# EDD_IMPORT_ERR_REPORTING_LIMIT = 0
 # EDD_ALLOW_IMPORT_ANONYMOUS_LINES: flag to allow the import to create new Line
 #   records from import files directly.
 # EDD_ALLOW_IMPORT_ANONYMOUS_LINES = True

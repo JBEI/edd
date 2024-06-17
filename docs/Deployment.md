@@ -142,10 +142,6 @@ The following configuration options are specific to EDD and [may be overridden][
 -   `EDD_EXTERNAL_SCRIPTS` -- iterable of URL strings; these will be scripts
     added to the default EDD page template. Put links for any external scripts
     here, to avoid creating custom HTML templates.
--   `EDD_IMPORT_ERR_REPORTING_LIMIT` -- integer value, default 25; the maximum
-    number of occurrences of any single type of error reported to clients of
-    the prototype import via websocket notifications. Error occurrences beyond
-    this limit are not reported to clients.
 -   `EDD_IMPORT_BULK_ABUSE_CONTACTS` -- list of email addresses, approprite
     for passing in `django.core.mail.send_mail`. These contacts will get an
     email whenever a user uses the bulk create Lines or MeasurementTypes

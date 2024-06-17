@@ -2,8 +2,6 @@
 
 import "jquery";
 
-import { default as Dropzone } from "dropzone";
-
 import "../modules/Styles";
 
 export function relativeURL(path: string, base?: URL): URL {
@@ -175,100 +173,5 @@ export class JS {
             return JS.timestampToTodayString(timestamp);
         }
         return JS.timestampToTodayString(null);
-    }
-}
-
-interface FileDropZoneOptions {
-    /** ID of the element to be set up as a Dropzone. */
-    elementId: string;
-    /** URL target for upload requests. */
-    url: string;
-    /** Preprocess callback for import. */
-    fileInitFn?: (file: Dropzone.DropzoneFile, formData: FormData) => void;
-    /** Callback for error result returned from server. */
-    processErrorFn?: (
-        dropzone: Dropzone,
-        file: Dropzone.DropzoneFile,
-        response?: any,
-    ) => void;
-    /** Callback for successful result returned from server. */
-    processResponseFn?: (file: Dropzone.DropzoneFile, response: any) => void;
-    /** Callback for warning result returned from server. */
-    processWarningFn?: (file: Dropzone.DropzoneFile, response: any) => void;
-    /** Assign false to prevent clicking; otherwise defaults to clickable Dropzone. */
-    clickable?: boolean | string | HTMLElement | (string | HTMLElement)[];
-}
-
-/**
- * A class wrapping dropzone (http://www.dropzonejs.com/)
- * and providing some additional structure.
- */
-export class FileDropZone {
-    csrftoken: any;
-    dropzone: Dropzone;
-    options: FileDropZoneOptions;
-
-    constructor(options: FileDropZoneOptions) {
-        const element = document.getElementById(options.elementId);
-        const clickable = options.clickable === undefined ? true : options.clickable;
-        if (element) {
-            $(element).addClass("dropzone");
-            this.csrftoken = EDD.findCSRFToken();
-            this.options = options;
-            this.dropzone = new Dropzone(element, {
-                "url": options.url,
-                "params": { "csrfmiddlewaretoken": this.csrftoken },
-                "maxFilesize": 2,
-                "acceptedFiles": ".doc,.docx,.pdf,.txt,.xls,.xlsx, .xml, .csv",
-                "clickable": clickable,
-            });
-        }
-    }
-
-    // Helper function to create and set up a FileDropZone.
-    static create(options: FileDropZoneOptions): void {
-        const widget = new FileDropZone(options);
-        if (widget.dropzone) {
-            widget.setEventHandlers();
-        }
-    }
-
-    setEventHandlers(): void {
-        this.dropzone.on("sending", (file, xhr, formData) => {
-            // for import
-            if (this.options.fileInitFn) {
-                this.options.fileInitFn(file, formData);
-            }
-        });
-        this.dropzone.on("error", (file, msg) => {
-            this.dropzone.removeAllFiles();
-            if (typeof this.options.processErrorFn === "function") {
-                try {
-                    const response = JSON.parse(file.xhr.response);
-                    this.options.processErrorFn(this.dropzone, file, response);
-                } catch {
-                    // still process if there are JSON parse errors
-                    this.options.processErrorFn(this.dropzone, file);
-                }
-            }
-        });
-        this.dropzone.on("success", (file) => {
-            this.dropzone.removeAllFiles();
-            try {
-                const response = JSON.parse(file.xhr.response);
-                if (response.warnings) {
-                    if ("function" === typeof this.options.processWarningFn) {
-                        this.options.processWarningFn(file, response);
-                    }
-                } else if ("function" === typeof this.options.processResponseFn) {
-                    this.options.processResponseFn(file, response);
-                }
-                this.dropzone.removeAllFiles();
-            } catch {
-                if (typeof this.options.processErrorFn === "function") {
-                    this.options.processErrorFn(this.dropzone, file);
-                }
-            }
-        });
     }
 }

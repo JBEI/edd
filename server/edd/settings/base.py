@@ -125,7 +125,6 @@ INSTALLED_APPS = (
     "edd.admin.AdminConfig",
     "main.apps.EDDConfig",
     "edd.rest.apps.RESTConfig",
-    "edd.describe.apps.DescribeConfig",
     "edd.setup.apps.ExperimentSetupConfig",
     "edd.load.apps.LoadConfig",
     "edd.export.apps.ExportConfig",

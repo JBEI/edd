@@ -6,45 +6,11 @@
       {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
     {% endblocktranslate %}
   </summary>
-  <div id="existingLinesSection" class="pageSection" style="margin:10px;">
-    <!--
-    Table displaying selected lines; used for table and SBML export pages
-    -->
-    <div class="sectionHead">{% translate "Lines selected for export" %}</div>
-    <table cellpadding="0" cellspacing="0" class="dataTable" id="lineSelectionsTable">
-      <tr class="columnLabels">
-        <th class="sortheader" style="text-align:left">
-          <div>{% translate "Name" %}</div>
-        </th>
-        <th class="sortheader" style="text-align:left" id="hStrain">
-          <div>{% translate "Strain" %}</div>
-        </th>
-        <th class="sortheader" style="text-align:left" id="hMedia">
-          <div>{% translate "Media" %}</div>
-        </th>
-        <th class="sortheader" style="text-align:center" id="hExperimenter">
-          <div>{% translate "Experimenter" %}</div>
-        </th>
-        <th class="sortheader" style="text-align:left" id="hModified">
-          <div>{% translate "Last Modified" %}</div>
-        </th>
-      </tr>
-      {% for line in selection.lines %}
-      <!-- {{ id }} {{ line }} -->
-      <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}" data-line-id="{{ line.id }}">
-        <td>{{ line.name }}</td>
-        <td>
-          <ul>
-          {% for strain in line.strain_list %}
-            <li>{{ strain.name }}</li>
-          {% endfor %}
-          </ul>
-        </td>
-        <td>{{ line.media }}</td>
-        <td style="text-align:center;">{{ line.experimenter.profile.initials }}</td>
-        <td>{{ line.last_modified }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
+  <p>
+    {% blocktranslate %}
+    Displaying details on selected lines is causing performance issues in EDD.
+    Contact the EDD administrators if including details here is important to
+    your work.
+    {% endblocktranslate %}
+  </p>
 </details>

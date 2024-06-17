@@ -4,7 +4,6 @@
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'dist/CampaignIndex.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -23,15 +22,6 @@
     >
       {% translate 'New Campaign' context 'button label' %}
     </button>
-    <div id="addCampaignModal"
-        class="off"
-        title="{% translate 'Add New Campaign' context 'modal title' %}">
-      <form action="{% url 'campaign:index' %}" class="edd-form" method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">{% translate 'Create' %}</button>
-      </form>
-    </div>
   {% endif %}
   {% include "edd/campaign/page_controls.html" %}
   <table class="dataTable table-striped">

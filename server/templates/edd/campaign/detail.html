@@ -17,28 +17,6 @@
     >
       {% translate 'New Study' context 'button' %}
     </button>
-    {# the DIV below is hidden by default; TypeScript code removes and puts in a modal #}
-    <div id="addStudyModal"
-        class="off"
-        title="{% translate 'Add New Study' context 'modal title' %}">
-      {% if create_study.errors %}
-        <div class="alert alert-danger alert-dismissible" role="alert">
-          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-          <p>{{ create_study.errors.as_text }}</p>
-        </div>
-      {% endif %}
-      <form action="" class="edd-form" method="POST">
-        {% csrf_token %}
-        <div class="modal-body">
-          {{ create_study.as_p }}
-        </div>
-        <div class="modal-footer">
-          <button type="submit">{% translate "Create Study" context "button" %}</button>
-        </div>
-      </form>
-    </div>
   {% endif %}
   <h2>{{ campaign.name }}</h2>
   <p>{{ campaign.description }}</p>
@@ -89,96 +67,53 @@
   {% endif %}
   {% include "edd/campaign/page_controls.html" %}
   {% if can_write %}
-    <div class="disclose discloseHide">
-      <div class="pageDivider">
-        <span class="discloseLink">{% translate " Permissions" %}</span>
-      </div>
-      <div class="discloseBody">
-        <div class="sectionContent indent">
-          {% with all_perm=campaign.get_all_permissions %}
-          <table class="dataTable table-striped">
-            <thead>
-              <tr class="columnLabels">
-                <th class="sortheader smaller">{% translate "Who" context "permission list" %}</th>
-                <th class="sortheader smaller">{% translate "Level" context "permission list" %}</th>
-                <th class="smaller">{% translate "Add Study" context "permission list" %}</th>
-                <th class="smaller">{% translate "Remove Study" context "permission list" %}</th>
+    <details>
+      <summary>{% translate "Permissions" %}</summary>
+      <div class="sectionContent indent">
+        {% with all_perm=campaign.get_all_permissions %}
+        <table class="dataTable table-striped">
+          <thead>
+            <tr class="columnLabels">
+              <th class="sortheader smaller">{% translate "Who" context "permission list" %}</th>
+              <th class="sortheader smaller">{% translate "Level" context "permission list" %}</th>
+              <th class="smaller">{% translate "Add Study" context "permission list" %}</th>
+              <th class="smaller">{% translate "Remove Study" context "permission list" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% with studyadd=permission_keys.study_add studyrem=permission_keys.study_remove %}
+            {% for p in all_perm %}
+              <tr>
+                <td>{{ p.get_who_label }}</td>
+                <td>{{ p.get_type_label }}</td>
+                <td>
+                  <input type="checkbox"
+                      {% if p|getitem:studyadd %}
+                      checked="checked"
+                      {% endif %}
+                      disabled="disabled"/>
+                </td>
+                <td>
+                  <input type="checkbox"
+                      {% if p|getitem:studyrem %}
+                      checked="checked"
+                      {% endif %}
+                      disabled="disabled"/>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {% with studyadd=permission_keys.study_add studyrem=permission_keys.study_remove %}
-              {% for p in all_perm %}
-                <tr>
-                  <td>{{ p.get_who_label }}</td>
-                  <td>{{ p.get_type_label }}</td>
-                  <td>
-                    <input type="checkbox"
-                        {% if p|getitem:studyadd %}
-                        checked="checked"
-                        {% endif %}
-                        disabled="disabled"/>
-                  </td>
-                  <td>
-                    <input type="checkbox"
-                        {% if p|getitem:studyrem %}
-                        checked="checked"
-                        {% endif %}
-                        disabled="disabled"/>
-                  </td>
-                </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="4">{% translate "No permissions set" %}</td>
-                </tr>
-              {% endfor %}
-              {% endwith %}
-            </tbody>
-          </table>
-          {% endwith %}
-          <button class="actionButton primary" id="addPermission">
-            {% translate "Configure Permissions" context "button" %}
-          </button>
-        </div>
+            {% empty %}
+              <tr>
+                <td colspan="4">{% translate "No permissions set" %}</td>
+              </tr>
+            {% endfor %}
+            {% endwith %}
+          </tbody>
+        </table>
+        {% endwith %}
+        <button class="actionButton primary" id="addPermission">
+          {% translate "Configure Permissions" context "button" %}
+        </button>
       </div>
-    </div>
-    {# add permissions modal #}
-    <div class="indent off" title="{% translate 'Configure Permissions' %}" id="permissionsSection">
-      <div class="sectionActions">
-        <form action="{% url 'campaign:permission' slug=campaign.slug %}"
-            method="POST"
-            class="edd-form"
-            id="permissions"
-            enctype="multipart/form-data">
-          {% csrf_token %}
-          <div class="permission">NOTE: this dialog is not functional yet!</div>
-          <div class="permission">
-            <label for="usergroup_permission">
-              <span>{% translate 'User or Group' %}</span>
-            </label>
-          </div>
-          <div class="permission">
-            <label for="campaign_permission">
-              <span>{% translate 'Campaign Access' %}</span>
-            </label>
-            <select id="campaign_permission" name="campaign_type">
-              <option value="{{ permission_none }}">{% translate 'None' %}</option>
-              <option value="{{ permission_read }}">{% translate 'Read' %}</option>
-              <option value="{{ permission_write }}">{% translate 'Write' %}</option>
-            </select>
-          </div>
-          <div class="permission">
-            <label for="study_permission">
-              <span>{% translate 'Study Access' %}</span>
-            </label>
-            <select id="study_permission" name="study_type">
-              <option value="{{ permission_none }}">{% translate 'None' %}</option>
-              <option value="{{ permission_read }}">{% translate 'Read' %}</option>
-              <option value="{{ permission_write }}">{% translate 'Write' %}</option>
-            </select>
-          </div>
-          <button id="set_permission">{% translate 'Set Access' %}</button>
-        </form>
-      </div>
-    </div>
+    </details>
   {% endif %}
 {% endblock content %}

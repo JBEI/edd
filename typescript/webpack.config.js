@@ -24,8 +24,6 @@ const css_extract = new MiniCssExtractPlugin({
 module.exports = {
     "entry": {
         "Admin": path.resolve(__dirname, "./src/Admin.ts"),
-        "Campaign": path.resolve(__dirname, "./src/Campaign.ts"),
-        "CampaignIndex": path.resolve(__dirname, "./src/Campaign-Index.ts"),
         "Common": [
             path.resolve("node_modules/bootstrap/dist/js/bootstrap"),
             path.resolve("node_modules/bootstrap/dist/css/bootstrap.min.css"),
@@ -33,14 +31,7 @@ module.exports = {
             path.resolve("node_modules/@fortawesome/fontawesome-free/css/all.min.css"),
             path.resolve(__dirname, "./src/Common.ts"),
         ],
-        "ExperimentDescHelp": path.resolve(__dirname, "./src/Experiment-Desc-Help.ts"),
-        "Export": path.resolve(__dirname, "./src/Export.ts"),
         "StudyData": path.resolve(__dirname, "./src/Study-Data.ts"),
-        "StudyLines": path.resolve(__dirname, "./src/Study-Lines.ts"),
-        "StudyLinesAddCombos": path.resolve(
-            __dirname,
-            "./src/Study-Lines-Add-Combos.ts",
-        ),
     },
     "output": {
         "filename": "[name].js",
@@ -67,9 +58,6 @@ module.exports = {
             ),
             "handsontable.css": path.resolve(
                 "node_modules/handsontable/dist/handsontable.full.min.css",
-            ),
-            "react-stepzilla.css": path.resolve(
-                "node_modules/react-stepzilla/src/css/main.css",
             ),
         },
     },

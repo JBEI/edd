@@ -6,8 +6,6 @@ import "jquery";
 import "jquery-ui/ui/widgets/dialog";
 import "jquery-ui/ui/widgets/tooltip";
 
-import * as EDDEditable from "./EDDEditableElement";
-
 $(window).on("load", () => {
     const accesslink = $("#accesslink");
     if (accesslink.length) {
@@ -20,44 +18,6 @@ $(window).on("load", () => {
     }
 });
 
-// Base class for the non-autocomplete inline editing fields for the Study
-export class EditableStudyElement extends EDDEditable.EditableElement {
-    constructor(inputElement: HTMLElement, style?: string) {
-        super(inputElement, style);
-    }
-
-    editAllowed(): boolean {
-        return true;
-    }
-    canCommit(value: string): boolean {
-        return true;
-    }
-}
-
-export class EditableStudyName extends EditableStudyElement {
-    constructor(inputElement: HTMLElement) {
-        super(inputElement);
-        this.fieldName("name");
-        this.formURL($(inputElement).parents("form").attr("data-rest"));
-    }
-
-    static createFromElement(element: HTMLElement): EditableStudyName {
-        return new EditableStudyName(element);
-    }
-
-    canCommit(value: string): boolean {
-        return "" !== value.trim();
-    }
-
-    getValue(): string {
-        return $(this.inputElement).val() as string;
-    }
-
-    blankLabel(): string {
-        return "(Enter a name for your Study)";
-    }
-}
-
 function patchedFocusTabbable() {
     let hasFocus = this.uiDialogTitlebarClose.filter(":tabbable");
     if (!hasFocus.length) {
@@ -68,9 +28,6 @@ function patchedFocusTabbable() {
 
 // Called when the page loads.
 function prepareIt(): void {
-    EditableStudyName.createFromElement(
-        $("#editable-study-name").get()[0] as HTMLElement,
-    );
     // put the click handler at the document level, then filter to any link inside a .disclose
     $(document).on("click", ".disclose .discloseLink", (e) => {
         $(e.target).closest(".disclose").toggleClass("discloseHide");

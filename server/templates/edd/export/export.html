@@ -1,9 +1,9 @@
-{% extends "edd_base.html" %}
+{% extends "edd_bs5.html" %}
 {% load i18n static %}
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'dist/Export.js' %}"></script>
+  <script type="text/javascript" src="{% static "bs5/export.js" %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
@@ -31,14 +31,14 @@
 {% include "edd/export/linetable.html" %}
 
 <!-- start of main form -->
-<form method="post" id="exportForm" action="{% url 'export:export' %}">
+<form method="POST" id="exportForm" action="{% url "export:export" %}">
   {% csrf_token %}
   <div class="pageSection">
     <div class="sectionHead">
-      <h1>{% translate 'Choose the export layout.' %}</h1>
+      <h2>{% translate "Choose the export layout." %}</h2>
     </div>
     <p class="lead">
-      {% url 'main:detail' slug=primary_study.slug as study_url %}
+      {% url "main:detail" slug=primary_study.slug as study_url %}
       {% blocktranslate with name=primary_study.name url=study_url count count=selection.studies|length %}
       Data Export for <a href="{{ url }}">{{ name }}</a>
       {% plural %}
@@ -46,38 +46,8 @@
       {% endblocktranslate %}
     </p>
     <div class="sectionContent exportOptions">
-      {{ select_form.as_p }}
-
-      {% for field in option_form %}
-        {% if field.field.widget.input_type == 'checkbox' and field.field.widget.allow_multiple_selected %}
-          <div class="checkbox">
-            <fieldset>
-              <legend id="{{field.name}}_legend">
-                <h2>{{ field.label }}</h2>
-              </legend>
-              {{ field.errors }}
-              {{ field }}
-            </fieldset>
-
-          </div>
-        {% elif field.field.widget.input_type == 'checkbox' %}
-          <div class="form-group checkbox">
-            <label for="{{field.id_for_label}}">
-              {{ field }}
-              {{ field.label }}
-              {{ field.errors }}
-            </label>
-          </div>
-        {% else %}
-          <div class="form-group">
-            <label for="{{field.id_for_label}}">{{field.label}}
-              {{ field.errors }}
-              {{ field }}
-            </label>
-          </div>
-        {% endif %}
-      {% endfor %}
-
+      {{ select_form.as_div }}
+      {{ option_form.as_div }}
       <button
         class="btn btn-primary btn-lg"
         name="action"
@@ -85,7 +55,7 @@
         value="download"
       >
         <span class="fas fa-cloud-download-alt"></span>
-        {% translate 'Request Download' %}
+        {% translate "Request Download" %}
       </button>
     </div>
   </div>

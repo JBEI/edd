@@ -1,5 +1,3 @@
-import io
-
 from django.http import QueryDict
 from django.urls import reverse
 from rest_framework.reverse import reverse as api_reverse
@@ -129,67 +127,6 @@ class StudyLogReceiverTests(StudyLogMixin, TestCase):
         assert qs.count() == 1
         sl = qs.get()
         assert sl.detail == {"count": to_clone}
-
-    def test_upload_experiment_description_csv_adds_entry(self):
-        study = self._writable_study()
-        # minimal description of two lines
-        file = io.BytesIO(b"Line Name,\nfoo,\nbar,")
-        file.name = "description.csv"
-        file.content_type = "text/csv"
-
-        self.client.post(
-            reverse("main:describe:describe", kwargs={"slug": study.slug}),
-            {"file": file},
-        )
-
-        qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
-        assert qs.count() == 1
-        sl = qs.get()
-        assert sl.detail == {"count": 2}
-
-    def test_upload_experiment_description_xlsx_adds_entry(self):
-        study = self._writable_study()
-        filename = "ExperimentDescription_simple.xlsx"
-        with factory.load_test_file(filename) as fp:
-            file = io.BytesIO(fp.read())
-        file.name = filename
-        file.content_type = (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-        self.client.post(
-            reverse("main:describe:describe", kwargs={"slug": study.slug}),
-            {"file": file},
-        )
-
-        qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
-        assert qs.count() == 1
-        sl = qs.get()
-        assert sl.detail == {"count": 2}
-
-    def test_combinatorial_ui_adds_entry(self):
-        study = self._writable_study()
-
-        self.client.post(
-            reverse("main:describe:describe", kwargs={"slug": study.slug}),
-            rb"""
-            {
-                "name_elements":{
-                    "elements":["replicate_num"]
-                },
-                "custom_name_elts":{},
-                "replicate_count":3,
-                "combinatorial_line_metadata":{},
-                "common_line_metadata":{}
-            }
-            """.strip(),
-            content_type="application/json",
-        )
-
-        qs = self._find_log(event=StudyLog.Event.DESCRIBED, study=study)
-        assert qs.count() == 1
-        sl = qs.get()
-        assert sl.detail == {"count": 3}
 
     def test_ui_export_task_adds_entry(self):
         study = self._writable_study()

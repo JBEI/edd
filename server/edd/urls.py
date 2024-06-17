@@ -38,7 +38,6 @@ urlpatterns = [
     path("", include("edd.campaign.urls", namespace="campaign")),
     # allauth does not support namespacing
     path("accounts/", include("allauth.urls")),
-    path("describe/", include("edd.describe.flat_urls", namespace="describe_flat")),
     path("export/", include("edd.export.urls", namespace="export")),
     path("profile/", include("edd.profile.urls", namespace="profile")),
     path("rest/", include(rest_urlpatterns)),
