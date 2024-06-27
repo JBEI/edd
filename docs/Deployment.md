@@ -137,8 +137,6 @@ The following configuration options are specific to EDD and [may be overridden][
     adds a visual environment label to assist in telling apart testing vs
     production instances. A None value will result in no visual changes added
     to the interface.
--   `EDD_ENABLE_GRAPHQL` -- boolean flag; if True, publish a GraphQL endpoint
-    for EDD.
 -   `EDD_EXTERNAL_SCRIPTS` -- iterable of URL strings; these will be scripts
     added to the default EDD page template. Put links for any external scripts
     here, to avoid creating custom HTML templates.

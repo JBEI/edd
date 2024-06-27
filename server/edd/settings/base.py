@@ -120,7 +120,6 @@ INSTALLED_APPS = (
     "allauth.socialaccount",
     "django.contrib.flatpages",
     "channels",  # channels in pip
-    "graphene_django",  # graphene-django in pip
     # EDD apps
     "edd.admin.AdminConfig",
     "main.apps.EDDConfig",
@@ -248,10 +247,6 @@ CHANNEL_LAYERS = {
         },
     }
 }
-
-
-# GraphQL / Graphene
-GRAPHENE = {"SCHEMA": "edd.schema.schema"}
 
 
 # Logging

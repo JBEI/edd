@@ -2,7 +2,6 @@ from http import HTTPStatus
 
 from django.conf import settings
 from django.contrib import admin
-from django.contrib.auth.decorators import login_required
 from django.contrib.flatpages import views as flatpage_views
 from django.http import HttpResponse
 from django.urls import include, path, re_path
@@ -51,22 +50,6 @@ urlpatterns = [
         name="legacy_issue_no_strain_url",
     ),
 ]
-
-if getattr(settings, "EDD_ENABLE_GRAPHQL", False):
-    from graphene_django.views import GraphQLView
-
-    urlpatterns += [
-        path(
-            "explore/",
-            login_required(GraphQLView.as_view(graphiql=True)),
-            name="graphiql",
-        ),
-        path(
-            "graphql/",
-            login_required(GraphQLView.as_view()),
-            name="graphql",
-        ),
-    ]
 
 if getattr(settings, "DEBUG", False):
     import debug_toolbar

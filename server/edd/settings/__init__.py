@@ -1,4 +1,4 @@
-""" Settings for the Experiment Data Depot. """
+"""Settings for the Experiment Data Depot."""
 
 from .auth import *  # noqa: F403
 from .base import *  # noqa: F403
@@ -20,22 +20,3 @@ except ImportError:
     print("Failed to import REST authenticators; some features may not work.")
 except Exception as e:
     print(f"Failed to register ICE authenticator; connection to ICE may not work: {e}")
-
-
-def monkeypatch_force_text():
-    """
-    The graphene-django package is slow to update, and is still using a
-    function removed in Django 4.0. This function will monkeypatch the new name
-    to the old name, so graphene-django can hobble along until it updates.
-
-    See: https://github.com/graphql-python/graphene-django/issues/1284#issuecomment-1019998091
-    """
-    import django
-    from django.utils.encoding import force_str
-
-    django.utils.encoding.force_text = force_str
-
-
-# check the settings, then remove the check function from the namespace
-monkeypatch_force_text()
-del monkeypatch_force_text

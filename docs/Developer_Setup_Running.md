@@ -59,8 +59,7 @@ different EDD instances with different `VIRTUAL_HOST` environments.
 If using a Linux host or Docker for Mac, use the hostname `edd.lvh.me`.
 
 -   **EDD:** `http://edd.lvh.me/`
--   **EDD's REST API:** `http://edd.lvh.me/rest/` (if enabled)
--   **EDD's GraphQL API:** `http://edd.lvh.me/graphql/` (if enabled)
+-   **EDD's REST API:** `http://edd.lvh.me/rest/`
 -   **Solr:** `http://solr.lvh.me/` (if configured in `docker-compose.override.yml`)
 -   **RabbitMQ Management Plugin:** `http://rabbitmq.lvh.me/` (if configured in
     `docker-compose.override.yml`)

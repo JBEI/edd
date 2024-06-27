@@ -58,13 +58,6 @@ def test_docs_loads_without_error(client):
     assert response.status_code == http.HTTPStatus.OK
 
 
-@pytest.mark.django_db
-def test_graphiql_loads_without_error(client):
-    client.force_login(UserFactory())
-    response = client.get(reverse("graphiql"), HTTP_ACCEPT="text/html")
-    assert response.status_code == http.HTTPStatus.OK
-
-
 def test_wsgi_application_loads():
     from edd import wsgi
 

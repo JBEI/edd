@@ -31,8 +31,6 @@ EDD_ONLY_SUPERUSER_CREATE = False
 # EDD_DEFAULT_STUDY_READ_GROUPS: list of groups that automatically get READ
 #   access on study creation
 # EDD_DEFAULT_STUDY_READ_GROUPS = ['GROUP NAME']
-# EDD_ENABLE_GRAPHQL: True adds the URL route to GraphQL endpoint
-# EDD_ENABLE_GRAPHQL = False
 
 
 ### Registry / ICE related settings
