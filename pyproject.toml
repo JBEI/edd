@@ -82,6 +82,8 @@ pymdown-extensions = "^10.0.1"
 [tool.ruff]
 fix = true
 line-length = 99
-select = ["E", "F", "W", "C90", "I"]
 src = ["server", "setup", "startup-tasks"]
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I"]
