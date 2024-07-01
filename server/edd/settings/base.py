@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 
 import ipaddress
 import logging
+from warnings import filterwarnings
 
 import environ
 from django.contrib.messages import constants as messages
@@ -146,6 +147,8 @@ MIDDLEWARE = (
     "allauth.account.middleware.AccountMiddleware",
 )
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
+filterwarnings("ignore", "The FORMS_URLFIELD_ASSUME_HTTPS transitional setting is deprecated.")
+FORMS_URLFIELD_ASSUME_HTTPS = True
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

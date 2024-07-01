@@ -1,6 +1,7 @@
 """
 Models and related classes for dealing with Update objects.
 """
+
 from contextlib import contextmanager
 
 import arrow
@@ -65,7 +66,8 @@ class Update(models.Model, EDDSerialize):
 
     def __str__(self):
         try:
-            time = arrow.get(self.mod_time).humanize()
+            now = arrow.utcnow()
+            time = arrow.get(self.mod_time).humanize(other=now)
         except Exception:
             time = self.mod_time
         return f"{time} by {self.mod_by}"
@@ -119,7 +121,10 @@ class Update(models.Model, EDDSerialize):
             if mod_by is None:
                 mod_by = get_user_model().system_user()
             update = cls.objects.create(
-                mod_time=arrow.utcnow(), mod_by=mod_by, path=path, origin="localhost"
+                mod_by=mod_by,
+                mod_time=arrow.utcnow(),
+                origin="localhost",
+                path=path,
             )
         else:
             update = cls.load_request_update(request)
@@ -133,10 +138,10 @@ class Update(models.Model, EDDSerialize):
             remote_host = request.META.get("REMOTE_HOST", None)
             rhost = f"{remote_addr}; {remote_host}"
             update = cls.objects.create(
-                mod_time=arrow.utcnow(),
                 mod_by=request.user,
-                path=request.get_full_path(),
+                mod_time=arrow.utcnow(),
                 origin=rhost,
+                path=request.get_full_path(),
             )
             request.update_obj = update
         else:

@@ -1,7 +1,7 @@
 import logging
-from datetime import datetime
 from itertools import islice
 
+import arrow
 import requests
 from django.conf import settings as django_settings
 from django.contrib import auth
@@ -127,9 +127,7 @@ class SolrSearch:
             aliases = response.json()["aliases"]
             return aliases.get(self.core, None)
         except Exception as e:
-            raise SolrException(
-                f"Failed to find collection for alias {self.core}"
-            ) from e
+            raise SolrException(f"Failed to find collection for alias {self.core}") from e
 
     def _find_collections(self):
         url = f"{self.base_url}/admin/collections"
@@ -140,12 +138,10 @@ class SolrSearch:
             collections = response.json()["collections"]
             return [name for name in collections if self.core in name]
         except Exception as e:
-            raise SolrException(
-                f"Failed to find collections matching {self.core}"
-            ) from e
+            raise SolrException(f"Failed to find collections matching {self.core}") from e
 
     def collection_name(self):
-        now_int = int(datetime.utcnow().timestamp())
+        now_int = arrow.utcnow().int_timestamp
         # 5 bytes is big enough for the maximum handled by datetime
         now_hex = now_int.to_bytes(5, "big").hex()
         return f"{self.core}_{now_hex}"
@@ -183,9 +179,7 @@ class SolrSearch:
             response.raise_for_status()
             self.collection = None
         except Exception as e:
-            raise SolrException(
-                f"Failed to commit {self.collection} to {self.core}"
-            ) from e
+            raise SolrException(f"Failed to commit {self.collection} to {self.core}") from e
 
     def discard_collection(self, collection=None):
         """Discards a collection from search."""
@@ -201,9 +195,7 @@ class SolrSearch:
             response.raise_for_status()
             return collection
         except Exception as e:
-            raise SolrException(
-                f"Failed to discard collection {self.collection}"
-            ) from e
+            raise SolrException(f"Failed to discard collection {self.collection}") from e
 
     def reindex(self):
         """Runs a full index for the search collection."""
@@ -296,9 +288,7 @@ class SolrSearch:
         logger.debug(f"{self} searching with: {queryopt}")
         try:
             # contact Solr / raise any IOErrors that arise
-            response = requests.get(
-                f"{self.url}/select", params=queryopt, timeout=timeout
-            )
+            response = requests.get(f"{self.url}/select", params=queryopt, timeout=timeout)
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -357,9 +347,7 @@ class SolrSearch:
                 )
                 response.raise_for_status()
             # if the adds worked, send commit command
-            response = requests.post(
-                url, data=r'{"commit":{}}', headers=headers, timeout=timeout
-            )
+            response = requests.post(url, data=r'{"commit":{}}', headers=headers, timeout=timeout)
             # raises HttpError (extends IOError)
             response.raise_for_status()
         except Exception as e:
@@ -405,9 +393,7 @@ class StudySearch(SolrSearch):
         if self.ident.is_superuser:
             return ("", "id:*")
         user_acl = f'"u:{self.ident.username}"'
-        acl = ['"g:__Everyone__"', user_acl] + [
-            f'"g:{g.name}"' for g in self.ident.groups.all()
-        ]
+        acl = ['"g:__Everyone__"', user_acl] + [f'"g:{g.name}"' for g in self.ident.groups.all()]
         return (
             " OR ".join([f"aclr:{r}" for r in acl]),
             " OR ".join([f"aclw:{w}" for w in acl]),

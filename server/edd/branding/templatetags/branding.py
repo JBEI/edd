@@ -27,7 +27,7 @@ class EnvironmentLabelNode(Node):
             return format_html('<span class="navbar-text text-warning">{}</span>', env)
         elif env[:11] == "INTEGRATION":
             return format_html('<span class="navbar-text text-warning">{}</span>', env)
-        return format_html("")
+        return ""
 
     def _legacy_format(self, context, env):
         if env[:11] == "DEVELOPMENT":
@@ -36,7 +36,7 @@ class EnvironmentLabelNode(Node):
             return format_html('<span class="test">{}</span>', env)
         elif env[:11] == "INTEGRATION":
             return format_html('<span class="int">{}</span>', env)
-        return format_html("")
+        return ""
 
 
 class ExternalScriptsNode(Node):
