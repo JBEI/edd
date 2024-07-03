@@ -44,6 +44,10 @@ function setupDropzone(): void {
     });
     dropzone.on("error", errorReload);
     $(".dz-message").removeClass("d-none");
+    // the button inside the dropzone should prevent bubbling up to dropzone handler
+    $("#manualButton").on("click", (event) => {
+        event.stopPropagation();
+    });
 }
 
 function switchStudyEditDisplay(): void {
