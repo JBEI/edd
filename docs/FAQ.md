@@ -4,9 +4,9 @@
 
 The Experiment Data Depot (EDD) **imports data in two steps**. (Fig. 1)
 
-1. **Experiment Description** input: this file describes your **experiment
-   design** so EDD knows how to store all your data, and how it is related to
-   your strains and samples (see below for more information).
+1. **Experiment Setup** input: this file describes your **experiment design**
+   so EDD knows how to store all your data, and how it is related to your
+   strains and samples.
 
 2. **Data input**: different types of data can be added in several successive
    steps. These data input steps are independent of each other, facilitating
@@ -19,69 +19,85 @@ and [data import][2].
   <img
     alt="Graphic showing spreadsheets with arrows pointing toward EDD logo"
     class="figure-img"
-    src="/img/faq_fig1.png"
+    src="img/faq_fig1.png"
     title="Fig 1"
   />
   <figcaption class="figure-caption">
     <strong>Fig. 1: Data input process.</strong>
-    Data is imported to EDD in two phases. In the first one, you import an
-    experiment description file, which describes the experiment to EDD so
-    it knows how to store your data. Afterwards, you can add as many data
-    types (e.g. transcriptomics, proteomics, …) as desired in each of the
-    data imports.
+    Data is imported to EDD in two phases. In the first, you import an
+    Experiment Setup file, describing the details of experiment conditions.
+    Afterwards, you can add as many data types--such as transcriptomics, or
+    proteomics--as desired in each of the data imports.
   </figcaption>
 </figure>
 
-## What is an experiment description?
+## What is an Experiment Setup file?
 
-An experiment description file is an **excel file that describes your
-experiment** (Fig. 2): which strains you are using (part ID from ICE), how they
-are being cultured (lines and metadata), which samples are being taken
-(assays) and how they are processed (protocol). Look at Fig. 3 to see how EDD
-organizes your experimental data (i.e. the ontology).
+An Experiment Setup file is a **table that describes your experiment**
+(Fig. 2): which strains you are using (part ID from ICE), how they are being
+cultured (lines and metadata), which samples are being taken (assays) and how
+they are processed (protocol). Look at Fig. 3 to see how EDD organizes your
+experimental data.
 
-The experiment description provides a single file standardized description of
-your experiment that is useful for, e.g., you to design your experiment, or
-the proteomics or metabolomics team to understand your experiment so they can
-plan how they will process your samples.
+The Experiment Setup file has a header row defining the layout of values in all
+the following rows. There is only one required column in the header, for "name"
+or "line name". The header can also have columns for:
+
+-   "description" or "line description", to fill in a Line's description field
+-   "part id" or "strain", to define identifiers or links to strains used
+-   "replicate" or "replicate count" to set the number of (biological) replicates
+    used for the Line definition
+-   any other column can be interpreted as _metadata_
+
+All other rows in the Experiment Setup file are used to map the columns into
+records to save into EDD. The upload process will attempt to match metadata
+columns to known metadata types in EDD, and add those metadata to the Line for
+that row in the file.
+
+If a metadata type cannot be matched to one in EDD automatically, a form will
+be shown giving you the option to select a known metadata type to use (e.g. if
+your column is "Temp.", EDD may not be able to automatically match to
+"Temperature", but you can select that from the search box), or choose an
+option to create a new metadata type in EDD if your account has permission to
+create new metadata types, or choose an option to ignore the column.
+
+If a piece of metadata is _Assay_ metadata, EDD will ask for the Protocol to
+use for that Assay. Every Assay is defined by a Line and a Protocol, so adding
+metadata to an Assay requires knowing the Protocol to use. The Experiment Setup
+process will then create an Assay and assign that metadata to it.
+
+Values in the "part id" or "strain" column will attempt to look up a matching
+entry in ICE. If a matching entry cannot be found, EDD will show a search box
+to map that value to a strain registry entry.
 
 <figure class="figure">
   <em>Input in Excel:</em>
   <img
-    alt="Screenshot of Excel with an Experiment Description file"
+    alt="Screenshot of Excel with an Experiment Setup file"
     class="figure-img"
-    src="/img/faq_fig2a.png"
+    src="img/faq_fig2a.png"
     title="Fig 2a"
   />
   <em>Import result in EDD:</em>
   <img
-    alt="Screenshot of EDD following addition of Experiment Description file"
+    alt="Screenshot of EDD following addition of Experiment Setup file"
     class="figure-img"
-    src="/img/faq_fig2b.png"
+    src="img/faq_fig2b.png"
     title="Fig 2b"
   />
   <figcaption class="figure-caption">
-    <strong>Fig. 2: Examples of experiment description.</strong>
-    The upper picture represents the example experiment description file in
-    Excel, with a line name that helps identify the culture, a line
-    description that gives more information on the line, the part ID in the
-    corresponding part repository (public ABF in this case), different types
-    of metadata (shaking speed, … growth temperature), the number of
-    replicates, and an optional field (in blue): assay information (i.e. a
-    protocol applied to a line at a given time point) for targeted proteomics.
-    The replicate count will create several lines for each replicate (3 for
-    wild type and 4 for the other strain, see below). The assay information is
-    optional: you may want to use this to tell the proteomics or metabolomics
-    services when you are sampling so they can add the data, or you can add
-    the data later yourself. The lower pictures shows how this information is
-    represented in EDD. Notice that the Part IDs have become links to the
-    corresponding registry.
+    <strong>Fig. 2: Examples of Experiment Setup.</strong>
+    The upper picture represents the example Experiment Setup file in Excel,
+    with a line name that helps identify the culture, a description that gives
+    more information on the line, the part ID in the corresponding part
+    repository (public ABF in this case), different types of metadata
+    (shaking speed, … growth temperature), and the number of replicates.
   </figcaption>
 </figure>
 
 ## What is a line?
 
-A **"Line" in EDD is** a distinct set of experimental conditions, (e.g. a
+A "Line" in EDD is a distinct set of experimental conditions, (e.g. a
 **single culture**). A Line generally corresponds to the contents of a
 shake flask or well plate, though it could also be, e.g., a tube containing an
 arabidopsis seed or an ionic liquid for a given pretreament. A line is not a
@@ -98,20 +114,19 @@ communication. You can find the [LBNL repository here][3].
   <img
     alt="Illustration of the different levels of EDD ontology"
     class="figure-img"
-    src="/img/faq_fig3.png"
+    src="img/faq_fig3.png"
     title="Fig 3"
   />
   <figcaption class="figure-caption">
     <strong>Fig. 3: EDD data organization (ontology).</strong>
-     In this example, we have three different strains (A,B, and C). Strain A is
-     cultured in two different flasks, giving rise to two lines (A1 and A2).
-     Strain B is cultured in a single flask, giving rise to a single line B1.
-     Strain C is cultured in three flasks, giving rise to three lines: C1, C2
-     and C3. Line A2 is assayed through HP-LC (protocol) at times t = 10 hr
-     (assay A2-HPLC-1) and t=8 hr (assay A2-HPLC-2). Assay A2-HPLC-1 produces
-     two measurements: 3 mg/L of Acetate and 2 mg/L of Lactate. Assay
-     A2-HPLC-2 produces two measurements: 2 mg/L of Acetate and 1.5 mg/L of
-     Lactate.
+    In this example, we have three different strains (A, B, and C). Strain A is
+    cultured in two different flasks, giving rise to two lines (A1 and A2).
+    Strain B is cultured in a single flask, giving rise to a single line B1.
+    Strain C is cultured in three flasks, giving rise to three lines: C1, C2
+    and C3. Line A2 is assayed through HP-LC (protocol) at times t = 10hr
+    (assay A2-HPLC-1) and t = 8hr (assay A2-HPLC-2). Assay A2-HPLC-1 produces
+    two measurements: 3 mg/L of Acetate and 2 mg/L of Lactate. Assay A2-HPLC-2
+    produces two measurements: 2 mg/L of Acetate and 1.5 mg/L of Lactate.
   </figcaption>
 </figure>
 
@@ -122,26 +137,6 @@ whichever other condition is being changed in the experiment. For example,
 WT-LB-70C would indicate is a wild type, grown on LB at 70º C (imagine you are
 trying different growth temperatures). Cineole-EZ-50C indicates a cineole
 producing strain, grown on EZ at 50º C … etc.
-
-## What are the column options for experiment description?
-
-The primary line characteristics that you should have in every experiment
-description and every EDD service (instance) are:
-
--   **Line Name**: a short name that uniquely identifies the line (**REQUIRED**).
--   **Line Description**: A short human-readable description for the
-    line (encouraged).
--   **Part ID**: the unique ICE part number identifiers for the strains
-    involved (encouraged).
--   **Replicate Count**: the number of experimental replicates for this set of
-    experimental conditions (encouraged).
-
-Other metadata types (e.g. media, temperatures, culture volume, flask volume,
-shaking speed … etc) are also available, but depend on which EDD site you are
-using. Ask your EDD administrator for more information. Columns can be in
-any order.
-
-_TBD_: include link to full metadata listing in any EDD.
 
 ## Why should I use the Experiment Data Depot?
 

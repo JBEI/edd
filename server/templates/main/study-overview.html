@@ -81,7 +81,13 @@
   {% csrf_token %}
   <div class="dz-message d-none" data-dz-message="">
     <p class="my-2">
-      {% translate "Drop file here to upload." %}
+      {% blocktranslate %}
+      To begin, drop an Experiment Setup file here, or click the button for
+      manual entry of Lines. <a
+        href="https://edd-docs.jbei.org/FAQ/#what-is-an-experiment-setup-file"
+        target="_new"
+      >What is an Experiment Setup file?</a>
+      {% endblocktranslate %}
     </p>
     <a
       class="btn btn-outline-secondary"
