@@ -15,13 +15,9 @@ The Experiment Data Depot (EDD) **imports data in two steps**. (Fig. 1)
 You can find [tutorials](Tutorials.md) and protocols for [study creation][1]
 and [data import][2].
 
+![Graphic showing spreadsheets with arrows pointing toward EDD logo](img/faq_fig1.png "Figure 1")
+
 <figure class="figure">
-  <img
-    alt="Graphic showing spreadsheets with arrows pointing toward EDD logo"
-    class="figure-img"
-    src="img/faq_fig1.png"
-    title="Fig 1"
-  />
   <figcaption class="figure-caption">
     <strong>Fig. 1: Data input process.</strong>
     Data is imported to EDD in two phases. In the first, you import an
@@ -70,21 +66,10 @@ Values in the "part id" or "strain" column will attempt to look up a matching
 entry in ICE. If a matching entry cannot be found, EDD will show a search box
 to map that value to a strain registry entry.
 
+![Screenshot of Excel with an Experiment Setup file](img/faq_fig2a.png "Figure 2A")
+![Screenshot of EDD following addition of Experiment Setup file](img/faq_fig2b.png "Figure 2B")
+
 <figure class="figure">
-  <em>Input in Excel:</em>
-  <img
-    alt="Screenshot of Excel with an Experiment Setup file"
-    class="figure-img"
-    src="img/faq_fig2a.png"
-    title="Fig 2a"
-  />
-  <em>Import result in EDD:</em>
-  <img
-    alt="Screenshot of EDD following addition of Experiment Setup file"
-    class="figure-img"
-    src="img/faq_fig2b.png"
-    title="Fig 2b"
-  />
   <figcaption class="figure-caption">
     <strong>Fig. 2: Examples of Experiment Setup.</strong>
     The upper picture represents the example Experiment Setup file in Excel,
@@ -110,13 +95,9 @@ and obtain different measurement data. Protocols are kept under
 [protocols.io](https://protocols.io/) to enable reproducibility and better
 communication. You can find the [LBNL repository here][3].
 
+![Illustration of the different levels of EDD ontology](img/faq_fig3.png "Figure 3")
+
 <figure class="figure">
-  <img
-    alt="Illustration of the different levels of EDD ontology"
-    class="figure-img"
-    src="img/faq_fig3.png"
-    title="Fig 3"
-  />
   <figcaption class="figure-caption">
     <strong>Fig. 3: EDD data organization (ontology).</strong>
     In this example, we have three different strains (A, B, and C). Strain A is
