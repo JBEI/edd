@@ -33,6 +33,10 @@ function setupDropzone(): void {
         "timeout": 0,
     };
     const dropzone = new Dropzone(element, options);
+    // the button/link inside the dropzone should prevent bubbling up to dropzone handler
+    $(".dz-message", element).on("click", "a", (event) => {
+        event.stopPropagation();
+    });
     dropzone.on("success", (file) => {
         try {
             const payload = JSON.parse(file.xhr?.response);
@@ -44,10 +48,6 @@ function setupDropzone(): void {
     });
     dropzone.on("error", errorReload);
     $(".dz-message").removeClass("d-none");
-    // the button inside the dropzone should prevent bubbling up to dropzone handler
-    $("#manualButton").on("click", (event) => {
-        event.stopPropagation();
-    });
 }
 
 function switchStudyEditDisplay(): void {
