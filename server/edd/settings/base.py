@@ -113,7 +113,9 @@ INSTALLED_APPS = (
     "django.contrib.postgres",
     "rest_framework",  # djangorestframework in pip
     "django_filters",  # django-filter in pip
-    "drf_yasg",  # drf-yasg in pip
+    # drf-spectacular in pip
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     # django-allauth in pip; separate apps for each provider
     "allauth",
     "allauth.account",
@@ -221,18 +223,13 @@ REST_FRAMEWORK = {
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.OrderingFilter",
     ),
-    # see: https://www.django-rest-framework.org/community/3.10-announcement/
-    "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
-# rest API documentation
-SWAGGER_SETTINGS = {
-    "SECURITY_DEFINITIONS": {
-        "basic": {"type": "basic"},
-        "Bearer": {"in": "header", "name": "Authorization", "type": "apiKey"},
-    },
-    "USE_SESSION_AUTH": True,
-    "VALIDATOR_URL": None,
+SPECTACULAR_SETTINGS = {
+    "DESCRIPTION": "Automation APIs for interacting with EDD, used with edd-utils package.",
+    "TITLE": "EDD REST API",
+    "VERSION": "v1",
 }
 
 

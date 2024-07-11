@@ -6,11 +6,9 @@ from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
-from drf_yasg import openapi
-from drf_yasg.views import get_schema_view
 from rest_framework import mixins, viewsets
 from rest_framework.negotiation import DefaultContentNegotiation
-from rest_framework.permissions import AllowAny, DjangoModelPermissions, IsAuthenticated
+from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 
 from main import models
 from main.signals import study_exported
@@ -19,12 +17,6 @@ from . import filters, paginators, permissions, renderers, serializers
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
-
-schema_view = get_schema_view(
-    openapi.Info(title="Experiment Data Depot", default_version="v1"),
-    public=True,
-    permission_classes=(AllowAny,),
-)
 
 
 class StudyInternalsFilterMixin:
@@ -43,9 +35,7 @@ class StudyInternalsFilterMixin:
         """
         queryset = super().filter_queryset(queryset)
         if not models.Study.user_role_can_read(self.request.user):
-            access = models.Study.access_filter(
-                self.request.user, via=self._filter_joins
-            )
+            access = models.Study.access_filter(self.request.user, via=self._filter_joins)
             queryset = queryset.filter(access).distinct()
         return queryset
 

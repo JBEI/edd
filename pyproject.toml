@@ -46,7 +46,7 @@ django-threadlocals = "^0.10"
 djangorestframework = "^3.14.0"
 djangorestframework-csv = "^3.0.2"
 djangorestframework-simplejwt = "^5.2.2"
-drf-yasg = "^1.21.5"
+drf-spectacular = {extras = ["sidecar"], version = "0.27.2"}
 gevent = "^23.9.1"
 gunicorn = "^21.2.0"
 invoke = "^2.1.2"

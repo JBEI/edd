@@ -1,4 +1,5 @@
 from django.urls import include, path
+from drf_spectacular import views as spec
 from rest_framework import routers
 from rest_framework_simplejwt import views as jwt
 
@@ -21,12 +22,9 @@ router.register("users", views.UsersViewSet, basename="users")
 
 urlpatterns = [
     path("", include(router.urls)),
-    path("docs/", views.schema_view.with_ui("swagger", cache_timeout=0), name="docs"),
-    path(
-        "redoc/",
-        views.schema_view.with_ui("redoc", cache_timeout=0),
-        name="docs-redoc",
-    ),
+    path("schema/", spec.SpectacularAPIView.as_view(), name="schema"),
+    path("docs/", spec.SpectacularSwaggerView.as_view(url_name="rest:schema"), name="docs"),
+    path("redoc/", spec.SpectacularRedocView.as_view(url_name="rest:schema"), name="redoc"),
     path("token/", jwt.TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("token/refresh/", jwt.TokenRefreshView.as_view(), name="token_refresh"),
     path("token/verify/", jwt.TokenVerifyView.as_view(), name="token_verify"),
