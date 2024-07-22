@@ -3,7 +3,6 @@ import pathlib
 from contextlib import contextmanager
 
 import pytest
-from django.test import override_settings
 from django.urls import reverse
 
 from edd.profile.factory import UserFactory
@@ -31,46 +30,19 @@ class Session:
         file.name = filename
         return file
 
-    @contextmanager
-    def setup_empty(self):
-        setup = SetupRequest(self.study.uuid)
-        setup.store()
-        yield setup
-        setup.retire()
+    def path(self, filename):
+        return filesdir() / filename
 
     @contextmanager
-    # avoid writing "file" to disk and needing cleanup
-    @override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
-    def setup_with_resolved(self):
+    def setup(self, *, upload_file=None, content_type="text/csv"):
         setup = SetupRequest(self.study.uuid)
-        with open(filesdir() / "simple.csv") as f:
-            f.content_type = "text/csv"
-            assert setup.upload({"file": f})
-        setup.process_upload(self.user)
-        yield setup
-        setup.retire()
-
-    @contextmanager
-    # avoid writing "file" to disk and needing cleanup
-    @override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
-    def setup_with_strains(self):
-        setup = SetupRequest(self.study.uuid)
-        with open(filesdir() / "strain.csv") as f:
-            f.content_type = "text/csv"
-            assert setup.upload({"file": f})
-        setup.process_upload(self.user)
-        yield setup
-        setup.retire()
-
-    @contextmanager
-    # avoid writing "file" to disk and needing cleanup
-    @override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
-    def setup_with_unresolved(self):
-        setup = SetupRequest(self.study.uuid)
-        with open(filesdir() / "unmatched.csv") as f:
-            f.content_type = "text/csv"
-            assert setup.upload({"file": f})
-        setup.process_upload(self.user)
+        if upload_file:
+            with open(upload_file) as f:
+                f.content_type = content_type
+                assert setup.upload({"file": f})
+            setup.process_upload(self.user)
+        else:
+            setup.store()
         yield setup
         setup.retire()
 

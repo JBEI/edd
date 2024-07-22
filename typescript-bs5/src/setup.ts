@@ -57,26 +57,35 @@ function setupSaveProgress(): void {
         socket.onmessage = (e) => {
             const payload = JSON.parse(e.data);
             const previous = parent.data("progressStatus");
-            const fraction = payload.saved.records / payload.resolved;
-            const maxWidth = outer.width();
-            const haveWidth = bar.width();
-            const wantWidth = maxWidth * fraction;
-            const delta = Math.floor(wantWidth - haveWidth);
-            const percent = Math.floor(100 * fraction);
-            bar.attr("aria-valuenow", percent).animate(
-                { "width": `+=${delta}px` },
-                { "duration": "fast", "easing": "linear", "queue": false },
-            );
             if (payload.status === "Done") {
+                // make solid green bar and redirect when status is done
                 bar.removeClass("progress-bar-animated progress-bar-striped");
                 bar.addClass("bg-success");
                 bar.stop(true, true).width("100%");
                 window.setTimeout(() => {
                     window.location.href = parent.data("successRedirect");
                 }, 250);
+            } else if (payload.status === "Failed") {
+                // make solid red bar and ...
+                bar.removeClass("progress-bar-animated progress-bar-striped");
+                bar.addClass("bg-danger");
+                bar.stop(true, true).width("100%");
             } else if (payload.status !== previous) {
+                // reload the progress bar section if an unknown status change happens
                 parent.data("progressStatus", payload.status);
                 $.ajax(ajaxGet()).done(replaceContent(parent)).fail(errorReload);
+            } else {
+                // update the progress position
+                const fraction = payload.saved.records / payload.resolved;
+                const maxWidth = outer.width();
+                const haveWidth = bar.width();
+                const wantWidth = maxWidth * fraction;
+                const delta = Math.floor(wantWidth - haveWidth);
+                const percent = Math.floor(100 * fraction);
+                bar.attr("aria-valuenow", percent).animate(
+                    { "width": `+=${delta}px` },
+                    { "duration": "fast", "easing": "linear", "queue": false },
+                );
             }
         };
     }

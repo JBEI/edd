@@ -8,7 +8,8 @@ from ..forms import ResolveTokensForm
 
 
 def test_form_create_without_post_data(writable_session):
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         form = ResolveTokensForm(setup_request=setup)
 
     # fixture has three unknown metadata columns,
@@ -17,7 +18,8 @@ def test_form_create_without_post_data(writable_session):
 
 
 def test_form_create_with_irrelevant_data(writable_session):
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         # create form payload that will not match fields for form setup
         payload = {
             "foobar": "Hello, world!",
@@ -39,7 +41,8 @@ def test_form_create_with_irrelevant_data(writable_session):
 
 
 def test_form_resolver_with_all_metadata_ignored(writable_session):
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         # name "Zm9ybTptZXRh" translates to boolean field for ignoring all metadata
         payload = {"Zm9ybTptZXRh": 1}
         form = ResolveTokensForm(setup_request=setup, data=payload)
@@ -54,7 +57,8 @@ def test_form_resolver_with_all_metadata_ignored(writable_session):
 
 
 def test_form_resolver_with_some_metadata_ignored(writable_session):
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         payload = {
             # name "bWV0YTpIb3VzZQ" translates to field for "House"
             "bWV0YTpIb3VzZQ": '{"ignore":1}',
@@ -76,7 +80,8 @@ def test_form_resolver_with_some_metadata_ignored(writable_session):
 
 def test_form_resolver_with_metadata_options(writable_session):
     media = edd_models.MetadataType.system("Media")
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         payload = {
             # name "bWV0YTpIb3VzZQ" translates to field for "House"
             "bWV0YTpIb3VzZQ": '{"new":1}',
@@ -103,7 +108,8 @@ def test_form_resolver_with_metadata_options(writable_session):
 
 
 def test_form_resolver_with_all_strains_ignored(writable_session):
-    with writable_session.setup_with_strains() as setup:
+    filename = writable_session.path("strain.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         # name "Zm9ybTpzdHJhaW4" translates to boolean field for ignoring all strains
         payload = {"Zm9ybTpzdHJhaW4": 1}
         form = ResolveTokensForm(setup_request=setup, data=payload)
@@ -120,7 +126,8 @@ def test_form_resolver_with_all_strains_ignored(writable_session):
 
 def test_form_resolver_with_strain_options(db, writable_session):
     existing_strain = StrainFactory()
-    with writable_session.setup_with_strains() as setup:
+    filename = writable_session.path("strain.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         payload = {
             # name "c3RyYWluOkpCeF8wMDAwMQ" translates to strain ID JBx_00001
             "c3RyYWluOkpCeF8wMDAwMQ": [existing_strain.registry_id],
@@ -142,7 +149,8 @@ def test_form_resolver_with_strain_options(db, writable_session):
 
 def test_form_resolver_with_protocol_options(writable_session):
     existing = ProtocolFactory()
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         payload = {
             # name "cHJvdG9jb2w6SG91c2U" translates to protocol field for "House"
             "cHJvdG9jb2w6SG91c2U": '{"new":1}',
@@ -160,7 +168,7 @@ def test_form_resolver_with_protocol_options(writable_session):
     assert house != existing.pk
     # existing protocol for "World"
     world = resolver.protocol_id_from_name("World")
-    assert world == existing.pk
+    assert str(world) == str(existing.uuid)
     # no mapping for "Spice"
     spice = resolver.protocol_id_from_name("Spice")
     assert spice is None

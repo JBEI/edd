@@ -3,7 +3,8 @@ import dataclasses
 import logging
 import re
 import typing
-from collections.abc import Iterable
+from collections import defaultdict
+from collections.abc import Generator, Iterable
 
 from django.utils.translation import gettext_lazy as _
 from openpyxl import load_workbook
@@ -28,9 +29,13 @@ parser can act as a generator for "Record" objects, given an input file.
 
 class MetaInfo(typing.TypedDict):
     name: str
-    protocol: str | None
     uuid: str | None
     value: typing.Any | None
+
+
+# key is protocol UUID, use MISSING_PROTOCOL if requiring a Protocol selection
+MISSING_PROTOCOL = "__None__"
+type AssayMeta = dict[str, list[MetaInfo] | list[list[MetaInfo]]]
 
 
 class StrainInfo(typing.TypedDict):
@@ -41,23 +46,17 @@ class StrainInfo(typing.TypedDict):
 class RecordResolver(typing.Protocol):
     """Interface for resolving record values to database identifiers."""
 
-    def is_meta_ignored(self, name: str) -> bool:
-        ...
+    def is_meta_ignored(self, name: str) -> bool: ...
 
-    def is_strain_ignored(self, name: str) -> bool:
-        ...
+    def is_strain_ignored(self, name: str) -> bool: ...
 
-    def metatype_from_name(self, name: str) -> edd_models.MetadataType | None:
-        ...
+    def metatype_from_name(self, name: str) -> edd_models.MetadataType | None: ...
 
-    def metatype_from_uuid(self, uuid: str) -> edd_models.MetadataType | None:
-        ...
+    def metatype_from_uuid(self, uuid: str) -> edd_models.MetadataType | None: ...
 
-    def protocol_id_from_name(self, name: str) -> int | None:
-        ...
+    def protocol_id_from_name(self, name: str) -> str | None: ...
 
-    def strains_from_name(self, name: str) -> Iterable[edd_models.Strain]:
-        ...
+    def strains_from_name(self, name: str) -> Iterable[edd_models.Strain]: ...
 
 
 Cell = typing.Any
@@ -81,11 +80,27 @@ class Record:
     """
 
     # from inputs
+    # NOTE: after serialization/deserialization, this will be a PLAIN dict()
+    assays: AssayMeta = dataclasses.field(default_factory=lambda: defaultdict(list))
     description: str | None = None
     meta: list[MetaInfo] = dataclasses.field(default_factory=list)
     name: str | None = None
     replicates: int | None = None
     strain: list[StrainInfo] = dataclasses.field(default_factory=list)
+
+    def iter_assays(self) -> Generator[tuple[str, list[MetaInfo]], None, None]:
+        """
+        Support using nested lists of MetaInfo in assays attribute, so that
+        REST API can add multiple assays per Line/Protocol pairing.
+        """
+        for protocol_uuid, values in self.assays.items():
+            one_deep = [meta for meta in values if isinstance(meta, dict)]
+            if one_deep:
+                yield protocol_uuid, one_deep
+            two_deep = [item for item in values if isinstance(item, list)]
+            for meta in two_deep:
+                if meta:
+                    yield protocol_uuid, meta
 
     def resolve(self, resolver: RecordResolver) -> set[str]:
         """
@@ -99,36 +114,51 @@ class Record:
         self.meta = list(self._filter_metadata(resolver, failed))
         # filter strains listing based on resolver inputs
         self.strain = list(self._filter_strain(resolver, failed))
+        # check on assays metadata without protocol
+        self._check_assays_protocol(resolver, failed)
         return failed
+
+    def _check_assays_protocol(self, resolver: RecordResolver, failed: set[str]):
+        # filter gets assay metadata still needing a protocol lookup
+        self.assays[MISSING_PROTOCOL] = list(self._filter_protocol(resolver, failed))
+        # metadata with matched protocol will move to that protocol key
 
     def _filter_metadata(
         self,
         resolver: RecordResolver,
         failed: set[str],
-    ) -> Iterable[MetaInfo]:
+    ) -> Generator[MetaInfo, None, None]:
+        # loop over metadata list
         for m in self.meta:
             meta_name = m["name"]
-            meta_uuid = m["uuid"]
-            # first pass resolve
-            if meta_uuid is None:
-                t = resolver.metatype_from_name(meta_name)
-            else:
-                t = resolver.metatype_from_uuid(meta_uuid)
-            if t:
-                self._update_metadata(m, t, resolver, failed)
-                yield m
+            if t := self._get_type_from_info(m, resolver):
+                yield from self._update_metadata(m, t, resolver, failed)
             elif resolver.is_meta_ignored(meta_name):
+                # drop metadata by not yielding it
                 pass
             else:
                 failed.add("form:meta")
                 failed.add(f"meta:{meta_name}")
                 yield m
 
+    def _filter_protocol(
+        self,
+        resolver: RecordResolver,
+        failed: set[str],
+    ) -> Generator[MetaInfo, None, None]:
+        for m in self.assays.get(MISSING_PROTOCOL, []):
+            meta_name = m["name"]
+            if p := resolver.protocol_id_from_name(meta_name):
+                self._save_assay_metadata(m, p)
+            else:
+                failed.add(f"protocol:{meta_name}")
+                yield m
+
     def _filter_strain(
         self,
         resolver: RecordResolver,
         failed: set[str],
-    ) -> Iterable[StrainInfo]:
+    ) -> Generator[StrainInfo, None, None]:
         for s in self.strain:
             strain_name = s["name"]
             if s["uuids"]:
@@ -143,28 +173,39 @@ class Record:
                 failed.add(f"strain:{strain_name}")
                 yield s
 
+    def _get_type_from_info(self, meta: MetaInfo, resolver: RecordResolver):
+        meta_uuid = meta["uuid"]
+        if meta_uuid is None:
+            return resolver.metatype_from_name(meta["name"])
+        return resolver.metatype_from_uuid(meta_uuid)
+
+    def _save_assay_metadata(self, meta: MetaInfo, protocol: str) -> None:
+        if plist := self.assays.get(protocol, None):
+            plist.append(meta)
+        else:
+            self.assays[protocol] = [meta]
+
     def _update_metadata(
         self,
         meta: MetaInfo,
         metatype: edd_models.MetadataType,
         resolver: RecordResolver,
         failed: set[str],
-    ) -> None:
+    ) -> Generator[MetaInfo, None, None]:
         meta["uuid"] = metatype.uuid
-        if metatype.for_assay() and meta["protocol"] is None:
-            meta_name = meta["name"]
-            p = resolver.protocol_id_from_name(meta_name)
-            if p:
-                meta["protocol"] = p
-            else:
-                failed.add(f"protocol:{meta_name}")
+        if metatype.for_assay():
+            # shifting the MetaInfo object to self.assays
+            protocol = resolver.protocol_id_from_name(meta["name"])
+            self._save_assay_metadata(meta, protocol or MISSING_PROTOCOL)
+            # not yielding to drop from potential line metadata list in self.meta
+        else:
+            yield meta
 
 
 class RecordUpdater(typing.Protocol[V]):
     """Interface for updating a Record with values extracted from a Parser."""
 
-    def update(self, record: Record, value: V) -> None:
-        ...
+    def update(self, record: Record, value: V) -> None: ...
 
 
 class RequiredValueWarning(Warning):
@@ -279,14 +320,8 @@ class MetadataUpdater(RecordUpdater[str]):
 
     def update(self, record: Record, value: str) -> None:
         if value:
-            record.meta.append(
-                {
-                    "name": self.heading,
-                    "protocol": None,
-                    "uuid": None,
-                    "value": value,
-                }
-            )
+            info: MetaInfo = {"name": self.heading, "uuid": None, "value": value}
+            record.meta.append(info)
 
 
 class Parser:
@@ -322,9 +357,9 @@ class Parser:
         MetadataHeading(title="Metadata"),
     ]
 
-    def __init__(self, mime_type: str):
+    def __init__(self, mime_type: str | None):
         self.columns: Iterable[ColumnHeading | None] = []
-        self.mime_type = mime_type
+        self.mime_type = mime_type or ""
 
     def parse(self, stream: typing.IO) -> Iterable[Record]:
         for i, row in self._read(stream):

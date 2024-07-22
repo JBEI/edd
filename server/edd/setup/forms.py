@@ -92,12 +92,12 @@ class FormResolver(RecordResolver):
             pass
 
     @functools.cache
-    def protocol_id_from_name(self, name: str) -> int | None:
+    def protocol_id_from_name(self, name: str) -> str | None:
         key = name_from_token(f"protocol:{name}".encode())
         match value := self.form.cleaned_data.get(key, None):
             case int(pk):
-                edd_models.Protocol.objects.get(pk=pk)
-                return pk
+                p = edd_models.Protocol.objects.get(pk=pk)
+                return str(p.uuid)
             case {"new": _}:
                 return self._new_protocol(name)
             case None:
@@ -114,23 +114,15 @@ class FormResolver(RecordResolver):
             return value
         return []
 
-    def _new_line_metadata(self, metadata) -> edd_models.MetadataType | None:
-        try:
-            return edd_models.MetadataType.objects.create(
-                for_context=edd_models.MetadataType.LINE,
-                type_name=metadata,
-            )
-        except Exception as e:
-            logger.warning(f"Failed to create metadata for {metadata}: {e}")
-        return None
+    def _new_line_metadata(self, metadata) -> edd_models.MetadataType:
+        return edd_models.MetadataType.objects.create(
+            for_context=edd_models.MetadataType.LINE,
+            type_name=metadata,
+        )
 
-    def _new_protocol(self, protocol) -> int | None:
-        try:
-            obj = edd_models.Protocol.objects.create(name=protocol)
-            return obj.pk
-        except Exception as e:
-            logger.warning(f"Failed to create protocol for {protocol}: {e}")
-        return None
+    def _new_protocol(self, protocol) -> str:
+        obj = edd_models.Protocol.objects.create(name=protocol)
+        return str(obj.uuid)
 
 
 class ResolveTokensForm(forms.Form):
@@ -141,7 +133,7 @@ class ResolveTokensForm(forms.Form):
     def __init__(
         self,
         setup_request: "broker.SetupRequest",
-        page: int = None,
+        page: int | None = None,
         data=None,
         *args,
         **kwargs,
@@ -160,10 +152,7 @@ class ResolveTokensForm(forms.Form):
             # cannot re-create form from submitted data; so build from page
             self._setup_from_page()
             # raise validation error for the entire form
-            message = _(
-                "Could not process submitted form information. "
-                "Please contact support."
-            )
+            message = _("Could not process submitted form information. Please contact support.")
             raise ValidationError(message)
 
     def get_resolver(self) -> FormResolver:

@@ -7,12 +7,12 @@ import json
 import logging
 import typing
 from collections.abc import Iterable
+from contextlib import contextmanager
 from datetime import timedelta
 from uuid import UUID, uuid4
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from django.contrib.auth import get_user_model
 from django.core.files.storage import Storage, storages
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
@@ -25,20 +25,30 @@ from main.signals import study_described
 from .exceptions import SetupException
 from .forms import ResolveTokensForm
 from .lookup import Resolver
-from .parser import Parser, Record
+from .parser import MetaInfo, Parser, Record, RecordResolver
 
 if typing.TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractUser
     from redis import Redis
 
+    RequestKey: typing.TypeAlias = str
+    User: typing.TypeAlias = AbstractUser
+
 logger = logging.getLogger(__name__)
-User = get_user_model()
 
 
-RequestKey = str
+class SavedProgress(typing.TypedDict):
+    assays: int
+    lines: int
+    records: int
 
 
 class SetupProgress(typing.TypedDict):
-    pass
+    resolved: int
+    saved: SavedProgress
+    status: str
+    tokens: int
+    unresolved: int
 
 
 @dataclasses.dataclass(eq=False)
@@ -59,6 +69,7 @@ class SetupRequest:
         UPDATING = "Updating"
         SAVING = "Saving"
         DONE = "Done"
+        FAILED = "Failed"
 
         def __str__(self):
             # this makes it possible to translate to/from redis
@@ -87,12 +98,12 @@ class SetupRequest:
         return timedelta(weeks=1)
 
     @classmethod
-    def _key(cls, uuid: UUID | str) -> RequestKey:
+    def _key(cls, uuid: UUID | str) -> "RequestKey":
         # key is fully-qualified classname
         # plus str representation of request UUID
         return f"{__name__}.{cls.__name__}:{str(uuid)}"
 
-    def _subkey(self, sub: str) -> RequestKey:
+    def _subkey(self, sub: str) -> "RequestKey":
         return f"{self._key(self.request_uuid)}:{sub}"
 
     @classmethod
@@ -122,8 +133,7 @@ class SetupRequest:
             raise SetupException(_("Setup details not found for this Study."))
         return self
 
-    def commit(self, user: User) -> typing.Self:
-        self.transition(new_status=self.Status.SAVING, expect=self.Status.READY)
+    def commit(self, user: "User") -> typing.Self:
         writer = DatabaseWriter(self, user)
         update = edd_models.Update.fake_request(
             user=user,
@@ -144,7 +154,6 @@ class SetupRequest:
                 self._postcommit(user)
             db.delete(key)
         except Exception as e:
-            self.transition(self.Status.READY)
             raise SetupException() from e
         return self
 
@@ -179,6 +188,15 @@ class SetupRequest:
         """Request can begin process() call when it has an upload to parse."""
         return self.status == SetupRequest.Status.READY
 
+    @contextmanager
+    def lock_status(self, *, active, failed, success, expect=None):
+        try:
+            self.transition(new_status=active, expect=expect)
+            yield
+            self.transition(new_status=success, expect=active)
+        except Exception:
+            self.transition(new_status=failed)
+
     def open(self) -> typing.IO:
         try:
             if self.mime_type and self.mime_type[:5] == "text/":
@@ -188,11 +206,6 @@ class SetupRequest:
             raise SetupException(_("Error reading uploaded file")) from e
 
     def process_form(self, tokens_form: ResolveTokensForm) -> typing.Self:
-        self.transition(
-            new_status=self.Status.UPDATING,
-            expect=self.Status.READY,
-            raise_errors=True,
-        )
         try:
             db = self._db()
             # remove tokens the form claims to resolve
@@ -211,14 +224,9 @@ class SetupRequest:
             self._sort_tokens()
         except Exception as e:
             raise SetupException() from e
-        self.transition(self.Status.READY, raise_errors=True)
+        return self
 
-    def process_upload(self, user: User) -> typing.Self:
-        self.transition(
-            new_status=self.Status.UPDATING,
-            expect=self.Status.READY,
-            raise_errors=True,
-        )
+    def process_upload(self, user: "User") -> typing.Self:
         parser = Parser(self.mime_type)
         resolver = Resolver(user=user)
         with self.open() as file:
@@ -228,7 +236,6 @@ class SetupRequest:
                 self._process_record_batch(batch, resolver)
             # sort tokens so form can maintain consistent ordering
             self._sort_tokens()
-        self.transition(self.Status.READY, raise_errors=True)
         return self
 
     @property
@@ -237,7 +244,7 @@ class SetupRequest:
             db = self._db()
             saving = self._subkey("saving")
             return {
-                "resolved": db.llen(self._subkey("resolved")),
+                "resolved": self.records_resolved,
                 "saved": {
                     "assays": db.zscore(saving, "assays"),
                     "lines": db.zscore(saving, "lines"),
@@ -245,10 +252,18 @@ class SetupRequest:
                 },
                 "status": str(self.status),
                 "tokens": db.scard(self._subkey("tokens")),
-                "unresolved": db.llen(self._subkey("unresolved")),
+                "unresolved": self.records_unresolved,
             }
         except Exception as e:
             raise SetupException(_("Failed to fetch progress information")) from e
+
+    @property
+    def records_resolved(self):
+        return self._db().llen(self._subkey("resolved"))
+
+    @property
+    def records_unresolved(self):
+        return self._db().llen(self._subkey("unresolved"))
 
     def retire(self):
         "Retire the experiment setup, removing all intermediate info from storage."
@@ -289,14 +304,12 @@ class SetupRequest:
         self,
         new_status: Status,
         expect: Status | None = None,
-        raise_errors=False,
     ) -> bool:
         """
         Transitions the SetupRequest to the new_status provided.
 
         :param new_status: the desired status
         :param expect: the current expected status; raise an error on mismatch
-        :param raise_errors: if True, raise an error instead of returning False on failure
         :returns: True only if the transition completed successfully
         """
         if expect and self.status != expect:
@@ -322,12 +335,6 @@ class SetupRequest:
                 pipe.unwatch()
         except Exception as e:
             logger.info(f"Transition failed: {e!r}")
-            if raise_errors:
-                message = _(
-                    "Could not process Experiment Setup; try not to update in "
-                    "multiple tabs. Error: {error}"
-                ).format(error=e)
-                raise SetupException(message) from e
         return False
 
     def upload(self, files_payload, default_mime="application/octet-stream") -> bool:
@@ -375,10 +382,6 @@ class SetupRequest:
 
     def _postcommit(self, user) -> None:
         db = self._db()
-        if 0 < db.llen(self._subkey("unresolved")):
-            self.transition(new_status=self.Status.READY, expect=self.Status.SAVING)
-        else:
-            self.transition(new_status=self.Status.DONE, expect=self.Status.SAVING)
         study_described.send(
             sender=self.__class__,
             study=edd_models.Study.objects.get(uuid=self.study_uuid),
@@ -389,7 +392,7 @@ class SetupRequest:
     def _process_record_batch(
         self,
         batch: Iterable[Record],
-        resolver: Resolver,
+        resolver: RecordResolver,
     ) -> None:
         # store unmatched metadata and strain tokens
         failed: set[str] = set()
@@ -405,14 +408,14 @@ class SetupRequest:
         with self._db().pipeline() as pipe:
             pipe.multi()
             if matched:
-                matched = [json.dumps(r.__dict__, cls=JSONEncoder) for r in matched]
+                serialized = [json.dumps(r.__dict__, cls=JSONEncoder) for r in matched]
                 key = self._subkey("resolved")
-                pipe.rpush(key, *matched)
+                pipe.rpush(key, *serialized)
                 pipe.expire(key, self._expire())
             if unmatched:
-                unmatched = [json.dumps(r.__dict__, cls=JSONEncoder) for r in unmatched]
+                serialized = [json.dumps(r.__dict__, cls=JSONEncoder) for r in unmatched]
                 key = self._subkey("unresolved")
-                pipe.rpush(key, *unmatched)
+                pipe.rpush(key, *serialized)
                 pipe.expire(key, self._expire())
             if failed:
                 key = self._subkey("tokens")
@@ -428,6 +431,7 @@ class SetupRequest:
         db.zincrby(key, lines, "lines")
         db.zincrby(key, assays, "assays")
         db.expire(key, self._expire())
+        return self
 
     def _sort_tokens(self) -> typing.Self:
         unordered_key = self._subkey("tokens")
@@ -463,56 +467,59 @@ class DatabaseWriter:
         count_line = 0
         for record in batch:
             if record.replicates:
+                names = [f"{record.name}-R{n}" for n in range(1, record.replicates + 1)]
                 self._add_replicate_id_metadata(record)
-                for n in range(1, record.replicates + 1):
-                    name = f"{record.name}-R{n}"
-                    lc, ac = self._create_line(record, name)
-                    count_line += lc
-                    count_assay += ac
             else:
-                lc, ac = self._create_line(record, record.name)
+                names = [record.name]
+            for name in names:
+                lc, ac = self._create_line(record, name)
                 count_line += lc
                 count_assay += ac
         return count_line, count_assay
 
     def _add_replicate_id_metadata(self, record: Record) -> None:
-        replicate = {
+        replicate: MetaInfo = {
             "name": "Replicate",
-            "protocol": None,
             "uuid": self._replicate_meta.uuid,
             "value": uuid4().hex,
         }
         record.meta.append(replicate)
 
-    def _create_line(self, record: Record, name: str) -> tuple[int, int]:
+    def _create_line(self, record: Record, name: str | None) -> tuple[int, int]:
         line = edd_models.Line.objects.create(
             description=record.description,
             name=name,
             study=self.study,
         )
-        assays = {}
         for meta in record.meta:
             mtype = self._load_type(meta["uuid"])
-            if mtype.for_line():
-                line.metadata_add(mtype, meta["value"])
-            elif mtype.for_assay():
-                protocol = self._load_protocol(meta["protocol"])
-                assay = self._get_or_create_assay(assays, line, protocol)
-                assay.metadata_add(mtype, meta["value"])
+            line.metadata_add(mtype, meta["value"])
         for strain in record.strain:
-            line.strains.add(self._load_strain(strain["uuid"]))
+            for sid in strain["uuids"] or []:
+                line.strains.add(self._load_strain(sid))
         line.save()
-        for assay in assays.values():
-            assay.save()
-        return 1, len(assays)
+        return 1, self._create_assays(record, line)
 
-    def _get_or_create_assay(self, assays, line, protocol):
-        if assay := assays.get(protocol.pk, None):
-            return assay
+    def _create_assays(self, record: Record, line: edd_models.Line) -> int:
+        created = 0
+        for protocol_uuid, values in record.iter_assays():
+            self._create_assay(line, self._load_protocol(protocol_uuid), values)
+            created += 1
+        return created
+
+    def _create_assay(
+        self,
+        line: edd_models.Line,
+        protocol: edd_models.Protocol,
+        values: list[MetaInfo],
+    ) -> edd_models.Assay:
         index = line.new_assay_number(protocol)
         name = edd_models.Assay.build_name(line, protocol, index)
         assay = line.new_assay(name, protocol)
-        assays[protocol.pk] = assay
+        for meta in values:
+            mtype = self._load_type(meta["uuid"])
+            assay.metadata_add(mtype, meta["value"])
+        assay.save()
         return assay
 
     @functools.cache
@@ -528,5 +535,5 @@ class DatabaseWriter:
         return edd_models.MetadataType.objects.get(uuid=uuid)
 
     @functools.cached_property
-    def _replicate_meta(self):
+    def _replicate_meta(self) -> edd_models.MetadataType:
         return edd_models.MetadataType.system("Replicate")

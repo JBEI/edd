@@ -3,6 +3,7 @@ from celery.utils.log import get_task_logger
 from django.contrib.auth import get_user_model
 
 from .broker import SetupRequest
+from .exceptions import SetupException
 from .forms import ResolveTokensForm
 
 logger = get_task_logger(__name__)
@@ -36,30 +37,57 @@ def submit_update(
     )
 
 
-@shared_task
+@shared_task(ignore_result=True)
 def setup_commit(request_uuid, user_id):
     try:
         setup = SetupRequest.fetch(request_uuid)
-        setup.commit(User.objects.get(pk=user_id))
+        with setup.lock_status(
+            active=setup.Status.SAVING,
+            expect=setup.Status.READY,
+            failed=setup.Status.FAILED,
+            success=setup.Status.READY,
+        ):
+            setup.commit(User.objects.get(pk=user_id))
+        # if setup has no unresolved records, transition again to DONE
+        if setup.records_unresolved == 0:
+            setup.transition(setup.Status.DONE)
+    except SetupException as e:
+        raise e
     except Exception as e:
-        logger.exception("Failed to commit experiment setup", exc_info=e)
+        raise SetupException() from e
 
 
-@shared_task
+@shared_task(ignore_result=True)
 def setup_process(request_uuid, user_id):
     try:
         setup = SetupRequest.fetch(request_uuid)
-        setup.process_upload(User.objects.get(pk=user_id))
+        with setup.lock_status(
+            active=setup.Status.UPDATING,
+            expect=setup.Status.READY,
+            failed=setup.Status.FAILED,
+            success=setup.Status.READY,
+        ):
+            setup.process_upload(User.objects.get(pk=user_id))
     except Exception as e:
         logger.exception("Failed to process upload", exc_info=e)
+        # NO transition, user should see parse progress normally
+        raise SetupException() from e
 
 
-@shared_task
+@shared_task(ignore_result=True)
 def setup_update(request_uuid, payload_key, user_id):
     try:
         setup = SetupRequest.fetch(request_uuid)
         payload = setup.form_payload_fetch(payload_key)
         form = ResolveTokensForm(setup_request=setup, data=payload)
-        setup.process_form(form)
+        with setup.lock_status(
+            active=setup.Status.UPDATING,
+            expect=setup.Status.READY,
+            failed=setup.Status.READY,
+            success=setup.Status.READY,
+        ):
+            setup.process_form(form)
     except Exception as e:
         logger.exception("Failed to process form", exc_info=e)
+        # NO transition, user should see form errors
+        raise SetupException() from e

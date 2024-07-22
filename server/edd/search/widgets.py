@@ -16,9 +16,9 @@ class Select2Mixin:
     `kind` attribute of each subclass.
     """
 
-    default_attrs = {}
-    default_classes = ["autocomp2", "form-select"]
-    kind = None
+    default_attrs: dict[str, str] = {}
+    default_classes: list[str] = ["autocomp2", "form-select"]
+    kind: str | None = None
 
     def get_autourl(self):
         if self.kind:
@@ -182,8 +182,9 @@ class RegistryField(forms.ModelMultipleChoiceField):
     def clean(self, value):
         # validator creates Strain objects if not already in database
         validator = registry.RegistryValidator()
-        for item in value:
-            validator.validate(item)
+        if value:
+            for item in value:
+                validator.validate(item)
         return super().clean(value)
 
 

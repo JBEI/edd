@@ -117,8 +117,6 @@ def test_reactless_import_upload_post_empty(client, writable_session):
     )
 
 
-# avoid writing "file" to disk and needing cleanup
-@override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
 def test_reactless_import_upload_post(client, writable_session):
     client.force_login(writable_session.user)
     with writable_session.start() as lr:
@@ -136,7 +134,6 @@ def test_reactless_import_upload_post(client, writable_session):
     task.delay.assert_called_once()
 
 
-@override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
 def test_reactless_import_upload_post_ajax(client, writable_session):
     client.force_login(writable_session.user)
     with writable_session.start() as lr:
@@ -155,8 +152,6 @@ def test_reactless_import_upload_post_ajax(client, writable_session):
     task.delay.assert_called_once()
 
 
-# avoid writing "file" to disk and needing cleanup
-@override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
 def test_reactless_import_upload_post_error(client, writable_session):
     client.force_login(writable_session.user)
     with writable_session.start() as lr:
@@ -178,8 +173,6 @@ def test_reactless_import_upload_post_error(client, writable_session):
     task.delay.assert_called_once()
 
 
-# avoid writing "file" to disk and needing cleanup
-@override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
 def test_reactless_import_upload_post_error_ajax(client, writable_session):
     client.force_login(writable_session.user)
     with writable_session.start() as lr:

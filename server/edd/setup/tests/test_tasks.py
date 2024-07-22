@@ -1,14 +1,16 @@
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from main.tests.factory import StrainFactory
 
 from .. import tasks
 from ..broker import SetupRequest
+from ..exceptions import SetupException
 
 
 def test_task_process_with_invalid_uuid(writable_session):
-    # task should "finish", as there's nothing to do with a bad ID
-    tasks.setup_process("bad_uuid", writable_session.user.pk)
+    with pytest.raises(SetupException):
+        tasks.setup_process("bad_uuid", writable_session.user.pk)
 
 
 def test_task_process_with_missing_upload(writable_session):
@@ -41,8 +43,8 @@ def test_task_process_success(writable_session):
 
 
 def test_task_update_with_invalid_uuid(writable_session):
-    # task should "finish", as there's nothing to do with a bad ID
-    tasks.setup_update("bad_uuid", "bad_key", writable_session.user.pk)
+    with pytest.raises(SetupException):
+        tasks.setup_update("bad_uuid", "bad_key", writable_session.user.pk)
 
 
 def test_task_update_with_empty_form(writable_session):
@@ -90,12 +92,13 @@ def test_task_update(writable_session):
 def test_task_commit_without_records_to_save(writable_session):
     setup = SetupRequest(writable_session.study.uuid)
     setup.store()
+    setup.transition(SetupRequest.Status.READY)
 
     # submitting directly, instead of queueing for Celery, with background arg
     tasks.submit_commit(setup, writable_session.user, background=False)
 
     updated = SetupRequest.fetch(setup.request_uuid)
-    assert updated.status == SetupRequest.Status.CREATED
+    assert updated.status == SetupRequest.Status.DONE
     assert writable_session.study.line_set.count() == 0
 
 

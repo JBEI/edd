@@ -50,7 +50,7 @@ class Resolver(RecordResolver):
             pass
         return None
 
-    def protocol_id_from_name(self, name: str) -> int | None:
+    def protocol_id_from_name(self, name: str) -> str | None:
         """
         Given a metadata type name, return a protocol to use for the assay
         where the metadata will be assigned.

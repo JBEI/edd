@@ -48,8 +48,6 @@ def test_upload_post_ajax_without_file(client, writable_session):
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-# avoid writing "file" to disk and needing cleanup
-@override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
 def test_upload_post_with_file(client, writable_session):
     client.force_login(writable_session.user)
     url = writable_session.url("main:setup:start")
@@ -63,8 +61,6 @@ def test_upload_post_with_file(client, writable_session):
     asserts.assertContains(response, "somefile.txt")
 
 
-# avoid writing "file" to disk and needing cleanup
-@override_settings(EDD_LOAD_STORAGE="django.core.files.storage.InMemoryStorage")
 def test_upload_post_ajax_with_file(client, writable_session):
     client.force_login(writable_session.user)
     url = writable_session.url("main:setup:start")
@@ -94,7 +90,7 @@ def test_interpret_get_with_unknown_id(client, writable_session):
 def test_interpret_get_with_other_study_id(client, writable_session):
     other_study = StudyFactory()
     client.force_login(writable_session.user)
-    with writable_session.setup_empty() as setup:
+    with writable_session.setup() as setup:
         # trying to open Experiment Setup URL from other study instead of session study
         url = writable_session.url(
             "main:setup:interpret",
@@ -108,7 +104,8 @@ def test_interpret_get_with_other_study_id(client, writable_session):
 
 def test_interpret_get_with_resolved_records(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_resolved() as setup:
+    filename = writable_session.path("simple.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         response = client.get(url, follow=True)
 
@@ -119,7 +116,8 @@ def test_interpret_get_with_resolved_records(client, writable_session):
 
 def test_interpret_get_with_unresolved_records(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         response = client.get(url, follow=True)
 
@@ -130,7 +128,8 @@ def test_interpret_get_with_unresolved_records(client, writable_session):
 
 def test_interpret_get_ajax(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_resolved() as setup:
+    filename = writable_session.path("simple.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         response = client.get(url, follow=True, headers=AJAX_HEADER)
 
@@ -142,7 +141,8 @@ def test_interpret_get_ajax(client, writable_session):
 @override_settings(EDD_WIZARD_TOKENS_PER_PAGE=1)
 def test_interpret_get_has_prev_and_next_buttons(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         next_url = writable_session.url(
             "main:setup:interpret-page",
@@ -167,7 +167,8 @@ def test_interpret_get_has_prev_and_next_buttons(client, writable_session):
 
 def test_interpret_get_showing_progress_bar(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         # put into UPDATING status like it would be if still processing file
         setup.transition(setup.Status.UPDATING)
@@ -179,7 +180,8 @@ def test_interpret_get_showing_progress_bar(client, writable_session):
 
 def test_interpret_post_abort(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_resolved() as setup:
+    filename = writable_session.path("simple.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         # patching to confirm task isn't submitted
         with patch("edd.setup.tasks.setup_update") as task:
@@ -191,7 +193,8 @@ def test_interpret_post_abort(client, writable_session):
 
 def test_interpret_post_form_with_errors(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         # patching to confirm task isn't submitted
         with patch("edd.setup.tasks.setup_update") as task:
@@ -205,7 +208,8 @@ def test_interpret_post_form_with_errors(client, writable_session):
 
 def test_interpret_post_form_success(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_unresolved() as setup:
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         # patching to avoid actually submitting task
         with patch("edd.setup.tasks.setup_update") as task:
@@ -219,7 +223,8 @@ def test_interpret_post_form_success(client, writable_session):
 
 def test_interpret_post_save(client, writable_session):
     client.force_login(writable_session.user)
-    with writable_session.setup_with_resolved() as setup:
+    filename = writable_session.path("simple.csv")
+    with writable_session.setup(upload_file=filename) as setup:
         url = writable_session.url("main:setup:interpret", uuid=setup.request_uuid)
         # patching to avoid actually submitting task
         with patch("edd.setup.tasks.setup_commit") as task:
