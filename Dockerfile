@@ -4,7 +4,7 @@ ARG TARGET="dev"
 
 # ---
 
-FROM node:lts-alpine as edd-node
+FROM node:lts-alpine AS edd-node
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 
@@ -18,7 +18,7 @@ CMD ["/bin/zsh"]
 
 # ---
 
-FROM oven/bun as edd-bun
+FROM oven/bun AS edd-bun
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 COPY ./package.json /home/bun/app/package.json
 WORKDIR /home/bun/app
@@ -26,7 +26,7 @@ RUN bun install --non-interactive --ignore-optional
 
 # ---
 
-FROM oven/bun as edd-bun-bs5
+FROM oven/bun AS edd-bun-bs5
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 COPY ./package.bs5.json /home/bun/app/package.json
 WORKDIR /home/bun/app
@@ -34,7 +34,7 @@ RUN bun install --non-interactive --ignore-optional
 
 # ---
 
-FROM library/python:3.12-slim-bookworm as pybase
+FROM library/python:3.12-slim-bookworm AS pybase
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ENV PYTHONUNBUFFERED=1 LANG=C.UTF-8
@@ -58,7 +58,7 @@ RUN set -ex \
 
 # ---
 
-FROM pybase as setup
+FROM pybase AS setup
 
 WORKDIR /usr/local/edd-config
 
@@ -79,7 +79,7 @@ CMD ["--help"]
 
 # ---
 
-FROM pybase as generate-requirements
+FROM pybase AS generate-requirements
 
 WORKDIR /install
 
@@ -94,7 +94,7 @@ RUN set -ex \
 
 # ---
 
-FROM pybase as preinstall
+FROM pybase AS preinstall
 ARG TARGET
 
 WORKDIR /install
@@ -129,7 +129,7 @@ RUN set -ex \
 
 # ---
 
-FROM library/python:3.12-slim-bookworm as docs-build
+FROM library/python:3.12-slim-bookworm AS docs-build
 
 WORKDIR /usr/local/edd
 COPY . /usr/local/edd/
@@ -141,14 +141,14 @@ RUN python -m pip install -r mkdocs.requirements.txt \
 
 # -----
 
-FROM nginx:mainline-alpine as docs
+FROM nginx:mainline-alpine AS docs
 
 COPY --from=docs-build /usr/local/edd/site /usr/share/nginx/html
 COPY --from=docs-build /usr/local/css /usr/share/nginx/html/css
 
 # ---
 
-FROM edd-node as typescript
+FROM edd-node AS typescript
 
 WORKDIR /run/
 COPY ./typescript ./.prettierrc.js /run/
@@ -159,7 +159,7 @@ RUN ls -al && yarn build
 
 # ---
 
-FROM edd-node as typescript-bs5
+FROM edd-node AS typescript-bs5
 
 WORKDIR /run/
 COPY ./typescript-bs5 ./.prettierrc.js /run/
@@ -170,7 +170,7 @@ RUN ls -al && yarn build
 
 # ---
 
-FROM preinstall as configure
+FROM preinstall AS configure
 
 WORKDIR /tmp/
 COPY ./.git /tmp/.git
@@ -179,7 +179,7 @@ RUN git rev-parse --short HEAD > /tmp/edd.hash
 
 # ---
 
-FROM preinstall as staticfiles
+FROM preinstall AS staticfiles
 
 WORKDIR /usr/local/edd
 # Copy in python code
@@ -197,7 +197,7 @@ RUN EDD_DEBUG="$([ "${TARGET}" != "dev" ] || echo "True")" \
 
 # ---
 
-FROM preinstall as install
+FROM preinstall AS install
 
 LABEL maintainer="William Morrell <WCMorrell@lbl.gov>"
 ARG EDD_VERSION
