@@ -21,7 +21,7 @@ exclude_also = [
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
-    "^\\s*\\.\\.\\.$"
+    "\\s*\\.\\.\\.$"
 ]
 
 [tool.pytest.ini_options]
