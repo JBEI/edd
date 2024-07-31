@@ -9,7 +9,7 @@ from main.tests.factory import ProtocolFactory, StrainFactory
 from ..broker import DatabaseWriter, SetupRequest
 from ..exceptions import SetupException
 from ..forms import ResolveTokensForm
-from ..parser import mime_excel
+from ..parser import Record, mime_excel
 
 
 def test_SetupRequest_fetch_bad_id():
@@ -203,6 +203,116 @@ def test_SetupRequest_process_form_comms_error():
     # disable Redis to simulate connection errors
     with override_settings(CACHES={}), pytest.raises(SetupException):
         setup.process_form(None)
+
+
+def test_SetupRequest_process_form_metadata(db, writable_session):
+    media = edd_models.MetadataType.system("Media")
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
+        payload = {
+            # name "bWV0YTpIb3VzZQ" translates to field for "House"
+            "bWV0YTpIb3VzZQ": '{"ignore":1}',
+            # name "bWV0YTpXb3JsZA" translates to field for "World"
+            "bWV0YTpXb3JsZA": media.pk,
+            # name "bWV0YTpTcGljZQ" translates to field for "Spice"
+            "bWV0YTpTcGljZQ": '{"new":1}',
+        }
+        form = ResolveTokensForm(setup_request=setup, data=payload)
+        setup.process_form(form)
+        assert setup.records_resolved == 2
+        assert setup.records_unresolved == 0
+
+
+def test_SetupRequest_process_form_assay_metadata(db, writable_session):
+    protocol = ProtocolFactory()
+    assay_name = edd_models.MetadataType.system("Assay Name")
+    time = edd_models.MetadataType.system("Time")
+    filename = writable_session.path("unmatched.csv")
+    with writable_session.setup(upload_file=filename) as setup:
+        payload = {
+            # name "bWV0YTpIb3VzZQ" translates to field for "House"
+            "bWV0YTpIb3VzZQ": '{"ignore":1}',
+            # name "bWV0YTpXb3JsZA" translates to field for "World"
+            "bWV0YTpXb3JsZA": time.pk,
+            # name "cHJvdG9jb2w6V29ybGQ" translates to protocol for "World"
+            "cHJvdG9jb2w6V29ybGQ": protocol.pk,
+            # name "bWV0YTpTcGljZQ" translates to field for "Spice"
+            "bWV0YTpTcGljZQ": assay_name.pk,
+            # name "cHJvdG9jb2w6U3BpY2U" translates to protocol for "Spice"
+            "cHJvdG9jb2w6U3BpY2U": protocol.pk,
+        }
+        form = ResolveTokensForm(setup_request=setup, data=payload)
+        setup.process_form(form)
+        assert setup.records_resolved == 2
+        assert setup.records_unresolved == 0
+
+
+def test_SetupRequest_process_form_strains(db, writable_session):
+    existing_strain = StrainFactory()
+    filename = writable_session.path("strain.csv")
+    with writable_session.setup(upload_file=filename) as setup:
+        payload = {
+            # name "c3RyYWluOkpCeF8wMDAwMQ" translates to strain ID JBx_00001
+            "c3RyYWluOkpCeF8wMDAwMQ": [existing_strain.registry_id],
+        }
+        form = ResolveTokensForm(setup_request=setup, data=payload)
+        setup.process_form(form)
+        assert setup.records_resolved == 1
+        assert setup.records_unresolved == 3
+
+        # name "Zm9ybTpzdHJhaW4" translates to boolean field for ignoring all strains
+        payload = {"Zm9ybTpzdHJhaW4": 1}
+        form = ResolveTokensForm(setup_request=setup, data=payload)
+        setup.process_form(form)
+        assert setup.records_resolved == 4
+        assert setup.records_unresolved == 0
+
+
+def test_SetupRequest_process_payload(db, writable_session):
+    existing_strain = StrainFactory()
+    protocol = ProtocolFactory()
+    assay_name = edd_models.MetadataType.system("Assay Name")
+    time = edd_models.MetadataType.system("Time")
+    records = [
+        # record with just line metadata
+        Record(
+            name="A",
+            meta=[
+                {"uuid": "09d8056b-b0f3-4975-aa41-0e64575d179b", "value": "100rpm"},
+                {"uuid": "1b6c71b1-bb71-44d0-9664-fbade255c03a", "value": "250mL"},
+            ],
+        ),
+        # record with a strain
+        Record(name="B", strain=[{"uuids": [str(existing_strain.registry_id)]}]),
+        # record with one- and two-level assay metadata
+        Record(
+            assays={
+                str(protocol.uuid): [
+                    # first assay with only time
+                    {"uuid": str(time.uuid), "value": "12h"},
+                    # second assay with time and name override
+                    [
+                        {"uuid": str(time.uuid), "value": "36h"},
+                        {"uuid": str(assay_name.uuid), "value": "newname"},
+                    ],
+                    # empty list creates no-metadata assay
+                    [],
+                ],
+            },
+            name="C",
+        ),
+        # record with unresolvable metadata
+        Record(name="D", meta=[{"uuid": None, "value": "ignored"}]),
+    ]
+    with writable_session.setup() as setup:
+        setup.process_payload(records, writable_session.user)
+        assert setup.records_resolved == 3
+        assert setup.records_unresolved == 1
+
+        setup.commit(writable_session.user)
+        study_id = writable_session.study.pk
+        assert edd_models.Line.objects.filter(study_id=study_id).count() == 3
+        assert edd_models.Assay.objects.filter(line__name="C", study_id=study_id).count() == 3
 
 
 def test_SetupRequest_commit_with_assay_metadata(client, writable_session):

@@ -226,17 +226,19 @@ class SetupRequest:
             raise SetupException() from e
         return self
 
+    def process_payload(self, payload: Iterable[Record], user: "User") -> typing.Self:
+        resolver = Resolver(user=user)
+        # need an iterator for the while loop
+        records = iter(payload)
+        while batch := tuple(itertools.islice(records, 100)):
+            self._process_record_batch(batch, resolver)
+        self._sort_tokens()
+        return self
+
     def process_upload(self, user: "User") -> typing.Self:
         parser = Parser(self.mime_type)
-        resolver = Resolver(user=user)
         with self.open() as file:
-            # parser gives a generator, but need an iterator for the while loop
-            records = iter(parser.parse(file))
-            while batch := tuple(itertools.islice(records, 100)):
-                self._process_record_batch(batch, resolver)
-            # sort tokens so form can maintain consistent ordering
-            self._sort_tokens()
-        return self
+            return self.process_payload(parser.parse(file), user)
 
     @property
     def progress(self) -> SetupProgress:
@@ -258,11 +260,11 @@ class SetupRequest:
             raise SetupException(_("Failed to fetch progress information")) from e
 
     @property
-    def records_resolved(self):
+    def records_resolved(self) -> int:
         return self._db().llen(self._subkey("resolved"))
 
     @property
-    def records_unresolved(self):
+    def records_unresolved(self) -> int:
         return self._db().llen(self._subkey("unresolved"))
 
     def retire(self):

@@ -28,18 +28,18 @@ parser can act as a generator for "Record" objects, given an input file.
 
 
 class MetaInfo(typing.TypedDict):
-    name: str
+    name: typing.NotRequired[str]
     uuid: str | None
     value: typing.Any | None
 
 
 # key is protocol UUID, use MISSING_PROTOCOL if requiring a Protocol selection
 MISSING_PROTOCOL = "__None__"
-type AssayMeta = dict[str, list[MetaInfo] | list[list[MetaInfo]]]
+AssayMeta: typing.TypeAlias = dict[str, list[MetaInfo | list[MetaInfo]]]
 
 
 class StrainInfo(typing.TypedDict):
-    name: str
+    name: typing.NotRequired[str]
     uuids: list[str] | None
 
 
@@ -99,8 +99,7 @@ class Record:
                 yield protocol_uuid, one_deep
             two_deep = [item for item in values if isinstance(item, list)]
             for meta in two_deep:
-                if meta:
-                    yield protocol_uuid, meta
+                yield protocol_uuid, meta
 
     def resolve(self, resolver: RecordResolver) -> set[str]:
         """
@@ -130,27 +129,29 @@ class Record:
     ) -> Generator[MetaInfo, None, None]:
         # loop over metadata list
         for m in self.meta:
-            meta_name = m["name"]
             if t := self._get_type_from_info(m, resolver):
                 yield from self._update_metadata(m, t, resolver, failed)
-            elif resolver.is_meta_ignored(meta_name):
-                # drop metadata by not yielding it
-                pass
-            else:
+            elif not resolver.is_meta_ignored(meta_name := m.get("name", "")):
                 failed.add("form:meta")
-                failed.add(f"meta:{meta_name}")
+                if meta_name:
+                    failed.add(f"meta:{meta_name}")
                 yield m
 
     def _filter_protocol(
         self,
         resolver: RecordResolver,
         failed: set[str],
-    ) -> Generator[MetaInfo, None, None]:
+    ) -> Generator[MetaInfo | list[MetaInfo], None, None]:
         for m in self.assays.get(MISSING_PROTOCOL, []):
-            meta_name = m["name"]
+            # not supporting multiple assays via spreadsheet upload
+            assert isinstance(m, dict)
+            # not supporting unnamed assay metadata via spreadsheet upload
+            meta_name = m.get("name", None)
+            assert meta_name
             if p := resolver.protocol_id_from_name(meta_name):
                 self._save_assay_metadata(m, p)
             else:
+                failed.add("form:protocol")
                 failed.add(f"protocol:{meta_name}")
                 yield m
 
@@ -160,23 +161,20 @@ class Record:
         failed: set[str],
     ) -> Generator[StrainInfo, None, None]:
         for s in self.strain:
-            strain_name = s["name"]
             if s["uuids"]:
                 yield s
-            elif resolver.is_strain_ignored(strain_name):
-                pass
-            elif strains := resolver.strains_from_name(strain_name):
-                s["uuids"] = [x.registry_id for x in strains]
-                yield s
-            else:
-                failed.add("form:strain")
-                failed.add(f"strain:{strain_name}")
+            elif not resolver.is_strain_ignored(strain_name := s.get("name", "")):
+                if strains := resolver.strains_from_name(strain_name):
+                    s["uuids"] = [x.registry_id for x in strains]
+                else:
+                    failed.add("form:strain")
+                    failed.add(f"strain:{strain_name}")
                 yield s
 
     def _get_type_from_info(self, meta: MetaInfo, resolver: RecordResolver):
         meta_uuid = meta["uuid"]
         if meta_uuid is None:
-            return resolver.metatype_from_name(meta["name"])
+            return resolver.metatype_from_name(meta.get("name", ""))
         return resolver.metatype_from_uuid(meta_uuid)
 
     def _save_assay_metadata(self, meta: MetaInfo, protocol: str) -> None:
@@ -195,7 +193,7 @@ class Record:
         meta["uuid"] = metatype.uuid
         if metatype.for_assay():
             # shifting the MetaInfo object to self.assays
-            protocol = resolver.protocol_id_from_name(meta["name"])
+            protocol = resolver.protocol_id_from_name(meta.get("name", ""))
             self._save_assay_metadata(meta, protocol or MISSING_PROTOCOL)
             # not yielding to drop from potential line metadata list in self.meta
         else:
@@ -274,6 +272,7 @@ class RegexHeading(HeadingPrototype[T]):
     def accept(self, heading: Cell) -> RecordUpdater[T] | None:
         if isinstance(heading, str) and self.regex.fullmatch(heading):
             return self
+        return None
 
     def update(self, record: Record, value: T) -> None:
         setattr(record, self.property_name, value)
@@ -312,6 +311,7 @@ class MetadataHeading(HeadingPrototype[str]):
         # almost a catch-all; we're going to ignore empty headings
         if heading:
             return MetadataUpdater(heading)
+        return None
 
 
 class MetadataUpdater(RecordUpdater[str]):
@@ -393,6 +393,7 @@ class Parser:
                     row_index=row_index,
                     title=content,
                 )
+        return None
 
     def _process_row(self, row: Row, index: int) -> Iterable[Record]:
         if not self.columns:
@@ -410,9 +411,7 @@ class Parser:
                 yield record
 
     def _read(self, stream: typing.IO) -> Sheet:
-        if self.mime_type.startswith("text/"):
-            yield from self._read_csv(stream)
-        elif self.mime_type == mime_win_csv:
+        if self.mime_type.startswith("text/") or self.mime_type == mime_win_csv:
             yield from self._read_csv(stream)
         elif self.mime_type == mime_excel:
             yield from self._read_excel(stream)
