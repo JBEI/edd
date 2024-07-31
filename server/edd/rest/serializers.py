@@ -134,11 +134,7 @@ class StudySerializer(EDDObjectSerializer):
         read_only_fields = ("slug",)
 
     def validate(self, data):
-        if (
-            not self.partial
-            and "contact_id" not in data
-            and "contact_extra" not in data
-        ):
+        if not self.partial and "contact_id" not in data and "contact_extra" not in data:
             raise serializers.ValidationError(
                 'Must specify one of "contact_id" or "contact_extra"'
             )
@@ -206,7 +202,7 @@ class MeasurementTypeSerializer(serializers.ModelSerializer):
         depth = 0
         fields = ("accession", "cid", "family", "name", "pk", "url", "uuid")
 
-    def get_url(self, obj):
+    def get_url(self, obj) -> str | None:
         match obj.type_group:
             case models.MeasurementType.Group.METABOLITE:
                 return f"https://pubchem.ncbi.nlm.nih.gov/compound/{obj.metabolite.pubchem_cid}"
@@ -265,10 +261,10 @@ class ExportMeasurementSerializer(serializers.Serializer):
     type_name = serializers.SerializerMethodField()
     unit_name = serializers.SerializerMethodField()
 
-    def get_type_name(self, obj):
+    def get_type_name(self, obj) -> str:
         return obj.measurement_type.type_name
 
-    def get_unit_name(self, obj):
+    def get_unit_name(self, obj) -> str:
         return obj.y_units.unit_name
 
 
@@ -280,23 +276,23 @@ class ExportSerializer(serializers.Serializer):
     x = serializers.SerializerMethodField()
     y = serializers.SerializerMethodField()
 
-    def get_replicate_key(self, obj):
+    def get_replicate_key(self, obj) -> str:
         # when replicate_key annotated from edd.rest.views.ExportFilter
         # when not annotated, return empty string
         return getattr(obj, "replicate_key", "")
 
-    def get_type_formal(self, obj):
+    def get_type_formal(self, obj) -> str:
         # when anno_formal_type annotated from edd.rest.views.ExportFilter
         # when not annotated, return empty string
         return getattr(obj, "anno_formal_type", "")
 
-    def get_x(self, obj):
+    def get_x(self, obj) -> float | None:
         # TODO: handle vector values
         if len(obj.x) > 0:
             return obj.x[0]
         return None
 
-    def get_y(self, obj):
+    def get_y(self, obj) -> float | None:
         # TODO: handle vector values
         if len(obj.y) > 0:
             return obj.y[0]

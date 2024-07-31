@@ -1,6 +1,7 @@
 """
 Defines classes that enforce EDD object permissions in the context of Django Rest Framework.
 """
+
 from rest_framework import permissions
 
 from main import models
@@ -20,11 +21,11 @@ class StudyResourcePermissions(permissions.IsAuthenticated):
 
     def has_object_permission(self, request, view, obj):
         result = super().has_object_permission(request, view, obj)
-        access = models.Study.access_filter(
-            request.user, access=models.StudyPermission.CAN_VIEW
-        )
-        if request.method not in permissions.SAFE_METHODS:
-            access = models.Study.access_filter(
-                request.user, access=models.StudyPermission.CAN_EDIT
-            )
+        perm = self._get_study_permission_level(request)
+        access = models.Study.access_filter(request.user, access=perm)
         return result and models.Study.objects.filter(access, id=obj.pk).exists()
+
+    def _get_study_permission_level(self, request):
+        if request.method not in permissions.SAFE_METHODS:
+            return models.StudyPermission.CAN_EDIT
+        return models.StudyPermission.CAN_VIEW

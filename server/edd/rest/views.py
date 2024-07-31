@@ -6,9 +6,11 @@ from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
+from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
 from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from rest_framework.response import Response
 
 from main import models
 from main.signals import study_exported
@@ -233,7 +235,8 @@ class StreamingExportViewSet(BaseExportViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         renderer = renderers.StreamingExportRenderer()
         response = StreamingHttpResponse(
-            renderer.stream_csv(queryset), content_type="text/csv; charset=utf-8"
+            renderer.stream_csv(queryset),
+            content_type="text/csv; charset=utf-8",
         )
         # TODO make sure to test with weird non-ascii names
         name = request.query_params.get("out", "export.csv")
@@ -268,10 +271,13 @@ class MeasurementTypesViewSet(viewsets.ReadOnlyModelViewSet):
         return qs.order_by("pk")
 
 
-class CompartmentViewSet(viewsets.ReadOnlyModelViewSet):
-    # fake having a model by converting JSON of all compartments to a list
-    queryset = list(models.Measurement.Compartment.to_json().values())
-    serializer_class = serializers.CompartmentSerializer
+class CompartmentViewSet(viewsets.ViewSet):
+    @extend_schema(responses=serializers.CompartmentSerializer)
+    def list(self, request, *args, **kwargs):
+        # fake having a model by converting JSON of all compartments to a list
+        values = models.Measurement.Compartment.to_json().values()
+        serializer = serializers.CompartmentSerializer(values, many=True)
+        return Response(serializer.data)
 
 
 class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
