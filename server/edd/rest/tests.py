@@ -115,16 +115,20 @@ class StudiesTests(EddApiTestCaseMixin, APITestCase):
         )
         cls.study = factory.StudyFactory()
         cls.study.userpermission_set.create(
-            user=cls.readonly_user, permission_type=models.StudyPermission.READ
+            user=cls.readonly_user,
+            permission_type=models.StudyPermission.READ,
         )
         cls.study.userpermission_set.create(
-            user=cls.write_user, permission_type=models.StudyPermission.WRITE
+            user=cls.write_user,
+            permission_type=models.StudyPermission.WRITE,
         )
         cls.study.grouppermission_set.create(
-            group=cls.read_only_group, permission_type=models.StudyPermission.READ
+            group=cls.read_only_group,
+            permission_type=models.StudyPermission.READ,
         )
         cls.study.grouppermission_set.create(
-            group=cls.write_only_group, permission_type=models.StudyPermission.WRITE
+            group=cls.write_only_group,
+            permission_type=models.StudyPermission.WRITE,
         )
 
     def test_study_get_with_anonymous(self):
@@ -505,9 +509,7 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         # validate
         table = self._read_normal_response(response)
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertRegex(
-            response.get("Link"), r'<https?://.*/rest/export/\?.*>; rel="next"'
-        )
+        self.assertRegex(response.get("Link"), r'<https?://.*/rest/export/\?.*>; rel="next"')
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
         # one row for header, plus page_size==5 rows
@@ -517,15 +519,11 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:export-list")
         self.client.force_authenticate(user=self.admin)
         # force request with small page_size to see paging of results
-        response = self.client.get(
-            url, {"line_id": self.line.pk, "page_size": 5, "page": 6}
-        )
+        response = self.client.get(url, {"line_id": self.line.pk, "page_size": 5, "page": 6})
         # validate
         table = self._read_normal_response(response)
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertRegex(
-            response.get("Link"), r'<https?://.*/rest/export/\?.*>; rel="prev"'
-        )
+        self.assertRegex(response.get("Link"), r'<https?://.*/rest/export/\?.*>; rel="prev"')
         self.assertEqual(response.get("Content-Type"), "text/csv; charset=utf-8")
         self._assert_row_is_header_row(table[0])
         # one row for header, plus page_size==5 rows
@@ -555,6 +553,22 @@ class ExportTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.admin)
         response = self.client.get(url, {"in_study": self.study.slug})
         self._check_status(response, HTTPStatus.OK)
+        assert response.data["count"] == 30
+
+    def test_measurements_active_filter(self):
+        url = reverse("rest:measurements-list")
+        self.client.force_login(self.admin)
+
+        # setting flag true returns active lines
+        response = self.client.get(url, {"active": "1"})
+        assert response.data["count"] == 30
+
+        # setting flag false returns *only* inactive lines
+        response = self.client.get(url, {"active": "0"})
+        assert response.data["count"] == 0
+
+        # default value returns *all* lines, whether active or not
+        response = self.client.get(url)
         assert response.data["count"] == 30
 
 
@@ -643,9 +657,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         replicate_type = models.MetadataType.system("Replicate")
         replicate_id = "abcd-fake-replicate-uuid"
         for _ in range(3):
-            factory.LineFactory(
-                study=self.study, metadata={replicate_type.pk: replicate_id}
-            )
+            factory.LineFactory(study=self.study, metadata={replicate_type.pk: replicate_id})
         # query lines, with big page size and replicate grouping flag set
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
@@ -662,9 +674,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         # explicitly declining replicate grouping should also work
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
-        response = self.client.get(
-            url, {"in_study": self.study.slug, "replicates": "no"}
-        )
+        response = self.client.get(url, {"in_study": self.study.slug, "replicates": "no"})
         self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 10
 
@@ -685,6 +695,14 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         url = reverse("rest:docs")
         response = self.client.get(url)
         self._check_status(response, HTTPStatus.OK)
+
+    def test_compartment_list(self):
+        url = reverse("rest:compartments-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url)
+        self._check_status(response, HTTPStatus.OK)
+        # we don't bother paging this, just directly return the 3 items
+        assert len(response.data) == 3
 
     def test_metadata_types_list(self):
         url = reverse("rest:metadata_types-list")
@@ -731,6 +749,27 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 0
 
+    def test_types_list_metabolites(self):
+        url = reverse("rest:types-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"type_group": "m"})
+        self._check_status(response, HTTPStatus.OK)
+        assert "count" in response.data
+
+    def test_types_list_proteins(self):
+        url = reverse("rest:types-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"type_group": "p"})
+        self._check_status(response, HTTPStatus.OK)
+        assert "count" in response.data
+
+    def test_types_list_empty_group(self):
+        url = reverse("rest:types-list")
+        self.client.force_login(self.admin)
+        response = self.client.get(url, {"type_group": ""})
+        self._check_status(response, HTTPStatus.OK)
+        assert "count" in response.data
+
     def test_units_list(self):
         url = reverse("rest:units-list")
         self.client.force_login(self.admin)
@@ -759,3 +798,53 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(url, {"in_study": study.slug})
         self._check_status(response, HTTPStatus.OK)
         assert "count" in response.data
+
+
+def test_object_active_filter(client, db):
+    user = UserFactory()
+    study = factory.StudyFactory()
+    study.userpermission_set.update_or_create(
+        user=user,
+        defaults={"permission_type": models.StudyPermission.WRITE},
+    )
+    factory.LineFactory(active=True, study=study)
+    factory.LineFactory(active=False, study=study)
+    url = reverse("rest:lines-list")
+    client.force_login(user)
+
+    # setting flag true returns *only* active lines
+    response = client.get(url, {"active": "1"})
+    assert response.data["count"] == 1
+
+    # setting flag false returns *only* inactive lines
+    response = client.get(url, {"active": "0"})
+    assert response.data["count"] == 1
+
+    # default value returns *all* lines, whether active or not
+    response = client.get(url)
+    assert response.data["count"] == 2
+
+
+def test_line_control_filter(client, db):
+    user = UserFactory()
+    study = factory.StudyFactory()
+    study.userpermission_set.update_or_create(
+        user=user,
+        defaults={"permission_type": models.StudyPermission.WRITE},
+    )
+    factory.LineFactory(control=True, study=study)
+    factory.LineFactory(control=False, study=study)
+    url = reverse("rest:lines-list")
+    client.force_login(user)
+
+    # setting flag true returns *only* control lines
+    response = client.get(url, {"control": "1"})
+    assert response.data["count"] == 1
+
+    # setting flag false returns *only* experimental lines
+    response = client.get(url, {"control": "0"})
+    assert response.data["count"] == 1
+
+    # default value returns *all* lines, whether control or experimental
+    response = client.get(url)
+    assert response.data["count"] == 2
