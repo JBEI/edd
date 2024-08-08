@@ -1,6 +1,7 @@
 """Defines views for EDD's REST API."""
 
 import logging
+from http import HTTPMethod, HTTPStatus
 from uuid import UUID
 
 from django.contrib.auth import get_user_model
@@ -8,10 +9,14 @@ from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
 
+from edd.setup import serializers as setup_serializers
+from edd.setup.broker import SetupRequest
+from edd.setup.tasks import submit_rest as submit_setup_rest
 from main import models
 from main.signals import study_exported
 
@@ -73,6 +78,44 @@ class StudiesViewSet(
     permission_classes = [permissions.StudyResourcePermissions]
     queryset = models.Study.objects.order_by("pk").select_related("created", "updated")
     serializer_class = serializers.StudySerializer
+
+    @extend_schema(
+        request=setup_serializers.RecordsSerializer,
+        responses={
+            HTTPStatus.OK: setup_serializers.SessionSerializer,
+            HTTPStatus.BAD_REQUEST: None,
+        },
+    )
+    @action(
+        detail=True,
+        filterset_class=None,
+        methods=[HTTPMethod.POST],
+        pagination_class=None,
+        serializer_class=setup_serializers.RecordsSerializer,
+    )
+    def setup(self, request, pk=None):
+        """
+        Provide a list of records for Experiment Setup.
+        """
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            study = self.get_object()
+            value = submit_setup_rest(study.uuid, request.user, request.data)
+            return Response(value, status=HTTPStatus.OK)
+        return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
+
+
+class SetupViewSet(viewsets.ViewSet):
+    """
+    API endpoint supporting checks on progress of Experiment Setup processing.
+    """
+
+    lookup_field = "uuid"
+
+    @extend_schema(responses=setup_serializers.ProgressSerializer)
+    def retrieve(self, request, uuid=None, *args, **kwargs):
+        setup = SetupRequest.fetch(uuid)
+        return Response(setup.progress)
 
 
 class LinesViewSet(StudyInternalsFilterMixin, viewsets.ReadOnlyModelViewSet):
