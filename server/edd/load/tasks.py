@@ -10,6 +10,7 @@ from main import models, query
 
 from .broker import LoadRequest
 from .forms import ResolveTokensForm
+from .serializers import RecordsSerializer, SessionSerializer
 
 logger = get_task_logger(__name__)
 User = get_user_model()
@@ -41,6 +42,15 @@ def submit_process(load_request, user, background=True) -> None:
     task(load_request.request_uuid, user.pk)
 
 
+def submit_rest(study_uuid: str, user: User, payload: any) -> any:
+    load = LoadRequest(study_uuid=study_uuid)
+    load.store()
+    key = load.form_payload_save(payload)
+    run_rest_import.delay(load.request_uuid, key, user.id)
+    response = SessionSerializer(load)
+    return response.data
+
+
 def submit_update(
     load_request,
     payload_key,
@@ -60,6 +70,41 @@ def submit_update(
 def submit_save(load_request, user, background=True) -> None:
     task = wizard_save.delay if background else wizard_save
     task(load_request.request_uuid, user.pk)
+
+
+@shared_task
+def run_rest_import(request_uuid, payload_key, user_id):
+    load = LoadRequest.fetch(request_uuid)
+    try:
+        payload = load.form_payload_restore(payload_key)
+        serializer = RecordsSerializer(data=payload)
+        user = User.objects.get(pk=user_id)
+        # payload must have passed serialization before task call
+        assert serializer.is_valid()
+        compartment, protocol, records = serializer.save()
+        # update request object with protocol, compartment
+        load.compartment = compartment
+        load.protocol_uuid = protocol
+        load.store()
+        # parse payload into resolved Record objects
+        with load.lock_status(
+            active=load.Status.UPDATING,
+            failed=load.Status.FAILED,
+            success=load.Status.PROCESSED,
+        ):
+            load.process(records, user)
+        # immediately following, commit resolved Record objects to database
+        with load.lock_status(
+            active=load.Status.SAVING,
+            expect=load.Status.PROCESSED,
+            failed=load.Status.FAILED,
+            success=load.Status.COMPLETED,
+        ):
+            load.commit(user)
+    except Exception as e:
+        logger.exception("Failed to process REST import", exc_info=e)
+        load.transition(LoadRequest.Status.FAILED)
+        raise e
 
 
 @shared_task

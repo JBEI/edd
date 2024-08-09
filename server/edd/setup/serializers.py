@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
@@ -17,7 +18,7 @@ class MetaSerializer(serializers.Serializer):
     value = serializers.JSONField(encoder=JSONEncoder)
 
 
-class StrainSerializer(serializers.Serializer):
+class StrainRefSerializer(serializers.Serializer):
     """
     Strain values used with Experiment Setup. The UUIDs *must* match existing
     Strain registry_id values in EDD.
@@ -48,6 +49,7 @@ class SavedSerializer(serializers.Serializer):
     records = serializers.IntegerField(required=False)
 
 
+@extend_schema_serializer(component_name="SetupProgress")
 class ProgressSerializer(serializers.Serializer):
     """
     Contains information on progress in saving an Experiment Setup.
@@ -60,6 +62,7 @@ class ProgressSerializer(serializers.Serializer):
     unresolved = serializers.IntegerField(required=False)
 
 
+@extend_schema_serializer(component_name="SetupRecord")
 class RecordSerializer(serializers.Serializer):
     """
     A single Record in Experiment Setup has the name, description, and replicate
@@ -86,7 +89,7 @@ class RecordSerializer(serializers.Serializer):
         required=False,
     )
     strain = serializers.ListField(
-        child=StrainSerializer(),
+        child=StrainRefSerializer(),
         default=[],
         required=False,
     )
@@ -103,6 +106,7 @@ class RecordsSerializer(serializers.ListSerializer):
     child = RecordSerializer()
 
 
+@extend_schema_serializer(component_name="SetupSession")
 class SessionSerializer(serializers.Serializer):
     """
     Information on an Experiment Setup session. Use the UUID of the session

@@ -7,13 +7,16 @@ from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
-from drf_spectacular.utils import extend_schema
-from rest_framework import mixins, viewsets
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import exceptions, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
 
+from edd.load import serializers as load_serializers
+from edd.load.broker import LoadRequest
+from edd.load.tasks import submit_rest as submit_load_rest
 from edd.setup import serializers as setup_serializers
 from edd.setup.broker import SetupRequest
 from edd.setup.tasks import submit_rest as submit_setup_rest
@@ -80,6 +83,31 @@ class StudiesViewSet(
     serializer_class = serializers.StudySerializer
 
     @extend_schema(
+        request=load_serializers.RecordsSerializer,
+        responses={
+            HTTPStatus.OK: load_serializers.SessionSerializer,
+            HTTPStatus.BAD_REQUEST: None,
+        },
+    )
+    @action(
+        detail=True,
+        filterset_class=None,
+        methods=[HTTPMethod.POST],
+        pagination_class=None,
+        serializer_class=load_serializers.RecordsSerializer,
+    )
+    def load(self, request, pk=None):
+        """
+        Provide a list of measurements to import into the Study.
+        """
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            study = self.get_object()
+            value = submit_load_rest(study.uuid, request.user, request.data)
+            return Response(value, status=HTTPStatus.OK)
+        return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
+
+    @extend_schema(
         request=setup_serializers.RecordsSerializer,
         responses={
             HTTPStatus.OK: setup_serializers.SessionSerializer,
@@ -105,6 +133,25 @@ class StudiesViewSet(
         return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
 
 
+class LoadViewSet(viewsets.ViewSet):
+    """
+    API endpoint supporting checks on progress of data imports to EDD.
+    """
+
+    lookup_field = "uuid"
+
+    @extend_schema(
+        parameters=[OpenApiParameter("uuid", str, "path")],
+        responses=load_serializers.ProgressSerializer,
+    )
+    def retrieve(self, request, uuid=None, *args, **kwargs):
+        try:
+            load = LoadRequest.fetch(uuid)
+            return Response(load.progress)
+        except Exception as e:
+            raise exceptions.NotFound() from e
+
+
 class SetupViewSet(viewsets.ViewSet):
     """
     API endpoint supporting checks on progress of Experiment Setup processing.
@@ -112,10 +159,16 @@ class SetupViewSet(viewsets.ViewSet):
 
     lookup_field = "uuid"
 
-    @extend_schema(responses=setup_serializers.ProgressSerializer)
+    @extend_schema(
+        parameters=[OpenApiParameter("uuid", str, "path")],
+        responses=setup_serializers.ProgressSerializer,
+    )
     def retrieve(self, request, uuid=None, *args, **kwargs):
-        setup = SetupRequest.fetch(uuid)
-        return Response(setup.progress)
+        try:
+            setup = SetupRequest.fetch(uuid)
+            return Response(setup.progress)
+        except Exception as e:
+            raise exceptions.NotFound() from e
 
 
 class LinesViewSet(StudyInternalsFilterMixin, viewsets.ReadOnlyModelViewSet):
