@@ -33,10 +33,10 @@ class MessagingMixin:
 
         self.details: list[str] = []
         match details:
-            case None:
-                pass
             case str() | Promise():
                 self.details = [details]
             case Iterable() as d:
                 # account for sets, frozensets, etc that may be more convenient for client code
                 self.details = list(d)
+            case _:
+                pass

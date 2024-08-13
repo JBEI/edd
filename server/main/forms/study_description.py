@@ -287,14 +287,10 @@ class MetadataUpdateForm(MetadataSelectForm):
         )
 
     def apply_metadata(self, instance):
-        print("applying metadata changes")
         for t in self.selection:
-            print(f"working on {t}")
             if value := self.cleaned_data.get(self._type_set_field(t), None):
-                print(f"setting {t} to {value}")
                 instance.metadata_add(t, value, append=False)
             if self.cleaned_data.get(self._type_remove_field(t), False):
-                print(f"removing {t}")
                 instance.metadata_clear(t)
 
     @staticmethod
@@ -319,8 +315,7 @@ class MetadataUpdateForm(MetadataSelectForm):
     @property
     def type_fields(self):
         yield from (
-            (self[set_field], self[remove_field])
-            for set_field, remove_field in self._type_fields
+            (self[set_field], self[remove_field]) for set_field, remove_field in self._type_fields
         )
 
     @staticmethod

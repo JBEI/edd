@@ -245,17 +245,9 @@ class ImportInterpretView(ReactlessImportView):
         return HttpResponseRedirect(url)
 
     def _do_save(self, request, load_request):
-        if tasks.submit_save(load_request, request.user):
-            url = self.study_reverse("main:load:save", uuid=load_request.request_uuid)
-            return HttpResponseRedirect(url)
-        messages.warning(
-            request,
-            _("EDD detected an inconsistent state, please try again."),
-        )
-        return self.render_to_response(
-            self.get_context_data(),
-            status=HTTPStatus.CONFLICT,
-        )
+        tasks.submit_save(load_request, request.user)
+        url = self.study_reverse("main:load:save", uuid=load_request.request_uuid)
+        return HttpResponseRedirect(url)
 
 
 class ImportSaveView(ReactlessImportView):

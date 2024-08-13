@@ -108,7 +108,6 @@ class ExportTaskTests(TestCase):
         export_id = tasks.export_worklist_task.s(self.user.id, path).apply()
         result = storage.load_export(export_id.result)
 
-        print(result)
         with io.TextIOWrapper(io.BytesIO(result), encoding="utf-8") as file:
             rows = list(csv.reader(file))
         # header row + 10 lines + blank row
@@ -171,9 +170,7 @@ class WorklistExportTests(TestCase):
         # initialize protocol for worklist
         cls.protocol = factory.ProtocolFactory(name="potato")
         # initialize twenty lines in the study, 1-base index
-        cls.lines = [
-            factory.LineFactory(name=f"L{i}", study=cls.study) for i in range(1, 21)
-        ]
+        cls.lines = [factory.LineFactory(name=f"L{i}", study=cls.study) for i in range(1, 21)]
         # initialize 3x assays on lines 6, 8, 10, 12, 14 (1-base)
         # assays at times 12, 24, 36
         time = models.MetadataType.system("Time")

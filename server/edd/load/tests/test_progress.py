@@ -30,7 +30,7 @@ def transition(load_request: LoadRequest, status: LoadRequest.Status):
 
 @contextlib.asynccontextmanager
 async def session(websocket, lr, *, is_open=True, user=None):
-    path = f"/ws/load/{lr.request}/"
+    path = f"/ws/load/{lr.request_uuid}/"
     communicator = WebsocketCommunicator(websocket, path)
     if user:
         communicator.scope["user"] = user

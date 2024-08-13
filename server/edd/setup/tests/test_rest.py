@@ -150,6 +150,35 @@ def test_setup_create_with_assays(client, writable_session):
     assert C.assay_set.count() == 0
 
 
+def test_setup_create_with_invalid_metadata(client, writable_session):
+    url = reverse("rest:studies-setup", args=[writable_session.study.pk])
+    payload = [
+        {
+            "name": "A",
+            "meta": [{"uuid": "00000000-0000-0000-0000-0000deadbeef", "value": "whatever"}],
+        },
+        {
+            "name": "B",
+            "meta": [{"uuid": "00000000-0000-0000-0000-1111deadbeef", "value": "something"}],
+        },
+    ]
+    client.force_login(writable_session.user)
+
+    # patching to avoid actually submitting task
+    with patch("edd.setup.tasks.setup_rest_payload") as task:
+        response = client.post(url, payload, content_type=JSON_CONTENT)
+
+    # the uuids on metadata still parse *as* UUID, so gets past first stage of validation
+    assert response.status_code == HTTPStatus.OK
+    assert "uuid" in response.data
+    assert response.data["url"] == reverse("rest:setup-detail", args=[response.data["uuid"]])
+    task.delay.assert_called_once()
+
+    # call the task directly to ensure invalid metadata isn't saved
+    tasks.setup_rest_payload(*task.delay.call_args.args)
+    assert writable_session.study.line_set.count() == 0
+
+
 def test_setup_progress_after_create(client, writable_session):
     url = reverse("rest:studies-setup", args=[writable_session.study.pk])
     payload = [
@@ -176,7 +205,6 @@ def test_setup_progress_after_create(client, writable_session):
     assert progress.status_code == HTTPStatus.OK
     assert "resolved" in progress.data
     assert "unresolved" in progress.data
-    print(progress.data)
     assert progress.data["status"] == "Done"
     assert progress.data["saved"]["assays"] == 0
     assert progress.data["saved"]["lines"] == 4

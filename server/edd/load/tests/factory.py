@@ -63,29 +63,34 @@ class ImportSession:
             defaults={"permission_type": permission_type},
         )
 
-    def create_ready_records(self, count):
+    def create_ready_records(self, lr, count):
         # create some ready-to-go records
         mtype = main_factory.MeasurementTypeFactory()
         xunit = main_factory.UnitFactory()
         yunit = main_factory.UnitFactory()
+        records = []
         for _ in range(count):
             line = main_factory.LineFactory(study=self.study)
             assay = main_factory.AssayFactory(line=line, protocol=self.protocol)
-            yield Record(
-                assay_id=assay.id,
-                line_id=assay.line_id,
-                shape="0",
-                type_id=mtype.id,
-                x_unit_id=xunit.id,
-                x=[main_factory.fake.pyfloat(min_value=0.0, max_value=24.0)],
-                y_unit_id=yunit.id,
-                y=[main_factory.fake.pyfloat(min_value=0.0, max_value=100.0)],
+            records.append(
+                Record(
+                    assay_id=assay.id,
+                    line_id=assay.line_id,
+                    shape="0",
+                    type_id=mtype.id,
+                    x_unit_id=xunit.id,
+                    x=[main_factory.fake.pyfloat(min_value=0.0, max_value=24.0)],
+                    y_unit_id=yunit.id,
+                    y=[main_factory.fake.pyfloat(min_value=0.0, max_value=100.0)],
+                )
             )
+        lr.process(records, self.user)
+        lr.transition(lr.Status.PROCESSED)
 
-    def create_resolved_records(self):
+    def create_resolved_record(self, lr):
         line = main_factory.LineFactory(study=self.study)
         mtype = main_factory.MetaboliteFactory()
-        return [
+        records = [
             Record(
                 locator=line.name,
                 line_id=line.id,
@@ -98,8 +103,11 @@ class ImportSession:
                 y_unit="n/a",
             ),
         ]
+        lr.process(records, self.user)
+        lr.transition(lr.Status.PROCESSED)
 
-    def create_unresolved_records(self, locator_name="A1"):
+    def create_unresolved_record(self, lr):
+        locator_name = main_factory.fake.word()
         records = [
             Record(
                 locator=locator_name,
@@ -111,7 +119,9 @@ class ImportSession:
                 y_unit="unknown unit y",
             ),
         ]
-        return locator_name, records
+        lr.process(records, self.user)
+        lr.transition(lr.Status.PROCESSED)
+        return locator_name
 
     def create_upload_file(self, filename):
         file = io.BytesIO()

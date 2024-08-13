@@ -13,9 +13,7 @@ def writable_session(db):
 
 def test_wizard_import_adds_entry(writable_session):
     with writable_session.start() as lr:
-        records = list(writable_session.create_ready_records(10))
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_ready_records(lr, 10)
         tasks.submit_save(lr, writable_session.user, background=False)
 
     logs = StudyLog.objects.filter(

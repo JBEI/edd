@@ -59,7 +59,7 @@ class FormResolver(RecordResolver):
         if self.form.cleaned_data.get(bulk_key, False):
             return True
         name_key = name_from_token(f"meta:{name}".encode())
-        if self.form.cleaned_data.get(name_key, None) == {"ignore": True}:
+        if "ignore" in self.form.cleaned_data.get(name_key, {}):
             return True
         return False
 
@@ -82,6 +82,7 @@ class FormResolver(RecordResolver):
                 pass
             case _:
                 logger.warning(f"Failed to match form value: {value}")
+        return None
 
     @functools.cache
     def metatype_from_uuid(self, uuid: str) -> edd_models.MetadataType | None:
@@ -90,6 +91,7 @@ class FormResolver(RecordResolver):
             return edd_models.MetadataType.objects.get(uuid=uuid)
         except Exception:
             pass
+        return None
 
     @functools.cache
     def protocol_id_from_name(self, name: str) -> str | None:
@@ -162,7 +164,7 @@ class ResolveTokensForm(forms.Form):
 
     @functools.cached_property
     def page_next(self) -> int | None:
-        if self.page_size * self.page < self.setup.token_count:
+        if self.page_size * self.page < self.setup.request.tokens_length():
             return self.page + 1
         return None
 

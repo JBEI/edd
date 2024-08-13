@@ -13,14 +13,12 @@ User = get_user_model()
 
 def submit_commit(setup_request: SetupRequest, user: User, background=True) -> None:
     task = setup_commit.delay if background else setup_commit
-    # TODO any checks on SetupRequest?
     task(setup_request.request_uuid, user.pk)
 
 
 def submit_process(setup_request: SetupRequest, user: User, background=True) -> None:
     task = setup_process.delay if background else setup_process
-    if setup_request.is_process_ready():
-        task(setup_request.request_uuid, user.pk)
+    task(setup_request.request_uuid, user.pk)
 
 
 def submit_rest(study_uuid: str, user: User, payload: any) -> any:
@@ -39,7 +37,6 @@ def submit_update(
     background=True,
 ) -> None:
     task = setup_update.delay if background else setup_update
-    # TODO any checks on SetupRequest?
     task(
         setup_request.request_uuid,
         payload_key,
@@ -59,7 +56,7 @@ def setup_commit(request_uuid, user_id):
         ):
             setup.commit(User.objects.get(pk=user_id))
         # if setup has no unresolved records, transition again to DONE
-        if setup.records_unresolved == 0:
+        if setup.request.unresolved_length() == 0:
             setup.transition(setup.Status.DONE)
     except SetupException as e:
         raise e

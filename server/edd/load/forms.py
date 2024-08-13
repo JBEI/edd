@@ -144,12 +144,6 @@ class ResolveTokensForm(forms.Form):
     def get_count_created_bulk_types(self):
         return self.counter["bulk_type"]
 
-    def get_count_created_lines(self):
-        return self.counter["line"]
-
-    def get_count_created_types(self):
-        return self.counter["type"]
-
     def get_count_created_units(self):
         return self.counter["unit"]
 
@@ -291,38 +285,23 @@ class ResolveTokensForm(forms.Form):
         return getattr(settings, "EDD_ALLOW_IMPORT_PROVISIONAL_TYPES", True)
 
     def _new_line(self, locator):
-        try:
-            line = edd_models.Line.objects.create(
-                name=locator,
-                study_id=self.study.id,
-            )
-            assay = line.new_assay(locator, self.protocol)
-            self.counter["line"] += 1
-            return (assay.id, line.id)
-        except Exception as e:
-            logger.warning(f"Failed to bulk create for {locator}: {e}")
-        return (None, None)
+        line = edd_models.Line.objects.create(name=locator, study_id=self.study.id)
+        assay = line.new_assay(locator, self.protocol)
+        self.counter["line"] += 1
+        return (assay.id, line.id)
 
     def _new_type(self, type_name):
-        try:
-            t = edd_models.MeasurementType.objects.create(
-                provisional=True,
-                type_name=type_name,
-            )
-            self.counter["type"] += 1
-            return t.id
-        except Exception as e:
-            logger.warning(f"Failed to create provisional type for {type_name}: {e}")
-        return None
+        t = edd_models.MeasurementType.objects.create(
+            provisional=True,
+            type_name=type_name,
+        )
+        self.counter["type"] += 1
+        return t.id
 
     def _new_unit(self, unit):
-        try:
-            obj = edd_models.MeasurementUnit.objects.create(unit_name=unit)
-            self.counter["unit"] += 1
-            return obj.id
-        except Exception as e:
-            logger.warning(f"Failed to create unit for {unit}: {e}")
-        return None
+        obj = edd_models.MeasurementUnit.objects.create(unit_name=unit)
+        self.counter["unit"] += 1
+        return obj.id
 
     def _validate_assay(self, assay_id):
         try:
@@ -344,19 +323,11 @@ class ResolveTokensForm(forms.Form):
             return (None, None)
 
     def _validate_type(self, type_id):
-        try:
-            # verify type exists
-            obj = edd_models.MeasurementType.objects.get(id=type_id)
-            return obj.id
-        except Exception as e:
-            logger.warning(f"Failed to validate unit {type_id}: {e}")
-            return None
+        # verify type exists
+        obj = edd_models.MeasurementType.objects.get(id=type_id)
+        return obj.id
 
     def _validate_unit(self, unit_id):
-        try:
-            # verify unit exists
-            obj = edd_models.MeasurementUnit.objects.get(id=unit_id)
-            return obj.id
-        except Exception as e:
-            logger.warning(f"Failed to validate unit {unit_id}: {e}")
-            return None
+        # verify unit exists
+        obj = edd_models.MeasurementUnit.objects.get(id=unit_id)
+        return obj.id

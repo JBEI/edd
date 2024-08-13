@@ -1,4 +1,3 @@
-from decimal import Decimal
 from http import HTTPStatus
 from unittest.mock import patch
 
@@ -8,7 +7,7 @@ from django.urls import reverse
 from pytest import mark
 from pytest_django import asserts
 
-from main.models import Measurement, MeasurementType, StudyPermission
+from main.models import Measurement, MeasurementType, MetadataType, StudyPermission
 from main.tests import factory as main_factory
 
 from .. import tasks
@@ -199,7 +198,7 @@ def test_task_process_with_invalid_id(writable_session):
 def test_task_process_with_missing_upload(writable_session):
     with writable_session.start() as lr:
         tasks.submit_process(lr, writable_session.user, background=False)
-        updated = LoadRequest.fetch(lr.request)
+        updated = LoadRequest.fetch(lr.request_uuid)
     assert updated.status == LoadRequest.Status.FAILED
 
 
@@ -207,7 +206,7 @@ def test_task_process_success(writable_session):
     with writable_session.start(layout_key="skyline") as lr:
         writable_session.simple_skyline_upload(lr)
         tasks.submit_process(lr, writable_session.user, background=False)
-        progress = LoadRequest.fetch(lr.request).progress
+        progress = LoadRequest.fetch(lr.request_uuid).progress
     assert progress["resolved"] == 1
     assert progress["unresolved"] == 0
 
@@ -218,7 +217,7 @@ def test_task_process_with_error(writable_session):
         with patch.object(LoadRequest, "resolve_batch") as stub_method:
             stub_method.side_effect = Exception("Oops, resolve error")
             tasks.submit_process(lr, writable_session.user, background=False)
-        progress = LoadRequest.fetch(lr.request).progress
+        progress = LoadRequest.fetch(lr.request_uuid).progress
     assert progress["resolved"] == 0
     assert progress["unresolved"] == 0
     assert progress["status"] == str(LoadRequest.Status.FAILED)
@@ -259,10 +258,8 @@ def test_reactless_import_interpret_aborted(client, writable_session):
 
 def test_reactless_import_interpret_with_tokens_to_resolve(client, writable_session):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         response = client.get(url)
     asserts.assertTemplateUsed(response, "edd/load/interpret.html")
@@ -275,10 +272,8 @@ def test_reactless_import_interpret_with_tokens_to_resolve_and_overflow_page(
     writable_session,
 ):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_unresolved_record(lr)
         url = writable_session.url(
             "main:load:interpret-page",
             uuid=lr.request_uuid,
@@ -296,10 +291,8 @@ def test_reactless_import_interpret_with_tokens_to_resolve_later_page(
     writable_session,
 ):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_unresolved_record(lr)
         first_url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         next_url = writable_session.url(
             "main:load:interpret-page",
@@ -329,10 +322,8 @@ def test_reactless_import_interpret_with_tokens_to_resolve_without_bulk_create(
     writable_session,
 ):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_unresolved_record(lr)
         url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         response = client.get(url)
     asserts.assertTemplateUsed(response, "edd/load/interpret.html")
@@ -343,10 +334,8 @@ def test_reactless_import_interpret_with_tokens_to_resolve_without_bulk_create(
 
 def test_reactless_import_interpret_post_with_errors(client, writable_session):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         field_name = name_from_token(f"locator:{locator_name}".encode())
         # patching to avoid actually submitting task
@@ -364,11 +353,8 @@ def test_reactless_import_interpret_post_with_errors(client, writable_session):
 
 def test_reactless_import_interpret_post_partial(client, writable_session):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
-        lr.store()
+        locator_name = writable_session.create_unresolved_record(lr)
         line = main_factory.LineFactory(study=writable_session.study)
         url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         field_name = name_from_token(f"locator:{locator_name}".encode())
@@ -377,17 +363,18 @@ def test_reactless_import_interpret_post_partial(client, writable_session):
             response = client.post(url, {field_name: line.id}, follow=True)
     assert response.status_code == HTTPStatus.OK
     asserts.assertTemplateUsed(response, "edd/load/interpret.html")
-    # real task isn't called yet, so we get the progress bar view
-    asserts.assertTemplateUsed(response, "edd/load/interpret-progress.html")
+    # cache is still in state before progress bar and partial POST updates
+    asserts.assertTemplateUsed(response, "edd/load/interpret-resolve.html")
+    # have 5 "unknown values" for: locator, type, x-unit, y-unit, x-value
+    # also have two more for auto-create on "all locator" and "all type"
+    asserts.assertContains(response, "Found 7 unknown values.")
     task.delay.assert_called_once()
 
 
 def test_reactless_import_interpret_post_abort(client, writable_session):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_unresolved_record(lr)
         url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         # patching to avoid actually submitting task
         with patch("edd.load.tasks.wizard_update") as task:
@@ -400,10 +387,8 @@ def test_reactless_import_interpret_post_abort(client, writable_session):
 
 def test_reactless_import_interpret_post_save(client, writable_session):
     client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         line = main_factory.LineFactory(study=writable_session.study)
         url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         field_name = name_from_token(f"locator:{locator_name}".encode())
@@ -422,36 +407,10 @@ def test_reactless_import_interpret_post_save(client, writable_session):
     save_task.delay.assert_called_once()
 
 
-def test_reactless_import_interpret_post_save_on_aborted(client, writable_session):
-    client.force_login(writable_session.user)
-    locator_name, records = writable_session.create_unresolved_records()
-    with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
-        lr.transition(lr.Status.ABORTED)
-        url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
-        save_task = patch("edd.load.tasks.wizard_save")
-        # patching to avoid actually submitting task
-        with save_task as save_task:
-            response = client.post(
-                url,
-                {"save": "1"},
-                follow=True,
-            )
-    asserts.assertContains(
-        response,
-        "EDD detected an inconsistent state",
-        status_code=HTTPStatus.CONFLICT,
-    )
-    save_task.delay.assert_not_called()
-
-
 def test_reactless_import_interpret_all_resolved(client, writable_session):
     client.force_login(writable_session.user)
-    records = writable_session.create_resolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_resolved_record(lr)
         url = writable_session.url("main:load:interpret", uuid=lr.request_uuid)
         response = client.get(url)
     asserts.assertTemplateUsed(response, "edd/load/interpret.html")
@@ -465,15 +424,13 @@ def test_task_update_with_invalid_id(writable_session):
 
 
 def test_task_update_with_invalid_form(writable_session):
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         field_name = name_from_token(f"locator:{locator_name}".encode())
         # passing invalid JSON to trigger invalid form
         payload_key = lr.form_payload_save({field_name: "{"})
-        tasks.wizard_update(lr.request, payload_key, writable_session.user.pk)
-        progress = LoadRequest.fetch(lr.request).progress
+        tasks.wizard_update(lr.request_uuid, payload_key, writable_session.user.pk)
+        progress = LoadRequest.fetch(lr.request_uuid).progress
     # overall status doesn't change from Processed, no change in (un)resolved
     assert progress["status"] == str(LoadRequest.Status.PROCESSED)
     assert progress["resolved"] == 0
@@ -482,13 +439,11 @@ def test_task_update_with_invalid_form(writable_session):
 
 @mark.parametrize("save", (True, False))
 def test_task_update(writable_session, save):
-    locator_name, records = writable_session.create_unresolved_records()
     line = main_factory.LineFactory(study=writable_session.study)
     a_type = main_factory.GenericTypeFactory()
     a_unit = main_factory.UnitFactory()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         locator_field = name_from_token(f"locator:{locator_name}".encode())
         type_field = name_from_token(b"type:unknown type")
         value_field = name_from_token(b"x:")
@@ -506,31 +461,23 @@ def test_task_update(writable_session, save):
         )
         # patching to avoid actually submitting task
         with patch("edd.load.tasks.wizard_save") as save_task:
-            assert lr.ok_to_process()
             tasks.wizard_update(
-                lr.request,
+                lr.request_uuid,
                 payload_key,
                 writable_session.user.pk,
                 save_when_done=save,
             )
-        progress = LoadRequest.fetch(lr.request).progress
+        progress = LoadRequest.fetch(lr.request_uuid).progress
     assert progress["resolved"] == 1
     assert progress["unresolved"] == 0
     assert save_task.delay.called == save
-    # overall status doesn't change from Processed when not saving
-    # but does change to Saving when flag is set
-    if save:
-        assert progress["status"] == str(LoadRequest.Status.SAVING)
-    else:
-        assert progress["status"] == str(LoadRequest.Status.PROCESSED)
+    assert progress["status"] == str(LoadRequest.Status.PROCESSED)
     assert save_task.delay.call_count == int(save)
 
 
 def test_task_update_using_new_items(writable_session):
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         locator_field = name_from_token(f"locator:{locator_name}".encode())
         type_field = name_from_token(b"type:unknown type")
         value_field = name_from_token(b"x:")
@@ -548,14 +495,13 @@ def test_task_update_using_new_items(writable_session):
         )
         # patching to avoid actually submitting task
         with patch("edd.load.tasks.send_bulk_abuse_email") as email_task:
-            assert lr.ok_to_process()
             tasks.wizard_update(
-                lr.request,
+                lr.request_uuid,
                 payload_key,
                 writable_session.user.pk,
                 save_when_done=False,
             )
-        progress = LoadRequest.fetch(lr.request).progress
+        progress = LoadRequest.fetch(lr.request_uuid).progress
     # email task is not called
     assert email_task.delay.called is False
     # progress is as expected
@@ -570,10 +516,8 @@ def test_task_update_using_new_items(writable_session):
 
 
 def test_task_update_using_bulk_create(writable_session):
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         payload_key = lr.form_payload_save(
             {
                 name_from_token(b"form:locator"): True,
@@ -582,14 +526,13 @@ def test_task_update_using_bulk_create(writable_session):
         )
         # patching to avoid actually submitting task
         with patch("edd.load.tasks.send_bulk_abuse_email") as email_task:
-            assert lr.ok_to_process()
             tasks.wizard_update(
-                lr.request,
+                lr.request_uuid,
                 payload_key,
                 writable_session.user.pk,
                 save_when_done=False,
             )
-        progress = LoadRequest.fetch(lr.request).progress
+        progress = LoadRequest.fetch(lr.request_uuid).progress
     # email task gets called
     assert email_task.delay.called is True
     # progress is as expected
@@ -606,10 +549,8 @@ def test_task_update_using_bulk_create(writable_session):
 @override_settings(EDD_ALLOW_IMPORT_ANONYMOUS_LINES=False)
 @override_settings(EDD_ALLOW_IMPORT_PROVISIONAL_TYPES=False)
 def test_task_update_using_bulk_create_when_disabled(writable_session):
-    locator_name, records = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        locator_name = writable_session.create_unresolved_record(lr)
         payload_key = lr.form_payload_save(
             {
                 name_from_token(f"locator:{locator_name}".encode()): "",
@@ -617,14 +558,13 @@ def test_task_update_using_bulk_create_when_disabled(writable_session):
                 name_from_token(b"form:type"): True,
             }
         )
-        assert lr.ok_to_process()
         tasks.wizard_update(
-            lr.request,
+            lr.request_uuid,
             payload_key,
             writable_session.user.pk,
             save_when_done=False,
         )
-        progress = LoadRequest.fetch(lr.request).progress
+        progress = LoadRequest.fetch(lr.request_uuid).progress
     assert progress["resolved"] == 0
     assert progress["unresolved"] == 1
     assert progress["status"] == str(LoadRequest.Status.PROCESSED)
@@ -636,21 +576,18 @@ def test_task_update_using_bulk_create_when_disabled(writable_session):
 
 
 def test_task_update_partial_then_full(writable_session):
-    resolved = writable_session.create_resolved_records()
-    locator_name, unresolved = writable_session.create_unresolved_records()
     with writable_session.start() as lr:
-        assert lr.ok_to_process()
-        lr.process(resolved + unresolved, writable_session.user)
+        writable_session.create_resolved_record(lr)
+        locator_name = writable_session.create_unresolved_record(lr)
         payload_key = lr.form_payload_save({name_from_token(b"form:type"): False})
-        assert lr.ok_to_process()
         tasks.wizard_update(
-            lr.request,
+            lr.request_uuid,
             payload_key,
             writable_session.user.pk,
             save_when_done=False,
         )
         # reload to get new status after task run
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
 
         # partial update state checks out
         assert lr.progress["resolved"] == 1
@@ -658,10 +595,9 @@ def test_task_update_partial_then_full(writable_session):
         assert lr.progress["status"] == str(LoadRequest.Status.PROCESSED)
 
         # saving will save the resolved one
-        assert lr.ok_to_save()
-        tasks.wizard_save(lr.request, writable_session.user.pk)
+        tasks.wizard_save(lr.request_uuid, writable_session.user.pk)
         # reload to get new status after task run
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
 
         assert lr.progress["resolved"] == 0
         assert lr.progress["unresolved"] == 1
@@ -683,25 +619,23 @@ def test_task_update_partial_then_full(writable_session):
                 "some_input_id": "",
             }
         )
-        assert lr.ok_to_process()
         tasks.wizard_update(
-            lr.request,
+            lr.request_uuid,
             payload_key,
             writable_session.user.pk,
             save_when_done=False,
         )
         # reload to get new status after task run
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
 
         assert lr.progress["resolved"] == 1
         assert lr.progress["unresolved"] == 0
         assert lr.progress["status"] == str(LoadRequest.Status.PROCESSED)
 
         # saving again will complete the import
-        assert lr.ok_to_save()
-        tasks.wizard_save(lr.request, writable_session.user.pk)
+        tasks.wizard_save(lr.request_uuid, writable_session.user.pk)
         # reload to get new status after task run
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
 
         assert lr.progress["resolved"] == 0
         assert lr.progress["unresolved"] == 0
@@ -861,32 +795,44 @@ def test_form_resolve_unit_failure(writable_session):
 
 def test_form_resolve_value_blank(writable_session):
     with writable_session.start() as lr:
-        locator_name, records = writable_session.create_unresolved_records()
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_unresolved_record(lr)
+        tasks.submit_process(lr, writable_session.user, background=False)
         value_field = name_from_token(b"x:")
         form = ResolveTokensForm(load_request=lr, data={value_field: ""})
     # form still validates when it has no data
     assert form.is_valid()
-    assert form.values(records[0]) == []
 
 
 def test_form_resolve_value_from_form(writable_session):
     with writable_session.start() as lr:
-        locator_name, records = writable_session.create_unresolved_records()
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_unresolved_record(lr)
+        tasks.submit_process(lr, writable_session.user, background=False)
         value_field = name_from_token(b"x:")
         form = ResolveTokensForm(load_request=lr, data={value_field: "12.34"})
     assert form.is_valid()
-    assert form.values(records[0]) == [Decimal("12.34")]
+
+
+def test_form_resolve_value_from_time(writable_session):
+    with writable_session.start() as lr:
+        locator = writable_session.create_unresolved_record(lr)
+        record = next(lr.request.unresolved())
+        time = MetadataType.system("Time")
+        assay = main_factory.AssayFactory(
+            name=locator,
+            protocol=lr.protocol,
+            study=lr.study,
+        )
+        assay.metadata_add(time, 12)
+        assay.save()
+        record.assay_id = assay.id
+        form = ResolveTokensForm(load_request=lr, data={})
+    assert form.is_valid()
+    assert form.values(record) == [12]
 
 
 def test_task_save_with_ready_records(writable_session):
     with writable_session.start() as lr:
-        records = list(writable_session.create_ready_records(10))
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_ready_records(lr, 10)
         tasks.submit_save(lr, writable_session.user, background=False)
 
     saved_measurements = Measurement.objects.filter(study_id=writable_session.study.id)
@@ -896,17 +842,11 @@ def test_task_save_with_ready_records(writable_session):
 def test_task_save_multiple_imports(writable_session):
     with writable_session.start() as lr:
         # save one set of measurements
-        records = list(writable_session.create_ready_records(10))
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_ready_records(lr, 10)
         tasks.submit_save(lr, writable_session.user, background=False)
-        # transition back to allow adding more
-        lr = lr.fetch(lr.request_uuid)
-        lr.transition(lr.Status.PROCESSED)
         # save another set of measurements
-        records = list(writable_session.create_ready_records(10))
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        lr = LoadRequest.fetch(lr.request_uuid)
+        writable_session.create_ready_records(lr, 10)
         tasks.submit_save(lr, writable_session.user, background=False)
 
     saved_measurements = Measurement.objects.filter(study_id=writable_session.study.id)
@@ -915,13 +855,11 @@ def test_task_save_multiple_imports(writable_session):
 
 def test_task_save_with_transaction_error(writable_session):
     with writable_session.start() as lr:
-        records = list(writable_session.create_ready_records(10))
-        assert lr.ok_to_process()
-        lr.process(records, writable_session.user)
+        writable_session.create_ready_records(lr, 10)
         with patch.object(DatabaseWriter, "persist_batch") as stub_method:
             stub_method.side_effect = Exception("Oops, transaction error")
             tasks.submit_save(lr, writable_session.user, background=False)
-        updated_lr = LoadRequest.fetch(lr.request)
+        updated_lr = LoadRequest.fetch(lr.request_uuid)
 
     saved_measurements = Measurement.objects.filter(study_id=writable_session.study.id)
     assert saved_measurements.count() == 0
@@ -938,7 +876,7 @@ def test_full_import_flow_generic(writable_session):
             lr.upload({"file": file})
         tasks.submit_process(lr, writable_session.user, background=False)
         # need to refresh
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
         tasks.submit_save(lr, writable_session.user, background=False)
 
     saved_measurements = Measurement.objects.filter(study_id=writable_session.study.id)
@@ -955,7 +893,7 @@ def test_full_import_flow_skyline(writable_session):
             lr.upload({"file": file})
         tasks.submit_process(lr, writable_session.user, background=False)
         # need to refresh
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
         # assigning A B C D "proteins" to generated types
         # and setting time to 24
         form_payload = {
@@ -968,7 +906,7 @@ def test_full_import_flow_skyline(writable_session):
         payload_key = lr.form_payload_save(form_payload)
         tasks.submit_update(lr, payload_key, writable_session.user, background=False)
         # need to refresh
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
         # now can save
         tasks.submit_save(lr, writable_session.user, background=False)
 
@@ -986,7 +924,7 @@ def test_full_import_task_flow_ambr(writable_session):
             lr.upload({"file": file})
         tasks.submit_process(lr, writable_session.user, background=False)
         # need to refresh
-        lr = LoadRequest.fetch(lr.request)
+        lr = LoadRequest.fetch(lr.request_uuid)
         tasks.submit_save(lr, writable_session.user, background=False)
 
     saved_measurements = Measurement.objects.filter(study_id=writable_session.study.id)

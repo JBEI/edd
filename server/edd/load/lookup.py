@@ -46,7 +46,7 @@ class Resolver:
         )
 
     @functools.cache
-    def locator_ids(self, locator: str) -> (int | None, int | None):
+    def locator_ids(self, locator: str) -> tuple[int | None, int | None]:
         # search assays
         found_assay_qs = self.assay_queryset().filter(name=locator)
         # limit results

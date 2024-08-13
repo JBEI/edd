@@ -17,29 +17,24 @@ from .models import DefaultUnit
 
 if typing.TYPE_CHECKING:
     Any = typing.Any
-    import uuid
 
 logger = logging.getLogger(__name__)
 
 
 class LocatorResolver(typing.Protocol):
-    def locator_ids(self, locator: str) -> tuple[int | None, int | None]:
-        ...
+    def locator_ids(self, locator: str) -> tuple[int | None, int | None]: ...
 
 
 class TypeNameResolver(typing.Protocol):
-    def type_id(self, type_name: str) -> int | None:
-        ...
+    def type_id(self, type_name: str) -> int | None: ...
 
 
 class UnitResolver(typing.Protocol):
-    def unit_id(self, unit_name: str) -> int | None:
-        ...
+    def unit_id(self, unit_name: str) -> int | None: ...
 
 
 class ValueResolver(typing.Protocol):
-    def values(self, record: "Record") -> list[decimal.Decimal]:
-        ...
+    def values(self, record: "Record") -> list[decimal.Decimal]: ...
 
 
 MetadataContainer = dict[str | int, str]
@@ -144,7 +139,7 @@ class Record:
         the record has X-values.
         """
         if not self.x:
-            self.x = resolver.values(self)
+            self.x.extend(resolver.values(self))
         return bool(self.x)
 
     def _resolve_x_unit(self, resolver: UnitResolver) -> str | None:
@@ -175,10 +170,8 @@ class ImportParser(typing.Protocol):
     """Interface for parsing values via an ImportReader."""
 
     reader: "ImportReader"
-    uuid: "uuid.UUID"
 
-    def parse(self, stream: "Any") -> Iterable[Record]:
-        ...
+    def parse(self, stream: "Any") -> Iterable[Record]: ...
 
 
 class ImportReader(typing.Protocol):
@@ -187,34 +180,27 @@ class ImportReader(typing.Protocol):
     to a Parser for interpreting.
     """
 
-    def read(self, stream: "Any", layout: "ImportLayout") -> Sheet:
-        ...
+    def read(self, stream: "Any", layout: "ImportLayout") -> Sheet: ...
 
-    def value(self, cell: Cell) -> "Any":
-        ...
+    def value(self, cell: Cell) -> "Any": ...
 
 
 class ImportLayout(typing.Protocol):
     """Interface for interpreting layout of values with a Parser."""
 
-    def __init__(self, parser: ImportParser):
-        ...
+    def __init__(self, parser: ImportParser): ...
 
-    def finish(self) -> None:
-        ...
+    def finish(self) -> None: ...
 
-    def process_row(self, row: Row, row_index: int) -> Iterable[Record]:
-        ...
+    def process_row(self, row: Row, row_index: int) -> Iterable[Record]: ...
 
-    def sheet(self, name: str | None) -> None:
-        ...
+    def sheet(self, name: str | None) -> None: ...
 
 
 class RecordUpdater(typing.Protocol[V]):
     """Interface for updating a Record with values extracted from a Parser."""
 
-    def update(self, record: Record, value: V) -> None:
-        ...
+    def update(self, record: Record, value: V) -> None: ...
 
 
 LayoutInfo = tuple[str, type[ImportLayout]]
@@ -322,6 +308,7 @@ class RegexHeading(HeadingPrototype[T]):
     def accept(self, heading_value: "Any") -> RecordUpdater[T] | None:
         if isinstance(heading_value, str) and self.regex.fullmatch(heading_value):
             return self
+        return None
 
     def update(self, record: Record, value: T) -> None:
         setattr(record, self.property_name, value)
@@ -360,9 +347,8 @@ class MetadataHeading(HeadingPrototype[MetadataContainer]):
             if len(results) == 1:
                 return MetadataUpdate(results[0])
             elif len(results) == 2:
-                raise exceptions.IgnoredMetadataColumnWarning(
-                    ignored_name=heading_value
-                )
+                raise exceptions.IgnoredMetadataColumnWarning(ignored_name=heading_value)
+        return None
 
     def queryset(self):
         return models.MetadataType.objects.filter(for_context=models.MetadataType.ASSAY)
@@ -400,6 +386,7 @@ class MeasurementHeading(HeadingPrototype[decimal.Decimal]):
                 return MeasurementUpdate(found_type, found_unit)
             except Exception:
                 raise exceptions.IgnoredColumnWarning(details=heading_value)
+        return None
 
     def check(self, value: "Any") -> decimal.Decimal:
         return convert_datum(super().check(value))
@@ -435,9 +422,7 @@ class MeasurementHeading(HeadingPrototype[decimal.Decimal]):
             )
             return default.unit
         except DefaultUnit.DoesNotExist:
-            logger.error(
-                f"Default Unit for (ID: {mtype.pk}) {mtype.type_name} could not be found"
-            )
+            logger.error(f"Default Unit for (ID: {mtype.pk}) {mtype.type_name} could not be found")
             raise
 
 
@@ -780,12 +765,15 @@ class AmbrLayout(ImportLayout):
         data_pair: Pair[Cell | None],
     ) -> bool:
         try:
+            x_column, y_column = column_pair
+            # for type-checking; _valid_header_pairs() ensures these are never None
+            assert x_column is not None and y_column is not None
             # get values from the reader, check values are valid
-            x = column_pair[0].check(self.reader.value(data_pair[0]))
-            y = column_pair[1].check(self.reader.value(data_pair[1]))
+            x = x_column.check(self.reader.value(data_pair[0]))
+            y = y_column.check(self.reader.value(data_pair[1]))
             # only save values when both are valid (no Exception raised)
-            column_pair[0].save(record, x)
-            column_pair[1].save(record, y)
+            x_column.save(record, x)
+            y_column.save(record, y)
             return True
         except exceptions.InvalidValueWarning:
             # not assigning any values, but continue processing column

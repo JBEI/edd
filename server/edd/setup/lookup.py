@@ -11,7 +11,7 @@ from .parser import RecordResolver
 if typing.TYPE_CHECKING:
     from django.contrib.auth import get_user_model
 
-    User = get_user_model()
+    User: typing.TypeAlias = get_user_model()
 
 logger = logging.getLogger(__name__)
 

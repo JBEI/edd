@@ -14,15 +14,11 @@ def test_task_process_with_invalid_uuid(writable_session):
 
 
 def test_task_process_with_missing_upload(writable_session):
-    # task should "finish", as there's nothing to do without an upload
     setup = SetupRequest(writable_session.study.uuid)
     setup.store()
 
-    # submitting directly, instead of queueing for Celery, with background arg
-    tasks.submit_process(setup, writable_session.user, background=False)
-
-    updated = SetupRequest.fetch(setup.request_uuid)
-    assert updated.status == SetupRequest.Status.CREATED
+    with pytest.raises(SetupException):
+        setup.process_upload(writable_session.user)
 
 
 def test_task_process_success(writable_session):
@@ -116,7 +112,33 @@ def test_task_commit_success(writable_session):
     tasks.setup_commit(setup.request_uuid, writable_session.user.pk)
 
     updated = SetupRequest.fetch(setup.request_uuid)
-    # assert updated.status == SetupRequest.Status.DONE
     progress = updated.progress
     assert progress["saved"]["lines"] == 3
     assert writable_session.study.line_set.count() == 3
+    assert updated.status == SetupRequest.Status.DONE
+
+
+def test_task_commit_partial_resolved_lines(writable_session):
+    setup = SetupRequest(writable_session.study.uuid)
+    file = SimpleUploadedFile(
+        "example.txt",
+        b"Line Name,Strain\nA,JBx_1234\nB,JBx_5678",
+        content_type="text/csv",
+    )
+    setup.upload({"file": file})
+    setup.process_upload(writable_session.user)
+
+    strain = StrainFactory()
+    # "c3RyYWluOkpCeF8xMjM0" is encoded form of "strain:JBx_1234"
+    payload = {"c3RyYWluOkpCeF8xMjM0": [strain.registry_id]}
+    key = setup.form_payload_stash(payload)
+    # update from "form", then commit
+    tasks.submit_update(setup, key, writable_session.user, background=False)
+    tasks.submit_commit(setup, writable_session.user, background=False)
+
+    updated = SetupRequest.fetch(setup.request_uuid)
+    progress = updated.progress
+    assert progress["saved"]["lines"] == 1
+    assert progress["unresolved"] == 1
+    assert writable_session.study.line_set.count() == 1
+    assert updated.status == SetupRequest.Status.READY

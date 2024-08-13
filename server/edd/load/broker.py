@@ -1,32 +1,28 @@
 import dataclasses
 import enum
-import functools
-import hashlib
 import itertools
 import json
 import logging
-import typing
 from collections.abc import Iterable
-from datetime import timedelta
-from uuid import uuid4
+from contextlib import contextmanager
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.core.files.storage import storages
 from django.db import transaction
-from django_redis import get_redis_connection
 
-from edd.utilities import JSONDecoder, JSONEncoder
+from edd.utilities import JSONDecoder, JSONEncoder, RecordCache, RecordRequest
 from main import models as edd_models
 from main.signals import study_imported
 
 from . import exceptions, lookup, reader
 from .layout import Layout, Record
 
-if typing.TYPE_CHECKING:
-    from redis import Redis
-
 logger = logging.getLogger(__name__)
+
+
+def default_request():
+    return RecordCache(LoadRequest, Record).request()
 
 
 @dataclasses.dataclass(eq=False)
@@ -59,16 +55,16 @@ class LoadRequest:
             # this makes it possible to translate to/from redis
             return self.value
 
-    request_uuid: str = dataclasses.field(default_factory=lambda: str(uuid4()))
-    study_uuid: str = None
-    layout_key: str = None
-    protocol_uuid: str = None
-    x_units_name: str = None
-    y_units_name: str = None
-    compartment: str = None
-    path: str = None
-    mime_type: str = None
-    original_name: str = None
+    request: RecordRequest[Record] = dataclasses.field(default_factory=default_request)
+    study_uuid: str | None = None
+    layout_key: str | None = None
+    protocol_uuid: str | None = None
+    x_units_name: str | None = None
+    y_units_name: str | None = None
+    compartment: str | None = None
+    path: str | None = None
+    mime_type: str | None = None
+    original_name: str | None = None
     status: Status = Status.CREATED
 
     def __post_init__(self):
@@ -78,49 +74,23 @@ class LoadRequest:
         if self.compartment is None:
             self.compartment = edd_models.Measurement.Compartment.UNKNOWN
 
-    @staticmethod
-    def _connect() -> "Redis":
-        return get_redis_connection("default")
-
-    @classmethod
-    def _key(cls, uuid):
-        # key is fully-qualified classname
-        # plus str representation of request UUID
-        return f"{__name__}.{cls.__name__}:{str(uuid)}"
-
-    def _subkey(self, sub):
-        return f"{self._key(self.request)}:{sub}"
-
     @classmethod
     def fetch(cls, request_uuid):
         """Fetches the request info from storage."""
         try:
-            db = cls._connect()
-            values = db.hgetall(cls._key(request_uuid))
-            if not values:
-                raise exceptions.InvalidLoadRequestError()
-            # keys/values will be bytes,
-            # have to decode to strings to do **values
-            values = {k.decode("utf8"): v.decode("utf8") for k, v in values.items()}
-            # adding the request_uuid along with the stored attributes
-            values.update(request_uuid=request_uuid)
-            return cls(**values)
-        except (exceptions.LoadError, exceptions.LoadWarning):
-            raise
+            request = RecordCache(cls, Record).request(request_uuid)
+            if meta := request.meta_fetch():
+                return LoadRequest(request=request, **meta)
         except Exception as e:
             raise exceptions.CommunicationError() from e
-
-    @functools.cache
-    def db(self) -> "Redis":
-        """Creates or retrieves a cached Redis connection."""
-        return self._connect()
+        raise exceptions.InvalidLoadRequestError()
 
     # properties
 
     @property
-    def request(self):
+    def request_uuid(self):
         """Token used to identify this LoadRequest."""
-        return self.request_uuid
+        return self.request.uuid
 
     @property
     def study(self):
@@ -150,14 +120,14 @@ class LoadRequest:
         """
         try:
             ok_status = self.status == LoadRequest.Status.PROCESSED
-            has_tokens = self.db().scard(self._subkey("tokens")) > 0
+            has_tokens = self.request.tokens_length() > 0
             return ok_status and has_tokens
         except Exception:
             return False
 
     @property
     def is_save_ready(self):
-        return self.status is LoadRequest.Status.SAVING
+        return self.status is LoadRequest.Status.PROCESSED
 
     @property
     def is_upload_ready(self):
@@ -167,14 +137,13 @@ class LoadRequest:
     @property
     def progress(self):
         try:
-            db = self.db()
             return {
-                "added": db.zscore(self._subkey("saving"), "added"),
-                "resolved": db.llen(self._subkey("resolved")),
+                "added": self.request.counter_value("added"),
+                "resolved": self.request.resolved_length(),
                 "status": str(self.status),
-                "tokens": db.scard(self._subkey("tokens")),
-                "unresolved": db.llen(self._subkey("unresolved")),
-                "updated": db.zscore(self._subkey("saving"), "updated"),
+                "tokens": self.request.tokens_length(),
+                "unresolved": self.request.unresolved_length(),
+                "updated": self.request.counter_value("updated"),
             }
         except Exception as e:
             raise exceptions.CommunicationError() from e
@@ -187,54 +156,43 @@ class LoadRequest:
             raise exceptions.InvalidLoadRequestError()
 
     def commit(self, user):
-        self._precommit()
         writer = DatabaseWriter(self, user)
         update = edd_models.Update.fake_request(
             user=user,
             path=f"!edd.load.wizard!{self.request_uuid}",
         )
-        db = self.db()
-        key = self._subkey("resolved")
-        try:
-            with transaction.atomic(savepoint=True), update:
-                start = 0
-                # redis range is inclusive, call will return 100 items
-                while raw := db.lrange(key, start, start + 99):
-                    batch = [Record(**json.loads(r, cls=JSONDecoder)) for r in raw]
-                    start += 100
-                    added, updated = writer.persist_batch(batch)
-                    self._save_count_update(added, updated)
-                    self.send_update()
-                self._postcommit(user)
-            db.delete(key)
-        except Exception as e:
-            logger.error("failed commit", exc_info=e)
-            self.transition(LoadRequest.Status.FAILED)
+        with transaction.atomic(savepoint=True), update:
+            it = iter(self.request.resolved())
+            while batch := tuple(itertools.islice(it, 20)):
+                added, updated = writer.persist_batch(batch)
+                self.request.counter_tick("added", added)
+                self.request.counter_tick("updated", updated)
+                self.send_update()
+            self._postcommit(user)
+        self.request.resolved_clear()
 
     def form_payload_restore(self, payload_key):
         try:
-            subkey = self._subkey(payload_key)
-            return json.loads(self.db().get(subkey), cls=JSONDecoder)
+            return json.loads(self.request.payload_fetch(payload_key), cls=JSONDecoder)
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
     def form_payload_save(self, payload):
         try:
-            payload = json.dumps(payload, cls=JSONEncoder).encode("utf8")
-            hash_object = hashlib.sha256(payload)
-            payload_key = hash_object.hexdigest()[:16]
-            self.db().set(self._subkey(payload_key), payload)
-            return payload_key
+            payload_json = json.dumps(payload, cls=JSONEncoder).encode("utf8")
+            return self.request.payload_stash(payload_json)
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
-    def ok_to_process(self) -> bool:
-        ok_status = self.status in (self.Status.CREATED, self.Status.PROCESSED)
-        return ok_status and self.transition(self.Status.UPDATING)
-
-    def ok_to_save(self) -> bool:
-        ok_status = self.status == self.Status.PROCESSED
-        return ok_status and self.transition(self.Status.SAVING, reset_save_count=True)
+    @contextmanager
+    def lock_status(self, *, active, failed, success, expect=None):
+        try:
+            self.transition(new_status=active, expect=expect)
+            yield
+            self.transition(new_status=success, expect=active)
+        except Exception as e:
+            self.transition(new_status=failed)
+            raise e
 
     def open(self):
         try:
@@ -250,10 +208,8 @@ class LoadRequest:
         # the while loop becomes an infinite loop when `records` is an iter_ABLE_
         records = iter(records)
         try:
-            self._preprocessing()
             while batch := tuple(itertools.islice(records, 100)):
                 self.resolve_batch(batch, resolver)
-            self._postprocessing()
         except (exceptions.LoadError, exceptions.LoadWarning):
             raise
         except Exception as e:
@@ -275,44 +231,25 @@ class LoadRequest:
                 failed.update(result)
             else:
                 matched.append(record)
-        with self.db().pipeline() as pipe:
-            pipe.multi()
-            if matched:
-                matched = [json.dumps(r.__dict__, cls=JSONEncoder) for r in matched]
-                pipe.rpush(self._subkey("resolved"), *matched)
-            if unmatched:
-                unmatched = [json.dumps(r.__dict__, cls=JSONEncoder) for r in unmatched]
-                pipe.rpush(self._subkey("unresolved"), *unmatched)
-            if failed:
-                pipe.sadd(self._subkey("tokens"), *failed)
-            pipe.execute()
+        self.request.resolved_add(*matched)
+        self.request.unresolved_add(*unmatched)
+        self.request.tokens_add(*failed)
         self.send_update()
 
     def resolve_tokens(self, tokens_form):
         try:
-            self._preprocessing()
-            db = self.db()
-            # remove tokens the form claims to resolve
-            db.srem(self._subkey("tokens"), *tokens_form.raw_tokens)
-            # move aside current unresolved list
-            db.rename(self._subkey("unresolved"), self._subkey("scratch"))
-            # pop items from unresolved_records in a loop
-            while batch := db.lpop(self._subkey("scratch"), 100):
-                records = [Record(**json.loads(r, cls=JSONDecoder)) for r in batch]
-                self.resolve_batch(records, tokens_form)
-            # clean up the scratch key
-            db.delete(self._subkey("scratch"))
-            self._postprocessing()
+            self.request.tokens_remove(*tokens_form.raw_tokens)
+            it = iter(self.request.unresolved())
+            while batch := tuple(itertools.islice(it, 100)):
+                self.resolve_batch(batch, tokens_form)
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
     def retire(self):
         """Retires the request info, removing from storage."""
         try:
+            self.request.expire()
             self._delete_file()
-            self.db().delete(self._key(self.request))
-            for key in self.db().scan_iter(self._subkey("*")):
-                self.db().delete(key)
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
@@ -322,41 +259,17 @@ class LoadRequest:
         update = {"type": "update", **self.progress}
         send(f"edd.load.{self.request_uuid}", update)
 
-    def sort_tokens(self):
-        """
-        When building set of unresolved tokens in a LoadRequest, they are
-        unordered. When presenting them to be resolved, they should be ordered;
-        this method saves the tokens into an ordered list.
-        """
-        unordered_key = self._subkey("tokens")
-        ordered_key = self._subkey("tokenlist")
-        db = self.db()
-        # sort the tokens
-        tokens = sorted(db.smembers(unordered_key))
-        with db.pipeline() as pipe:
-            pipe.multi()
-            pipe.delete(ordered_key)
-            if tokens:
-                pipe.rpush(ordered_key, *tokens)
-            pipe.execute()
-
     def store(self):
         """Stores the request info by its ID for one week."""
         try:
-            with self.db().pipeline() as pipe:
-                key = self._key(self.request)
-                for k, v in self._store_values().items():
-                    pipe.hset(key, k, v)
-                pipe.expire(key, timedelta(weeks=1))
-                pipe.execute()
+            self.request.meta_stash(self._store_values())
         except Exception as e:
             raise exceptions.CommunicationError() from e
 
     def transition(
         self,
-        new_status: "LoadRequest.Status",
-        raise_errors=False,
-        reset_save_count=False,
+        new_status: Status,
+        expect: Status | None = None,
     ):
         """
         Transitions the LoadRequest to the new_status provided.
@@ -364,41 +277,19 @@ class LoadRequest:
         :param new_status: the desired status
         :returns: True only if the transition completed successfully
         """
+        if expect and self.status != expect:
+            raise exceptions.FailedTransitionError(begin=str(self.status), end=str(new_status))
         try:
-            key = self._key(self.request)
-            with self.db().pipeline(transaction=True) as pipe:
-                # using watch() for optimistic locking
-                pipe.watch(key)
-                # don't transition if status in backend does not match
-                current_status = pipe.hget(key, "status")
-                if current_status == str(self.status).encode("utf8"):
-                    pipe.multi()
-                    pipe.hset(key, "status", str(new_status))
-                    if reset_save_count:
-                        pipe.delete(self._subkey("saving"))
-                    pipe.execute()
-                    self.status = new_status
-                    self.send_update()
-                    return True
-                # execute() will unset watch,
-                # but it might not run,
-                # and we're done watching
-                pipe.unwatch()
+            if self.request.meta_update_atomic("status", str(new_status), str(self.status)):
+                # instead of full refresh from cache, just set status on in-memory object
+                self.status = new_status
+                return True
         except Exception as e:
             logger.info(f"Transition failed: {e!r}")
-            if raise_errors:
-                raise exceptions.FailedTransitionError(
-                    begin=str(self.status),
-                    end=str(new_status),
-                ) from e
         return False
 
     def unresolved_tokens(self, start: int, end: int):
-        try:
-            # Redis lrange is inclusive, take one off end to match Python
-            return self.db().lrange(self._subkey("tokenlist"), start, end - 1)
-        except Exception as e:
-            raise exceptions.CommunicationError() from e
+        return self.request.tokens(start, end)
 
     def upload(self, files_payload, default_mime="application/octet-stream"):
         """
@@ -409,7 +300,9 @@ class LoadRequest:
                 # reset status
                 self.transition(self.Status.CREATED)
                 # clear out previous failed, matched, unmatched
-                self._clear_resolved()
+                self.request.resolved_clear()
+                self.request.unresolved_clear()
+                self.request.tokens_clear()
                 # clean up any existing file(s)
                 self._delete_file()
                 # write to storage
@@ -435,18 +328,12 @@ class LoadRequest:
             supported=[csv, excel],
         )
 
-    def _clear_resolved(self):
-        self.db().delete(
-            self._subkey("resolved"),
-            self._subkey("unresolved"),
-            self._subkey("tokens"),
-        )
-
     def _create_path(self):
         # path is first namespaced to load,
         # then further namespace with first two UUID characters (a la git)
         # fill out with remainder of UUID
-        return f"load/{self.request_uuid[:2]}/{self.request_uuid[2:]}"
+        uuid = str(self.request.uuid)
+        return f"load/{uuid[:2]}/{uuid}"
 
     def _delete_file(self):
         if self.path:
@@ -459,10 +346,6 @@ class LoadRequest:
             self.original_name = None
 
     def _postcommit(self, user):
-        if 0 < self.db().llen(self._subkey("unresolved")):
-            self.transition(self.Status.PROCESSED, raise_errors=True)
-        else:
-            self.transition(self.Status.COMPLETED, raise_errors=True)
         lines = edd_models.Line.objects.filter(
             assay__protocol=self.protocol,
             assay__updated_id=self.study.updated_id,
@@ -476,34 +359,12 @@ class LoadRequest:
             user=user,
         )
 
-    def _postprocessing(self):
-        self.sort_tokens()
-        self.transition(LoadRequest.Status.PROCESSED, raise_errors=True)
-
-    def _precommit(self):
-        if self.status != self.Status.SAVING:
-            raise exceptions.ResolveError(
-                summary=f"Invalid state prior to saving: {self.status}",
-            )
-
-    def _preprocessing(self):
-        if self.status != self.Status.UPDATING:
-            raise exceptions.ResolveError(
-                summary=f"Invalid state prior to processing: {self.status}",
-            )
-
-    def _save_count_update(self, added, updated):
-        db = self.db()
-        key = self._subkey("saving")
-        db.zincrby(key, added, "added")
-        db.zincrby(key, updated, "updated")
-
     def _storage(self):
         return storages["edd.load"]
 
     def _store_values(self):
         # get only the original field names
-        fields = {f.name for f in dataclasses.fields(self.__class__)}
+        fields = {f.name for f in dataclasses.fields(self.__class__)} - {"request"}
         # filter out anything else that may have been set
         return {k: str(v) for k, v in self.__dict__.items() if k in fields and v}
 
@@ -515,11 +376,6 @@ class DatabaseWriter:
         self.study_id = load.study.pk
         self.user = user
         self.update = edd_models.Update.load_update()
-        # optimization: if study has no assays with current protocol, just do inserts
-        self.quick_insert = edd_models.Assay.objects.filter(
-            study_id=self.study_id,
-            protocol_id=self.protocol_id,
-        ).exists()
         # track added / updated
         self.added = 0
         self.updated = 0
@@ -556,13 +412,9 @@ class DatabaseWriter:
             "study_id": assay.study_id,
             **find,
         }
-        if self.quick_insert:
-            measurement = assay.measurement_set.create(**defaults)
-            self._write_value(assay, measurement, record, True)
-        else:
-            qs = assay.measurement_set.filter(**find)
-            measurement, created = qs.get_or_create(defaults=defaults)
-            self._write_value(assay, measurement, record, created)
+        qs = assay.measurement_set.filter(**find)
+        measurement, created = qs.get_or_create(defaults=defaults)
+        self._write_value(assay, measurement, record, created)
 
     def _write_value(self, assay, measurement, record, is_new) -> None:
         find = {

@@ -1,14 +1,12 @@
 import dataclasses
 import enum
 import functools
-import hashlib
 import itertools
 import json
 import logging
 import typing
 from collections.abc import Iterable
 from contextlib import contextmanager
-from datetime import timedelta
 from uuid import UUID, uuid4
 
 from asgiref.sync import async_to_sync
@@ -16,9 +14,8 @@ from channels.layers import get_channel_layer
 from django.core.files.storage import Storage, storages
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
-from django_redis import get_redis_connection
 
-from edd.utilities import JSONDecoder, JSONEncoder
+from edd.utilities import JSONDecoder, JSONEncoder, RecordCache, RecordRequest
 from main import models as edd_models
 from main.signals import study_described
 
@@ -29,7 +26,6 @@ from .parser import MetaInfo, Parser, Record, RecordResolver
 
 if typing.TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
-    from redis import Redis
 
     RequestKey: typing.TypeAlias = str
     User: typing.TypeAlias = AbstractUser
@@ -49,6 +45,10 @@ class SetupProgress(typing.TypedDict):
     status: str
     tokens: int
     unresolved: int
+
+
+def default_request():
+    return RecordCache(SetupRequest, Record).request()
 
 
 @dataclasses.dataclass(eq=False)
@@ -76,7 +76,7 @@ class SetupRequest:
             return self.value
 
     study_uuid: str
-    request_uuid: str = dataclasses.field(default_factory=lambda: str(uuid4()))
+    request: RecordRequest[Record] = dataclasses.field(default_factory=default_request)
     path: str | None = None
     mime_type: str | None = None
     original_name: str | None = None
@@ -89,41 +89,16 @@ class SetupRequest:
             # convert string status to Enum type
             self.status = SetupRequest.Status(self.status)
 
-    @staticmethod
-    def _connect() -> "Redis":
-        return get_redis_connection("default")
-
     @classmethod
-    def _expire(cls):
-        return timedelta(weeks=1)
-
-    @classmethod
-    def _key(cls, uuid: UUID | str) -> "RequestKey":
-        # key is fully-qualified classname
-        # plus str representation of request UUID
-        return f"{__name__}.{cls.__name__}:{str(uuid)}"
-
-    def _subkey(self, sub: str) -> "RequestKey":
-        return f"{self._key(self.request_uuid)}:{sub}"
-
-    @classmethod
-    def fetch(cls, request_uuid: UUID | str) -> typing.Self:
+    def fetch(cls, request_uuid: UUID | str) -> "SetupRequest":
         """Fetches the request info from storage."""
         try:
-            db = cls._connect()
-            values = db.hgetall(cls._key(request_uuid))
-            if not values:
-                raise SetupException(_("Setup details not found"))
-            # keys/values will be bytes,
-            # have to decode to strings to do **values
-            values = {k.decode("utf8"): v.decode("utf8") for k, v in values.items()}
-            # adding the request_uuid along with the stored attributes
-            values.update(request_uuid=request_uuid)
-            return cls(**values)
-        except SetupException:
-            raise
+            request = RecordCache(cls, Record).request(request_uuid)
+            if meta := request.meta_fetch():
+                return SetupRequest(request=request, **meta)
         except Exception as e:
             raise SetupException(_("Error loading setup details")) from e
+        raise SetupException(_("Could not find matching setup request"))
 
     # public API
 
@@ -137,56 +112,43 @@ class SetupRequest:
         writer = DatabaseWriter(self, user)
         update = edd_models.Update.fake_request(
             user=user,
-            path=f"!edd.setup!{self.request_uuid}",
+            path=f"!edd.setup!{self.request.uuid}",
         )
-        db = self._db()
-        key = self._subkey("resolved")
         try:
             with transaction.atomic(savepoint=True), update:
-                start = 0
-                # redis range is inclusive, call will return 100 items
-                while raw := db.lrange(key, start, start + 99):
-                    batch = [Record(**json.loads(r, cls=JSONDecoder)) for r in raw]
-                    start += len(batch)
+                it = iter(self.request.resolved())
+                while batch := tuple(itertools.islice(it, 20)):
                     line_count, assay_count = writer.persist_batch(batch)
-                    self._save_counts(len(batch), line_count, assay_count)
+                    self.request.counter_tick("records", len(batch))
+                    self.request.counter_tick("lines", line_count)
+                    self.request.counter_tick("assays", assay_count)
                     self.send_update()
-                self._postcommit(user)
-            db.delete(key)
+                study_described.send(
+                    sender=self.__class__,
+                    study=edd_models.Study.objects.get(uuid=self.study_uuid),
+                    user=user,
+                    count=self.request.counter_value("lines"),
+                )
+            self.request.resolved_clear()
         except Exception as e:
             raise SetupException() from e
         return self
 
     def form_payload_fetch(self, payload_key):
         try:
-            subkey = self._subkey(payload_key)
-            return json.loads(self._db().get(subkey), cls=JSONDecoder)
+            return json.loads(self.request.payload_fetch(payload_key), cls=JSONDecoder)
         except Exception as e:
             raise SetupException() from e
 
     def form_payload_stash(self, payload):
         try:
             payload_json = json.dumps(payload, cls=JSONEncoder).encode("utf8")
-            hasher = hashlib.sha256(payload_json)
-            payload_key = hasher.hexdigest()[:16]
-            db = self._db()
-            key = self._subkey(payload_key)
-            db.set(key, payload_json)
-            db.expire(key, self._expire())
-            return payload_key
+            return self.request.payload_stash(payload_json)
         except Exception as e:
             raise SetupException() from e
 
     def get_unresolved_tokens_range(self, start: int, end: int) -> Iterable[str]:
-        try:
-            # Redis lrange is inclusive, take one off end to match Python
-            return self._db().lrange(self._subkey("tokenlist"), start, end - 1)
-        except Exception as e:
-            raise SetupException() from e
-
-    def is_process_ready(self) -> bool:
-        """Request can begin process() call when it has an upload to parse."""
-        return self.status == SetupRequest.Status.READY
+        return self.request.tokens(start, end)
 
     @contextmanager
     def lock_status(self, *, active, failed, success, expect=None):
@@ -194,8 +156,9 @@ class SetupRequest:
             self.transition(new_status=active, expect=expect)
             yield
             self.transition(new_status=success, expect=active)
-        except Exception:
+        except Exception as e:
             self.transition(new_status=failed)
+            raise e
 
     def open(self) -> typing.IO:
         try:
@@ -207,21 +170,11 @@ class SetupRequest:
 
     def process_form(self, tokens_form: ResolveTokensForm) -> typing.Self:
         try:
-            db = self._db()
-            # remove tokens the form claims to resolve
-            db.srem(self._subkey("tokens"), *tokens_form.raw_tokens)
-            # move aside current unresolved list
-            db.rename(self._subkey("unresolved"), self._subkey("scratch"))
-            # get resolver from form
+            self.request.tokens_remove(*tokens_form.raw_tokens)
             resolver = tokens_form.get_resolver()
-            # pop items from unresolved list in a loop
-            while batch := db.lpop(self._subkey("scratch"), 100):
-                records = [Record(**json.loads(r, cls=JSONDecoder)) for r in batch]
-                self._process_record_batch(records, resolver)
-            # clean up list that should now be empty
-            db.delete(self._subkey("scratch"))
-            # sort tokens so next form can maintain consistent ordering
-            self._sort_tokens()
+            it = iter(self.request.unresolved())
+            while batch := tuple(itertools.islice(it, 100)):
+                self._process_record_batch(batch, resolver)
         except Exception as e:
             raise SetupException() from e
         return self
@@ -232,7 +185,6 @@ class SetupRequest:
         records = iter(payload)
         while batch := tuple(itertools.islice(records, 100)):
             self._process_record_batch(batch, resolver)
-        self._sort_tokens()
         return self
 
     def process_upload(self, user: "User") -> typing.Self:
@@ -243,39 +195,29 @@ class SetupRequest:
     @property
     def progress(self) -> SetupProgress:
         try:
-            db = self._db()
-            saving = self._subkey("saving")
             return {
-                "resolved": self.records_resolved,
+                "resolved": self.request.resolved_length(),
                 "saved": {
-                    "assays": db.zscore(saving, "assays"),
-                    "lines": db.zscore(saving, "lines"),
-                    "records": db.zscore(saving, "records"),
+                    "assays": self.request.counter_value("assays"),
+                    "lines": self.request.counter_value("lines"),
+                    "records": self.request.counter_value("records"),
                 },
                 "status": str(self.status),
-                "tokens": db.scard(self._subkey("tokens")),
-                "unresolved": self.records_unresolved,
+                "tokens": self.request.tokens_length(),
+                "unresolved": self.request.unresolved_length(),
             }
         except Exception as e:
             raise SetupException(_("Failed to fetch progress information")) from e
 
     @property
-    def records_resolved(self) -> int:
-        return self._db().llen(self._subkey("resolved"))
-
-    @property
-    def records_unresolved(self) -> int:
-        return self._db().llen(self._subkey("unresolved"))
+    def request_uuid(self) -> str:
+        return str(self.request.uuid)
 
     def retire(self):
         "Retire the experiment setup, removing all intermediate info from storage."
         try:
-            db = self._db()
+            self.request.expire()
             self._delete_file()
-            # use expire instead of delete, so progress bar has some time to display
-            db.expire(self._key(self.request_uuid), timedelta(minutes=1))
-            for key in db.scan_iter(self._subkey("*")):
-                db.expire(key, timedelta(minutes=1))
         except Exception as e:
             raise SetupException() from e
 
@@ -283,24 +225,16 @@ class SetupRequest:
         channel_layer = get_channel_layer()
         send = async_to_sync(channel_layer.group_send)
         update = {"type": "update", **self.progress}
-        send(f"edd.setup.{self.request_uuid}", update)
+        send(f"edd.setup.{self.request.uuid}", update)
         return self
 
     def store(self) -> typing.Self:
         """Stores the request info by its ID for one week."""
         try:
-            with self._db().pipeline() as pipe:
-                key = self._key(self.request_uuid)
-                pipe.hset(key, mapping=self._store_values())
-                pipe.expire(key, self._expire())
-                pipe.execute()
+            self.request.meta_stash(self._store_values())
         except Exception as e:
             raise SetupException(_("Failed to store request information")) from e
         return self
-
-    @property
-    def token_count(self) -> int:
-        return self._db().scard(self._subkey("tokens"))
 
     def transition(
         self,
@@ -317,24 +251,10 @@ class SetupRequest:
         if expect and self.status != expect:
             raise SetupException(f"Expected state {expect} but in {self.status}")
         try:
-            key = self._key(self.request_uuid)
-            with self._db().pipeline(transaction=True) as pipe:
-                # using watch() for optimistic locking
-                pipe.watch(key)
-                # don't transition if status in backend does not match
-                current_status = pipe.hget(key, "status")
-                if current_status == str(self.status).encode("utf8"):
-                    pipe.multi()
-                    pipe.hset(key, "status", str(new_status))
-                    pipe.expire(key, self._expire())
-                    pipe.execute()
-                    self.status = new_status
-                    self.send_update()
-                    return True
-                # execute() will unset watch,
-                # but it might not run,
-                # and we're done watching
-                pipe.unwatch()
+            if self.request.meta_update_atomic("status", str(new_status), str(self.status)):
+                # instead of full refresh from cache, just set status on in-memory object
+                self.status = new_status
+                return True
         except Exception as e:
             logger.info(f"Transition failed: {e!r}")
         return False
@@ -364,12 +284,8 @@ class SetupRequest:
         # path is first namespaced to setup,
         # then further namespace with first two UUID characters (a la git)
         # fill out with remainder of UUID
-        return f"setup/{self.request_uuid[:2]}/{self.request_uuid}"
-
-    @functools.cache
-    def _db(self) -> "Redis":
-        """Creates or retrieves a cached Redis connection."""
-        return self._connect()
+        uuid = str(self.request.uuid)
+        return f"setup/{uuid[:2]}/{uuid}"
 
     def _delete_file(self) -> typing.Self:
         if self.path:
@@ -381,15 +297,6 @@ class SetupRequest:
             self.mime_type = None
             self.original_name = None
         return self
-
-    def _postcommit(self, user) -> None:
-        db = self._db()
-        study_described.send(
-            sender=self.__class__,
-            study=edd_models.Study.objects.get(uuid=self.study_uuid),
-            user=user,
-            count=db.zscore(self._subkey("saving"), "lines"),
-        )
 
     def _process_record_batch(
         self,
@@ -407,54 +314,17 @@ class SetupRequest:
             else:
                 matched.append(record)
         # persist tokens to the cache
-        with self._db().pipeline() as pipe:
-            pipe.multi()
-            if matched:
-                serialized = [json.dumps(r.__dict__, cls=JSONEncoder) for r in matched]
-                key = self._subkey("resolved")
-                pipe.rpush(key, *serialized)
-                pipe.expire(key, self._expire())
-            if unmatched:
-                serialized = [json.dumps(r.__dict__, cls=JSONEncoder) for r in unmatched]
-                key = self._subkey("unresolved")
-                pipe.rpush(key, *serialized)
-                pipe.expire(key, self._expire())
-            if failed:
-                key = self._subkey("tokens")
-                pipe.sadd(key, *failed)
-                pipe.expire(key, self._expire())
-            pipe.execute()
+        self.request.resolved_add(*matched)
+        self.request.unresolved_add(*unmatched)
+        self.request.tokens_add(*failed)
         self.send_update()
-
-    def _save_counts(self, records, lines, assays) -> typing.Self:
-        db = self._db()
-        key = self._subkey("saving")
-        db.zincrby(key, records, "records")
-        db.zincrby(key, lines, "lines")
-        db.zincrby(key, assays, "assays")
-        db.expire(key, self._expire())
-        return self
-
-    def _sort_tokens(self) -> typing.Self:
-        unordered_key = self._subkey("tokens")
-        ordered_key = self._subkey("tokenlist")
-        db = self._db()
-        tokens = sorted(db.smembers(unordered_key))
-        with db.pipeline() as pipe:
-            pipe.multi()
-            pipe.delete(ordered_key)
-            if tokens:
-                pipe.rpush(ordered_key, *tokens)
-                pipe.expire(ordered_key, self._expire())
-            pipe.execute()
-        return self
 
     def _storage(self) -> Storage:
         return storages["edd.setup"]
 
     def _store_values(self) -> dict[str, str]:
         # get only the original field names
-        fields = {f.name for f in dataclasses.fields(self.__class__)}
+        fields = {f.name for f in dataclasses.fields(self.__class__)} - {"request"}
         # filter out anything else that may have been set
         return {k: str(v) for k, v in self.__dict__.items() if k in fields and v}
 
@@ -472,6 +342,7 @@ class DatabaseWriter:
                 names = [f"{record.name}-R{n}" for n in range(1, record.replicates + 1)]
                 self._add_replicate_id_metadata(record)
             else:
+                assert record.name is not None
                 names = [record.name]
             for name in names:
                 lc, ac = self._create_line(record, name)

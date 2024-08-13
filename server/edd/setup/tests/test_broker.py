@@ -170,13 +170,6 @@ def test_SetupRequest_commit_database_error(
         setup.commit(writable_session.user)
 
 
-def test_SetupRequest_get_unresolved_tokens_comms_error():
-    setup = SetupRequest("1234")
-    # disable Redis to simulate connection errors
-    with override_settings(CACHES={}), pytest.raises(SetupException):
-        setup.get_unresolved_tokens_range(0, 10)
-
-
 def test_SetupRequest_retire_comms_error():
     setup = SetupRequest("1234")
     # disable Redis to simulate connection errors
@@ -219,8 +212,8 @@ def test_SetupRequest_process_form_metadata(db, writable_session):
         }
         form = ResolveTokensForm(setup_request=setup, data=payload)
         setup.process_form(form)
-        assert setup.records_resolved == 2
-        assert setup.records_unresolved == 0
+        assert setup.request.resolved_length() == 2
+        assert setup.request.unresolved_length() == 0
 
 
 def test_SetupRequest_process_form_assay_metadata(db, writable_session):
@@ -243,8 +236,8 @@ def test_SetupRequest_process_form_assay_metadata(db, writable_session):
         }
         form = ResolveTokensForm(setup_request=setup, data=payload)
         setup.process_form(form)
-        assert setup.records_resolved == 2
-        assert setup.records_unresolved == 0
+        assert setup.request.resolved_length() == 2
+        assert setup.request.unresolved_length() == 0
 
 
 def test_SetupRequest_process_form_strains(db, writable_session):
@@ -257,15 +250,15 @@ def test_SetupRequest_process_form_strains(db, writable_session):
         }
         form = ResolveTokensForm(setup_request=setup, data=payload)
         setup.process_form(form)
-        assert setup.records_resolved == 1
-        assert setup.records_unresolved == 3
+        assert setup.request.resolved_length() == 1
+        assert setup.request.unresolved_length() == 3
 
         # name "Zm9ybTpzdHJhaW4" translates to boolean field for ignoring all strains
         payload = {"Zm9ybTpzdHJhaW4": 1}
         form = ResolveTokensForm(setup_request=setup, data=payload)
         setup.process_form(form)
-        assert setup.records_resolved == 4
-        assert setup.records_unresolved == 0
+        assert setup.request.resolved_length() == 4
+        assert setup.request.unresolved_length() == 0
 
 
 def test_SetupRequest_process_payload(db, writable_session):
@@ -306,8 +299,8 @@ def test_SetupRequest_process_payload(db, writable_session):
     ]
     with writable_session.setup() as setup:
         setup.process_payload(records, writable_session.user)
-        assert setup.records_resolved == 3
-        assert setup.records_unresolved == 1
+        assert setup.request.resolved_length() == 3
+        assert setup.request.unresolved_length() == 1
 
         setup.commit(writable_session.user)
         study_id = writable_session.study.pk
@@ -350,3 +343,37 @@ def test_SetupRequest_commit_with_strains(client, writable_session):
     study_id = writable_session.study.pk
     assert edd_models.Line.objects.filter(study_id=study_id).count() == 4
     assert edd_models.Strain.objects.filter(line__study_id=study_id).count() == 4
+
+
+def test_SetupRequest_commit_with_strains_some_missing(client, writable_session):
+    client.force_login(writable_session.user)
+    filename = writable_session.path("strain.csv")
+    with writable_session.setup(upload_file=filename) as setup:
+        # update fields with strain references, each a single item list of new strain
+        # two have strain references resolved, and two do not
+        payload = {
+            "c3RyYWluOkpCeF8wMDAwMQ": [StrainFactory().registry_id],
+            "c3RyYWluOkpCeF8wMDAwMg": [StrainFactory().registry_id],
+        }
+        form = ResolveTokensForm(setup_request=setup, data=payload)
+        setup.process_form(form)
+        # save
+        setup.commit(writable_session.user)
+
+    study_id = writable_session.study.pk
+    assert edd_models.Line.objects.filter(study_id=study_id).count() == 2
+    assert edd_models.Strain.objects.filter(line__study_id=study_id).count() == 2
+
+
+def test_SetupRequest_lock_status_error(writable_session):
+    with (
+        writable_session.setup() as setup,
+        pytest.raises(AssertionError),
+        setup.lock_status(
+            active=setup.Status.UPDATING,
+            failed=setup.Status.FAILED,
+            success=setup.Status.DONE,
+        ),
+    ):
+        # make sure the lock context manager can handle errors properly
+        raise AssertionError("simulated error while in lock_status")
