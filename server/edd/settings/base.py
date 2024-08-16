@@ -95,9 +95,6 @@ SITE_ID = 1
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 LOGIN_REDIRECT_URL = "/"
-# If configured to not do HTTPS redirects, return http:// URLs instead of https://
-if env("HTTPS_METHOD", default=None) == "noredirect":  # noqa: F405
-    DEFAULT_HTTP_PROTOCOL = "http"
 # Default 1000; limits number of parameters in requests. None disables the limit.
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 

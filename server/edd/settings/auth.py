@@ -1,11 +1,10 @@
-""" Authentication-specific settings saved here. """
+"""Authentication-specific settings saved here."""
 
 AUTH_USER_MODEL = "profile.User"
 
 # Django Allauth Settings
 # NOTE: this section applies IFF base.py includes allauth apps in INSTALLED_APPS
 ACCOUNT_ADAPTER = "edd.account.EDDAccountAdapter"
-# NOTE: override ACCOUNT_DEFAULT_HTTP_PROTOCOL in local.py with 'http' when in dev environment
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"

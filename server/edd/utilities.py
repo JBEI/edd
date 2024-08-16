@@ -78,12 +78,11 @@ class JSONDecoder(json.JSONDecoder):
         super().__init__(object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, o):
-        if TYPE not in o:
-            return o
-        klass = o[TYPE]
-        if klass == DATETIME:
-            return date_parser.parse(o[VALUE])
-        return o
+        match o:
+            case {"__type__": "__datetime__", "value": v}:
+                return date_parser.parse(v)
+            case _:
+                return o
 
     @staticmethod
     def loads(text):
@@ -102,7 +101,21 @@ class S3PrivateStorage(s3boto3.S3Boto3Storage):
     location = "private"
 
 
-class S3StaticStorage(storage.ManifestFilesMixin, s3boto3.S3Boto3Storage):
+class HashManifestFilesMixin(storage.ManifestFilesMixin):
+    """
+    Overrides the hashed_name function of ManifestFilesMixin so that "missing"
+    files emit a warning instead of crashing Django startup.
+    """
+
+    def hashed_name(self, name, content=None, filename=None):
+        try:
+            return super().hashed_name(name, content, filename)
+        except ValueError as e:
+            warnings.warn(f"Skipping hash: {e}")
+            return name
+
+
+class S3StaticStorage(HashManifestFilesMixin, s3boto3.S3Boto3Storage):
     """
     Uses Django Manifest storage combined with S3 storage. Static files are
     saved with a hash in the name, recorded in a manifest file. The backing
@@ -112,15 +125,8 @@ class S3StaticStorage(storage.ManifestFilesMixin, s3boto3.S3Boto3Storage):
     location = "static"
     manifest_name = getattr(settings, "STATICFILES_MANIFEST", "staticfiles.json")
 
-    def hashed_name(self, name, content=None, filename=None):
-        try:
-            return super().hashed_name(name, content, filename)
-        except ValueError as e:
-            warnings.warn(f"Skipping hash: {e}")
-            return name
 
-
-class StaticFilesStorage(storage.ManifestStaticFilesStorage):
+class StaticFilesStorage(HashManifestFilesMixin, storage.ManifestStaticFilesStorage):
     """
     Exactly the same as ManifestStaticFilesStorage from the Django contrib
     package, except this one optionally changes the manifest file name
@@ -128,13 +134,6 @@ class StaticFilesStorage(storage.ManifestStaticFilesStorage):
     """
 
     manifest_name = getattr(settings, "STATICFILES_MANIFEST", "staticfiles.json")
-
-    def hashed_name(self, name, content=None, filename=None):
-        try:
-            return super().hashed_name(name, content, filename)
-        except ValueError as e:
-            warnings.warn(f"Skipping hash: {e}")
-            return name
 
 
 class LBNLTemplate2Validator:

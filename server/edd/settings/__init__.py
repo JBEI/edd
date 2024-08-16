@@ -11,6 +11,11 @@ try:
 except ImportError:
     print("Did not find local settings module")
 
+# If configured to not do HTTPS redirects, return http:// URLs instead of https://
+if env("HTTPS_METHOD", default=None) == "noredirect":  # noqa: F405
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+    DEFAULT_HTTP_PROTOCOL = "http"
+
 # After all settings are imported, do any necessary registration of values
 try:
     from jbei.rest.auth import HmacAuth

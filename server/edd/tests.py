@@ -1,11 +1,14 @@
 import http
 
 import pytest
+from django.core import mail
+from django.core.exceptions import ValidationError
 from django.test import override_settings
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 from pytest_django import asserts
 
-from edd import SafeExceptionReporterFilter
+from edd import SafeExceptionReporterFilter, utilities
 from edd.profile.factory import UserFactory
 
 
@@ -49,6 +52,20 @@ def test_cleanse_setting_invalid_url_unchanged(reporter_filter):
     # adding an unmatched square bracket will trigger exception handling
     original = "http://user:12345@ex[ample.com/"
     cleansed = reporter_filter.cleanse_setting("SOME_URL", original)
+    assert original == cleansed
+
+
+def test_cleanse_setting_ignored_key(reporter_filter):
+    # the MESSAGE_TAGS setting is a dict with enum keys, and is ignored explicitly
+    original = {10: "secondary", 20: "warning"}
+    cleansed = reporter_filter.cleanse_setting("MESSAGE_TAGS", original)
+    assert original == cleansed
+
+
+def test_cleanse_setting_subkey_not_a_string(reporter_filter):
+    # while MESSAGE_TAGS is ignored, any other setting with non-str keys should warn
+    original = {10: "secondary", 20: "warning"}
+    cleansed = reporter_filter.cleanse_setting("SOME_SETTING", original)
     assert original == cleansed
 
 
@@ -147,16 +164,13 @@ def test_a11y_added_to_password_set_page(client, db):
     asserts.assertContains(response, "aria-invalid")
 
 
-@override_settings(
-    EDD_APPROVAL_CONTACT="approver@example.net",
-    EDD_ALLOW_SIGNUP=True,
-)
-def test_new_user_confirm_email_with_approver(client, db):
+def do_account_signup(client, faker):
     from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 
+    # do the signup request
     user_info = UserFactory.build()
     signup_url = reverse("account_signup")
-    password = "Super1Secure.Password"
+    password = faker.password()
     # signup
     signup_response = client.post(
         signup_url,
@@ -164,14 +178,118 @@ def test_new_user_confirm_email_with_approver(client, db):
         follow=True,
     )
     assert signup_response.status_code == http.HTTPStatus.OK
-    asserts.assertTemplateUsed(
-        signup_response,
-        "account/verification_sent.html",
-    )
-    # simulate clicking link from email
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [user_info.email]
+    asserts.assertTemplateUsed(signup_response, "account/verification_sent.html")
+
+    # reset the mail outbox
+    mail.outbox = []
+
+    # get the confirm email link
     email = EmailAddress.objects.get(email=user_info.email)
     conf = EmailConfirmationHMAC(email)
-    url = reverse("account_confirm_email", kwargs={"key": conf.key})
-    response = client.post(url)
+    return reverse("account_confirm_email", kwargs={"key": conf.key})
+
+
+@override_settings(EDD_APPROVAL_CONTACT=None, EDD_ALLOW_SIGNUP=True)
+def test_new_user_confirm_email(client, db, faker):
+    url = do_account_signup(client, faker)
+    # click the confirm email button
+    response = client.post(url, follow=True)
+    assert response.status_code == http.HTTPStatus.OK
+    # no new email
+    assert len(mail.outbox) == 0
+
+
+@override_settings(EDD_APPROVAL_CONTACT="approver@example.net", EDD_ALLOW_SIGNUP=True)
+def test_new_user_confirm_email_with_approver(client, db, faker):
+    url = do_account_signup(client, faker)
+    # click the confirm email button
+    response = client.post(url, follow=True)
+    assert response.status_code == http.HTTPStatus.OK
     # email sent to account approval contact
-    asserts.assertTemplateUsed(response, "account/email/approval_requested_subject.txt")
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["approver@example.net"]
+
+
+def test_regular_mail_gets_wrapped(faker):
+    mail.send_mail(
+        "subject",
+        faker.paragraph(nb_sentences=10),
+        "from@example.com",
+        ["to@example.com"],
+        fail_silently=False,
+    )
+    assert len(mail.outbox) == 1
+    # very long paragraph gets split into multiple lines
+    for line in mail.outbox[0].body.splitlines():
+        assert len(line) < 100
+
+
+@override_settings(ADMINS=(("BOFH", "bofh@example.net"),))
+def test_admin_mail_gets_wrapped(faker):
+    mail.mail_admins(
+        "subject",
+        faker.paragraph(nb_sentences=10),
+        fail_silently=False,
+    )
+    # one mail to the single admin
+    assert len(mail.outbox) == 1
+    # very long paragraph gets split into multiple lines
+    for line in mail.outbox[0].body.splitlines():
+        assert len(line) < 100
+
+
+def test_json_encode_extra_types(faker):
+    payload = {
+        "date": faker.date_object(),
+        "datetime": faker.date_time(),
+        "decimal": faker.pydecimal(),
+        "dict": {"subkey": 42},
+        "list": [],
+        "number": faker.pyfloat(),
+        "set": {faker.word(), faker.word()},
+        "string": faker.sentence(),
+        "translation": _("Study Name"),
+        "uuid": faker.uuid4(cast_to=None),
+    }
+    encoded = utilities.JSONEncoder.dumps(payload)
+    # sanity check that the correct items are in the encoded JSON
+    assert payload["string"] in encoded
+    assert "Study Name" in encoded
+    assert "__datetime__" in encoded
+
+
+def test_json_encode_unknown_types():
+    with pytest.raises(TypeError):
+        utilities.JSONEncoder.dumps({"key": object()})
+
+
+def test_json_decode_datetime():
+    encoded = """
+    {
+        "string": "foobar",
+        "date": {"__type__": "__datetime__", "value": "1999-12-31T23:59:59.999999"}
+    }
+    """
+    decoded = utilities.JSONDecoder.loads(encoded)
+    assert decoded["string"] == "foobar"
+    assert decoded["date"].timestamp() == 946713599.999999
+
+
+def test_storage_hash_handles_missing_files():
+    storage = utilities.StaticFilesStorage()
+    with pytest.warns(UserWarning):
+        assert storage.hashed_name("bs5/bootstrap.min.css.map") == "bs5/bootstrap.min.css.map"
+
+
+def test_LBL_password_validator(faker):
+    validator = utilities.LBNLTemplate2Validator()
+    with pytest.raises(ValidationError):
+        validator.validate(faker.password(special_chars=False))
+    with pytest.raises(ValidationError):
+        validator.validate(faker.password(digits=False))
+    with pytest.raises(ValidationError):
+        validator.validate(faker.password(upper_case=False))
+    with pytest.raises(ValidationError):
+        validator.validate(faker.password(lower_case=False))

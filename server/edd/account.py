@@ -60,13 +60,6 @@ class EDDAccountAdapter(adapter.DefaultAccountAdapter):
                 context,
             )
 
-    def get_email_confirmation_url(self, request, emailconfirmation):
-        # This is super hacky but whatevs
-        url = super().get_email_confirmation_url(request, emailconfirmation)
-        if getattr(settings, "DEFAULT_HTTP_PROTOCOL", None) == "http":
-            url = url.replace("https://", "http://", 1)
-        return url
-
     def is_open_for_signup(self, request):
         allow_signup = getattr(settings, "EDD_ALLOW_SIGNUP", None)
         if isinstance(allow_signup, str):
@@ -78,14 +71,9 @@ class EDDAccountAdapter(adapter.DefaultAccountAdapter):
         return super().is_open_for_signup(request)
 
     def populate_username(self, request, user):
-        """
-        Takes a partial user, and sets the username, if missing,
-        to user email.
-        """
+        """Takes a partial user, and sets the username, if missing, to user email."""
         email = utils.user_email(user)
-        username = utils.user_username(user)
-        if not username:
-            utils.user_username(user, email)
+        utils.user_username(user) or utils.user_username(user, email)
 
     def password_reset_request(self, request, email):
         """
@@ -144,15 +132,11 @@ class EDDAccountAdapter(adapter.DefaultAccountAdapter):
     def _find_local_users_by_email(self, email):
         User = auth.get_user_model()
         # find either on the email field or the EmailAddress model
-        return User.objects.filter(
-            Q(email__iexact=email) | Q(emailaddress__email__iexact=email)
-        )
+        return User.objects.filter(Q(email__iexact=email) | Q(emailaddress__email__iexact=email))
 
     def _find_social_users_by_email(self, email):
         base = self._find_local_users_by_email(email)
-        return base.filter(socialaccount__isnull=False).prefetch_related(
-            "socialaccount_set"
-        )
+        return base.filter(socialaccount__isnull=False).prefetch_related("socialaccount_set")
 
 
 class EDDSocialAccountAdapter(social.DefaultSocialAccountAdapter):
@@ -166,9 +150,7 @@ class EDDSocialAccountAdapter(social.DefaultSocialAccountAdapter):
             return
         if "email" not in sociallogin.account.extra_data:
             return
-        qs = EmailAddress.objects.filter(
-            email__iexact=sociallogin.account.extra_data["email"]
-        )
+        qs = EmailAddress.objects.filter(email__iexact=sociallogin.account.extra_data["email"])
         if qs.exists():
             user = qs[0].user
             found = user.socialaccount_set.first()

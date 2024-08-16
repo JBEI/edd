@@ -74,11 +74,9 @@ class SafeExceptionReporterFilter(debug.SafeExceptionReporterFilter):
         # use the base implementation
         cleansed = super().cleanse_setting(key, value)
         if not isinstance(key, str):
-            logger.warning(
-                f"Not trying to match non-string key {key} while cleansing settings."
-            )
+            logger.warning(f"Not trying to match non-string key {key} while cleansing settings.")
         # if the setting is a URL, try to parse it and replace any password
-        if self.is_sensitive_key(key):
+        elif self.url_settings.search(key):
             try:
                 parsed = None
                 if isinstance(value, str):
@@ -96,14 +94,6 @@ class SafeExceptionReporterFilter(debug.SafeExceptionReporterFilter):
             except Exception:
                 logger.exception("Exception cleansing URLs for error reporting")
         return cleansed
-
-    def is_sensitive_key(self, key):
-        try:
-            return self.url_settings.search(key)
-        except TypeError:
-            # Some settings have non-string sub-keys (e.g. MESSAGE_TAGS)
-            # These are assumed never sensitive in this filter
-            return False
 
 
 def monkey_patch_mail():
@@ -123,9 +113,7 @@ def monkey_patch_mail():
         Wraps the mail_admins function from Django to wrap long lines in emails.
         The exim mail server used in EDD dis-allows lines longer than 998 bytes.
         """
-        message = "\n".join(
-            chain(*(wrapper.wrap(line) for line in message.splitlines()))
-        )
+        message = "\n".join(chain(*(wrapper.wrap(line) for line in message.splitlines())))
         _mail_admins(subject, message, *args, **kwargs)
 
     def send_mail(subject, message, from_email, recipient_list, *args, **kwargs):
@@ -133,9 +121,7 @@ def monkey_patch_mail():
         Wraps the send_mail function from Django to wrap long lines in emails.
         The exim mail server used in EDD dis-allows lines longer than 998 bytes.
         """
-        message = "\n".join(
-            chain(*(wrapper.wrap(line) for line in message.splitlines()))
-        )
+        message = "\n".join(chain(*(wrapper.wrap(line) for line in message.splitlines())))
         _send_mail(subject, message, from_email, recipient_list, *args, **kwargs)
 
     mail.mail_admins = mail_admins
