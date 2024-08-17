@@ -1,0 +1,17 @@
+{% extends "edd_bs5.html" %}
+{% load i18n static %}
+
+{% block head_title %}
+  {% translate "EDD - Too Many Requests" %}
+{% endblock head_title %}
+
+{% block body_title %}
+  {% translate "Too Many Requests" %}
+{% endblock body_title %}
+
+{% block content %}
+  <p>{% blocktranslate trimmed %}
+  Wow, you're trying to load a lot of pages. We've put you in time-out. Why not
+  go take a walk, get a coffee, and not look at screens for a while?
+  {% endblocktranslate %}</p>
+{% endblock content %}
