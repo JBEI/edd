@@ -701,8 +701,9 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         self.client.force_login(self.admin)
         response = self.client.get(url)
         self._check_status(response, HTTPStatus.OK)
-        # we don't bother paging this, just directly return the 3 items
-        assert len(response.data) == 3
+        assert "count" in response.data
+        assert "results" in response.data
+        assert len(response.data["results"]) == 3
 
     def test_metadata_types_list(self):
         url = reverse("rest:metadata_types-list")

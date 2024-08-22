@@ -373,7 +373,14 @@ class CompartmentViewSet(viewsets.ViewSet):
         # fake having a model by converting JSON of all compartments to a list
         values = models.Measurement.Compartment.to_json().values()
         serializer = serializers.CompartmentSerializer(values, many=True)
-        return Response(serializer.data)
+        # fake the pagination, since it depends on QuerySet API and we don't have a table
+        page = {
+            "count": len(values),
+            "next": None,
+            "previous": None,
+            "results": serializer.data,
+        }
+        return Response(page)
 
 
 class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
