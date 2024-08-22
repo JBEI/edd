@@ -190,8 +190,10 @@ class LoadRequest:
             self.transition(new_status=active, expect=expect)
             yield
             self.transition(new_status=success, expect=active)
+            self.send_update()
         except Exception as e:
             self.transition(new_status=failed)
+            self.send_update()
             raise e
 
     def open(self):
