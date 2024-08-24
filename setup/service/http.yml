@@ -5,3 +5,4 @@ services:
         EDD_VERSION: development
     environment:
       EDD_CONTAINER: http
+    image: docker.io/jbei/edd-core:local-build

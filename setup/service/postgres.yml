@@ -1,8 +1,7 @@
 services:
   postgres:
     environment:
-      POSTGRES_DB: edd
-      POSTGRES_USER: edduser
+      POSTGRES_USER: postgres
     image: library/postgres:14
     logging:
       driver: json-file
@@ -13,5 +12,6 @@ services:
       - backnet
     volumes:
       - postgres_db:/var/lib/postgresql/data
+      - ./secrets/000_init.sql:/docker-entrypoint-initdb.d/000_init.sql
 volumes:
   postgres_db: {}

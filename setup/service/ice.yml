@@ -29,15 +29,12 @@ services:
       - ice_index:/var/lib/ice/lucene
       - ice_local:/usr/local/tomcat/data
       - ./secrets/edd_ice_key:/usr/local/ice-data/rest-auth/edd:ro
-  ice_db:
-    environment:
-      POSTGRES_DB: ice
-      POSTGRES_USER: iceuser
-    image: library/postgres:14
+      - ./secrets/ice-server.properties:/usr/local/ice-data/config/ice-server.properties
+  postgres:
     networks:
       - icenet
     volumes:
-      - ice_pg:/var/lib/postgresql/data
+      - ./secrets/001_ice-init.sql:/docker-entrypoint-initdb.d/001_ice-init.sql
   websocket:
     environment:
       ICE_NAME: edd

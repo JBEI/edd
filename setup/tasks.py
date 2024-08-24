@@ -219,15 +219,12 @@ class ServiceComposer:
             ice = self.define("ice")
             url = "http://ice:8080/"
             db_password = password(18)
-            ice.write_property(
-                "services.ice_db.environment.POSTGRES_PASSWORD", db_password
-            )
-            opts = [
-                "-Dice.db.url=jdbc:postgresql://ice_db/ice",
-                "-Dice.db.user=iceuser",
-                f"-Dice.db.pass={db_password}",
-            ]
-            ice.write_env("CATALINA_OPTS", " ".join(opts))
+            with open("template/ice-server.properties") as f:
+                props = f.read().format(db_password=db_password)
+                ice.write_secret_file("ice-server.properties", props)
+            with open("template/001_ice-init.sql") as f:
+                sql = f.read().format(db_password=db_password)
+                ice.write_secret_file("001_ice-init.sql", sql)
             # existing HMAC code depends on canonical base64 encoding
             # cannot use the urlsafe variants
             hmac = password(63, urlsafe=False)
@@ -269,9 +266,14 @@ class ServiceComposer:
             self.urls.update(postgres=url)
         else:
             postgres = self.define("postgres")
+            # create superuser password
+            su_password = password(18)
+            postgres.write_secret("POSTGRES_PASSWORD", su_password)
             # create edduser password to postgres
             db_password = password(18)
-            postgres.write_secret("POSTGRES_PASSWORD", db_password)
+            with open("template/000_init.sql") as f:
+                sql = f.read().format(db_password=db_password)
+                postgres.write_secret_file("000_init.sql", sql)
             # add db URLs to other services
             db_url = f"postgresql://edduser:{db_password}@postgres:5432/edd"
             celery = f"db+postgresql://edduser:{db_password}@postgres:5432/edd"
@@ -311,16 +313,6 @@ class ServiceComposer:
             self.define("redis")
         return self
 
-    def setup_smtp(self, url=None):
-        print("Configuring mail")
-        if url:
-            print("NOTE: EDD does not currently support simple SMTP config via URL.")
-            print("Must manually overwrite Django mail settings in settings directory.")
-            self.urls.update(smtp=url)
-        else:
-            self.define("smtp")
-        return self
-
     def setup_solr(self, url=None):
         print("Configuring solr")
         if url:
@@ -337,7 +329,7 @@ class ServiceComposer:
 
     def write_configs(self):
         core_names = ["http", "websocket", "worker"]
-        support_names = ["postgres", "rabbitmq", "redis", "smtp", "solr"]
+        support_names = ["postgres", "rabbitmq", "redis", "solr"]
         optional_names = ["ice", "letsencrypt", "nginx"]
         configured = []
         for name in core_names:
@@ -393,7 +385,6 @@ def offline(
     postgres=None,
     rabbitmq=None,
     redis=None,
-    smtp=None,
     solr=None,
 ):
     """
@@ -418,7 +409,6 @@ def offline(
         postgres = enforce("EDD_POSTGRES", postgres)
         rabbitmq = enforce("EDD_RABBITMQ", rabbitmq)
         redis = enforce("EDD_REDIS", redis)
-        smtp = enforce("EDD_SMTP", smtp)
         solr = enforce("EDD_SOLR", solr)
 
     # Use-case #2 becomes base-case
@@ -427,7 +417,6 @@ def offline(
     composer.setup_postgres(postgres)
     composer.setup_rabbitmq(rabbitmq)
     composer.setup_redis(redis)
-    composer.setup_smtp(smtp)
     composer.setup_solr(solr)
 
     # below section goes in "reverse" order of use-cases
@@ -477,12 +466,9 @@ def interactive(context):
         "postgres",
         "rabbitmq",
         "redis",
-        "smtp",
         "solr",
     ]
-    include = {
-        service: prompt_yesno(f"Bundle service for {service}?") for service in services
-    }
+    include = {service: prompt_yesno(f"Bundle service for {service}?") for service in services}
 
     # TODO: check prereqs
     # e.g. no point adding letsencrypt without adding nginx

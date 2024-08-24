@@ -6,34 +6,10 @@ is a Python module, can create multiple override files, and load them with
 `from . import [...]`.
 """
 
-import environ
 import errno
 import os
 
-# Try to load everything in the common settings files
-try:
-    from ..auth import *  # noqa: F403
-    from ..base import *  # noqa: F403
-    from ..base import env
-    from ..celery import *  # noqa: F403
-    from ..edd import *  # noqa: F403
-except ImportError:
-    # failed to load existing values
-    # oh well carry on without read-and-update ability
-    pass
-
-root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
-
-ALLOWED_HOSTS = ["*"]
-# Set the IPs where the Django debug toolbar will be available
-# use localhost IPv4 and IPv6
-INTERNAL_IPS = ["127.0.0.1", "::1"]
-# Add login providers to enable third-party auth
-# INSTALLED_APPS = INSTALLED_APPS + (
-#     'allauth.socialaccount.providers.github',
-#     'allauth.socialaccount.providers.google',
-#     'allauth.socialaccount.providers.linkedin_oauth2',
-# )
+ALLOWED_HOSTS = ["*", "edd.lvh.me"]
 
 # Setup ADMINS and MANAGERS for this deployment
 # Each is a 2-tuple of Name and Email
@@ -46,39 +22,10 @@ ADMINS = MANAGERS = [
     # ("EDD Managers", "edd-managers@example.net"),
 ]
 
-# Uncomment this block to work around offsite LDAP authentication problems
 # NOTE: this backend ignores passwords, and only validates that the user exists.
-# AUTHENTICATION_BACKENDS = (
-#     'edd.auth_backend.LocalTestBackend',
-# )
-
-# Uncomment this to print emails to the console/logs, rather than attempt
-# real SMTP connections
-# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-# Uncomment below to use DEBUG mode and include the debug toolbar
-# DEBUG = True
-
-EDD_ENABLE_GRAPHQL = True
-
-# Add the Django Debug Toolbar to local instance
-if DEBUG:  # noqa: F405
-    INSTALLED_APPS = INSTALLED_APPS + ("debug_toolbar",)  # noqa: F405
-    MIDDLEWARE = (
-        "debug_toolbar.middleware.DebugToolbarMiddleware",
-    ) + MIDDLEWARE  # noqa: F405
-    DEBUG_TOOLBAR_CONFIG = {"JQUERY_URL": ""}
-
-# Default LDAP group mirroring will treat LDAP as the *only* source of groups.
-#   If using local groups, either:
-#    - set a whitelist of groups to mirror with AUTH_LDAP_MIRROR_GROUPS; or
-#    - set a blacklist of groups to ignore with AUTH_LDAP_MIRROR_GROUPS_EXCEPT.
-#   Using a whitelist will mirror *only* the listed groups from LDAP,
-#   and ignore all others.
-#   Using a blacklist must list *all* local-only groups,
-#   otherwise membership will be removed on next login.
-# AUTH_LDAP_MIRROR_GROUPS = ['JBEI']
-
+AUTHENTICATION_BACKENDS = ("edd.auth_backend.LocalTestBackend",)
+# print emails to the console/logs, rather than attempt real SMTP connections
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # The below logging configuration is set up for CI/Jenkins.
 # If unsure about logging setup, remove and use the production defaults.

@@ -6,7 +6,7 @@ services:
       VIRTUAL_PORT: "8000"
       VIRTUAL_STATIC: "true"
   nginx:
-    image: jbei/nginx:mainline
+    image: library/nginx:mainline-alpine
     init: true
     labels:
       - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy=true

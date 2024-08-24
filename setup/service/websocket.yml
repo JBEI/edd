@@ -2,3 +2,4 @@ services:
   websocket:
     environment:
       EDD_CONTAINER: websocket
+    image: docker.io/jbei/edd-core:local-build

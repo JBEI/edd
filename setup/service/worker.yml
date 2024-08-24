@@ -2,3 +2,4 @@ services:
   worker:
     environment:
       EDD_CONTAINER: worker
+    image: docker.io/jbei/edd-core:local-build

@@ -59,12 +59,11 @@ in the service data volumes on first launch; to use alternate passwords or
 existing services (e.g. if you already have a Postgres cluster), edit the file
 prior to launching EDD.
 
-### Pull EDD's images
+### Build EDD's images
 
-Running `docker compose up` will automatically pull any missing Docker images
-to the host prior to launching; however, it is sometimes useful to run this
-step manually. Building or pulling specific images, and tagging appropriately,
-allows more control over the images used to launch EDD.
+When using `dev_quickstart.sh`, the `docker-compose.override.yml` will point
+at core EDD images that will not exist; the tag is for a local-only build. You
+must first build the image with `docker compose build`.
 
 See the documentation on the [jbei/edd-core image][edd-core] for details on
 building and running the core application components. More details on all the
