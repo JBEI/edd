@@ -27,6 +27,28 @@ AUTHENTICATION_BACKENDS = ("edd.auth_backend.LocalTestBackend",)
 # print emails to the console/logs, rather than attempt real SMTP connections
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
+# these are not used unless AUTHENTICATION_BACKENDS includes an LDAP backend
+AUTH_LDAP_SERVER_URI = "ldap://ldap:389"
+AUTH_LDAP_BIND_DN = ""
+AUTH_LDAP_BIND_PASSWORD = ""
+AUTH_LDAP_USER_SEARCH = LDAPSearch(
+    "ou=people,dc=ldapmock,dc=local",
+    ldap.SCOPE_ONELEVEL,
+    "(|(uid=%(user)s)(mail=%(user)s))",
+)
+AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
+    "ou=groups,dc=ldapmock,dc=local",
+    ldap.SCOPE_ONELEVEL,
+    "(objectclass=groupofuniquenames)",
+)
+AUTH_LDAP_GROUP_TYPE = GroupOfUniqueNamesType(name_attr="cn")
+AUTH_LDAP_MIRROR_GROUPS = True
+AUTH_LDAP_USER_ATTR_MAP = {
+    "first_name": "givenName",
+    "last_name": "sn",
+    "email": "mail",
+}
+
 # The below logging configuration is set up for CI/Jenkins.
 # If unsure about logging setup, remove and use the production defaults.
 def get_log_filename(name="edd.log"):

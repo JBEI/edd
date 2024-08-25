@@ -29,9 +29,8 @@ class AllauthLDAPBackend(LDAPBackend):
             # first check if there's an EmailAddress for the LDAP email
             attr_name = self.settings.USER_ATTR_MAP["email"]
             email = ldap_user.attrs[attr_name][0]
-            found = models.EmailAddress.objects.select_related("user").get(
-                email__iexact=email, verified=True,
-            )
+            queryset = models.EmailAddress.objects.select_related("user")
+            found = queryset.get(email__iexact=email, verified=True)
             return (found.user, False)
         except Exception:
             # when EmailAddress not found, fallback to parent behavior
@@ -41,11 +40,8 @@ class AllauthLDAPBackend(LDAPBackend):
         # validate user has email in LDAP
         if user and user.email:
             # check if the user has any *other* address set as primary already
-            has_primary = (
-                models.EmailAddress.objects.exclude(email__iexact=user.email)
-                .filter(user=user, primary=True)
-                .exists()
-            )
+            queryset = models.EmailAddress.objects.exclude(email__iexact=user.email)
+            has_primary = queryset.filter(user=user, primary=True).exists()
             # duplicate email here
             # because update_or_create will drop it
             # due to __iexact lookup
@@ -54,15 +50,11 @@ class AllauthLDAPBackend(LDAPBackend):
                 "primary": not has_primary,
                 "verified": True,
             }
-            try:
-                models.EmailAddress.objects.update_or_create(
-                    user=user, email__iexact=user.email, defaults=defaults
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to check or update email verification "
-                    f"for {user.email} from LDAP!"
-                )
+            models.EmailAddress.objects.update_or_create(
+                user=user,
+                email__iexact=user.email,
+                defaults=defaults,
+            )
 
 
 class LocalTestBackend(backends.ModelBackend):

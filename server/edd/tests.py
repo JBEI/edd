@@ -1,6 +1,7 @@
 import http
 
 import pytest
+from allauth.account import models as allauth_models
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import override_settings
@@ -293,3 +294,118 @@ def test_LBL_password_validator(faker):
         validator.validate(faker.password(upper_case=False))
     with pytest.raises(ValidationError):
         validator.validate(faker.password(lower_case=False))
+
+
+@override_settings(AUTHENTICATION_BACKENDS=("edd.auth_backend.AllauthLDAPBackend",))
+def test_login_with_mock_ldap(client, db):
+    user_email = "developer.one@ldapmock.local"
+
+    success = client.login(username=user_email, password="password")
+
+    assert success
+    created_email = allauth_models.EmailAddress.objects.filter(email=user_email)
+    assert created_email.exists()
+
+
+@override_settings(AUTHENTICATION_BACKENDS=("edd.auth_backend.AllauthLDAPBackend",))
+def test_login_with_mock_ldap_matching_email(client, db):
+    existing_user = UserFactory()
+    existing_email = allauth_models.EmailAddress(
+        email="developer.two@ldapmock.local",
+        user=existing_user,
+        verified=True,
+    )
+    existing_email.save()
+
+    success = client.login(username="developer.two@ldapmock.local", password="password")
+
+    assert success
+
+
+@override_settings(AUTHENTICATION_BACKENDS=("edd.auth_backend.AllauthLDAPBackend",))
+def test_login_with_mock_ldap_wrong_password(client, db):
+    user_email = "developer.one@ldapmock.local"
+
+    success = client.login(username=user_email, password="banana")
+
+    assert not success
+    created_email = allauth_models.EmailAddress.objects.filter(email=user_email)
+    assert not created_email.exists()
+
+
+@override_settings(AUTHENTICATION_BACKENDS=("edd.auth_backend.AllauthLDAPBackend",))
+def test_mock_ldap_password_reset(client, db):
+    user_email = "developer.one@ldapmock.local"
+    # login to run through user setup in database
+    client.login(username=user_email, password="password")
+    client.logout()
+
+    url = reverse("account_reset_password")
+    response = client.post(url, {"email": user_email}, follow=True)
+
+    asserts.assertRedirects(response, reverse("account_reset_password_done"))
+    asserts.assertTemplateUsed(response, "account/password_reset_done.html")
+    # only one email sent, not two
+    assert len(mail.outbox) == 1
+    # email directs user to password.lbl.gov to reset LBL password
+    # NOTE: this will definitely break if the ldap_reset_requested_message.txt changes :)
+    assert "password.lbl.gov" in mail.outbox[0].body
+
+
+@override_settings(AUTHENTICATION_BACKENDS=("edd.auth_backend.AllauthLDAPBackend",))
+def test_mock_ldap_password_reset_user_does_not_exist(client, db):
+    user_email = "no-reply@ldapmock.local"
+
+    url = reverse("account_reset_password")
+    response = client.post(url, {"email": user_email}, follow=True)
+
+    # pretend the reset actually happened
+    asserts.assertRedirects(response, reverse("account_reset_password_done"))
+    asserts.assertTemplateUsed(response, "account/password_reset_done.html")
+    # email target that they don't have an account
+    assert len(mail.outbox) == 1
+    assert "we do not have any record" in mail.outbox[0].body
+
+
+@override_settings(AUTHENTICATION_BACKENDS=("edd.auth_backend.LocalTestBackend",))
+def test_login_with_local_test_backend(client, db):
+    existing_user = UserFactory()
+    success = client.login(username=existing_user.username, password="password")
+
+    assert success
+
+
+@override_settings(AUTHENTICATION_BACKENDS=("edd.auth_backend.LocalTestBackend",))
+def test_login_with_local_test_backend_user_does_not_exist(client, db):
+    success = client.login(username="lorem ipsum", password="password")
+
+    assert not success
+
+
+@override_settings(
+    AUTHENTICATION_BACKENDS=("edd.auth_backend.ManualVerificationModelBackend",),
+    EDD_APPROVAL_CONTACT="admin@example.org",
+)
+def test_login_with_manual_account_verification(client, db):
+    existing_user = UserFactory()
+    existing_user.set_password("password")
+    existing_user.save()
+
+    # account is not verified
+    with pytest.raises(ValidationError):
+        client.login(username=existing_user.username, password="password")
+
+
+@override_settings(
+    AUTHENTICATION_BACKENDS=("edd.auth_backend.ManualVerificationModelBackend",),
+    EDD_APPROVAL_CONTACT="admin@example.org",
+)
+def test_login_with_manual_account_verification_invalid_password(client, db):
+    existing_user = UserFactory()
+    existing_user.set_password("password")
+    existing_user.save()
+
+    # login with wrong password, no ValidationError
+    success = client.login(username=existing_user.username, password="banana")
+
+    assert not success

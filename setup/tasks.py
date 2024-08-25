@@ -241,6 +241,11 @@ class ServiceComposer:
             service.write_env("ICE_NAME", "edd")
             service.write_env("ICE_URL", url)
 
+    def setup_ldap(self):
+        print("Configuring test ldap")
+        self.define("ldap")
+        return self
+
     def setup_letsencrypt(self):
         print("Configuring letsencrypt")
         # only necessary to define services
@@ -424,6 +429,7 @@ def offline(
     # Use-case #5 implies use-case #3 AND not #4;
     if deploy == "dev":
         # domain = "{service}.lvh.me"
+        composer.setup_ldap()
         composer.setup_nginx()
         composer.setup_ice()
         composer.core(expose=True, proxy=True, dev=True)

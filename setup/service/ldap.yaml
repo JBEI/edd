@@ -1,0 +1,6 @@
+services:
+  ldap:
+    image: thoteam/slapd-server-mock
+    networks:
+    - backnet
+    platform: linux/x86_64
