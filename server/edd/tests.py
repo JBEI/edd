@@ -409,3 +409,29 @@ def test_login_with_manual_account_verification_invalid_password(client, db):
     success = client.login(username=existing_user.username, password="banana")
 
     assert not success
+
+
+def test_reset_password_email(client, db):
+    existing_user = UserFactory()
+
+    # send the reset request
+    url = reverse("account_reset_password")
+    response = client.post(url, {"email": existing_user.email}, follow=True)
+
+    # get the proper reset response
+    asserts.assertRedirects(response, reverse("account_reset_password_done"))
+    asserts.assertTemplateUsed(response, "account/password_reset_done.html")
+    # email contains link to complete reset
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [existing_user.email]
+    urls = [line for line in mail.outbox[0].body.splitlines() if line.startswith("http")]
+    assert len(urls) == 1
+
+    # request the reset page
+    reset_url = urls[0]
+    # find the base path
+    base_url = reverse("account_reset_password")
+    # get the URL *only* from the base
+    reset_url = reset_url[reset_url.index(base_url) :]
+    reset = client.get(reset_url, follow=True)
+    asserts.assertTemplateUsed(reset, "account/password_reset_from_key.html")

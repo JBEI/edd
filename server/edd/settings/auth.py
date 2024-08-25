@@ -16,20 +16,5 @@ ACCOUNT_FORMS = {
     "set_password": "edd.account.SetPasswordForm",
     "signup": "edd.account.SignupForm",
 }
+ACCOUNT_PREVENT_ENUMERATION = True
 ACCOUNT_USERNAME_REQUIRED = False
-SOCIALACCOUNT_ADAPTER = "edd.account.EDDSocialAccountAdapter"
-SOCIALACCOUNT_PROVIDERS = {
-    "github": {"SCOPE": ["user"]},
-    "google": {"SCOPE": ["email", "profile"]},
-    "linkedin": {
-        "SCOPE": ["r_basicprofile", "r_emailaddress"],
-        "PROFILE_FIELDS": [
-            "id",
-            "first-name",
-            "last-name",
-            "email-address",
-            "picture-url",
-            "public-profile-url",
-        ],
-    },
-}

@@ -1,5 +1,5 @@
 {% extends "account/base.html" %}
-{% load account branding i18n socialaccount static %}
+{% load account branding i18n static %}
 
 {% block head_title %}
   {{ block.super }}
@@ -10,10 +10,6 @@
 
 {% block js_css %}
   {{ block.super }}
-  {% get_providers as socialaccount_providers %}
-  {% if socialaccount_providers %}
-  {% providers_media_js %}
-  {% endif %}
   <script type="text/javascript" src="{% static 'bs5/login.js' %}"></script>
 {% endblock js_css %}
 
@@ -36,7 +32,6 @@
 {% endblock %}
 
 {% block content %}
-  {% get_providers as socialaccount_providers %}
   <form
     action="{% url 'account_login' %}"
     class="centered-form"
@@ -48,19 +43,6 @@
     <p>{{ welcome }}</p>
     {% endif %}
     <fieldset>
-    {% if socialaccount_providers %}
-      <legend>{% translate 'Login with third-party accounts' %}</legend>
-      <p>
-        {% blocktranslate %}
-        Please sign in with one of your existing third-party accounts.
-        {% endblocktranslate %}
-      </p>
-      <div class="socialaccount_ballot">
-        <ul class="socialaccount_providers">
-          {% include "socialaccount/snippets/provider_list.html" with process="login" %}
-        </ul>
-      </div>
-    {% else %}
       <legend>{% translate 'Create an account' %}</legend>
       <p>
         {% blocktranslate %}
@@ -68,7 +50,6 @@
         <a href="{{ signup_url }}">sign up</a> first.
         {% endblocktranslate %}
       </p>
-    {% endif %}
     </fieldset>
     <div class="text-center my-3">{% translate 'or' %}</div>
     <fieldset>
@@ -140,12 +121,5 @@
       />
     </fieldset>
 
-    {% if socialaccount_providers %}
-    <p>
-      {% blocktranslate with site.name as site_name %}
-      <a href="{{ signup_url }}">Sign up</a> for a {{ site_name }} account.
-      {% endblocktranslate %}
-    </p>
-    {% endif %}
   </form>
 {% endblock content %}

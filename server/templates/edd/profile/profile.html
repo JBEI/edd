@@ -1,5 +1,5 @@
 {% extends "edd_bs5.html" %}
-{% load i18n socialaccount static %}
+{% load i18n static %}
 
 
 {% block head_title %}
@@ -69,13 +69,6 @@
       class="btn btn-secondary"
       href="{% url 'account_email' %}"
     >{% translate "Manage Email" %}</a>
-    {% get_providers as socialaccount_providers %}
-    {% if socialaccount_providers %}
-    <a
-      class="btn btn-secondary"
-      href="{% url 'socialaccount_connections' %}"
-    >{% translate "Manage Third-party Logins" %}</a>
-    {% endif %}
   </div>
 </div>
 {% endif %}

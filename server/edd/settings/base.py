@@ -117,7 +117,6 @@ INSTALLED_APPS = (
     # django-allauth in pip; separate apps for each provider
     "allauth",
     "allauth.account",
-    "allauth.socialaccount",
     "django.contrib.flatpages",
     "channels",  # channels in pip
     # EDD apps

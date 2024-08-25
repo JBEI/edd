@@ -9,6 +9,9 @@ is a Python module, can create multiple override files, and load them with
 import errno
 import os
 
+import ldap
+from django_auth_ldap.config import GroupOfUniqueNamesType, LDAPSearch
+
 ALLOWED_HOSTS = ["*", "edd.lvh.me"]
 
 # Setup ADMINS and MANAGERS for this deployment
@@ -28,6 +31,7 @@ AUTHENTICATION_BACKENDS = ("edd.auth_backend.LocalTestBackend",)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # these are not used unless AUTHENTICATION_BACKENDS includes an LDAP backend
+# the LDAP backend used in testing will use these
 AUTH_LDAP_SERVER_URI = "ldap://ldap:389"
 AUTH_LDAP_BIND_DN = ""
 AUTH_LDAP_BIND_PASSWORD = ""
