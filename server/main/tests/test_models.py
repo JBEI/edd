@@ -3,6 +3,8 @@ from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 
 from edd import TestCase
 from edd.profile.factory import GroupFactory, UserFactory
@@ -502,3 +504,66 @@ def test_Worklist_flatten_json_numeric_value():
     number = factory.fake.pyint()
     result = flatten_json({"user_count": number})
     assert result == {"user_count": number}
+
+
+def test_Study_created_with_permissions(db):
+    study = factory.StudyFactory()
+
+    permissions = list(study.get_combined_permission())
+    assert len(permissions) == 1
+    assert permissions[0].is_write()
+
+
+@override_settings(EDD_DEFAULT_STUDY_READ_GROUPS=["Thing1", "Thing2"])
+def test_Study_created_with_groups_permissions(db):
+    # make sure these exist *before* creating the study
+    GroupFactory(name="Thing1")
+    GroupFactory(name="Thing2")
+    # then study should get group read permissions
+    study = factory.StudyFactory()
+
+    permissions = list(study.get_combined_permission())
+    assert len(permissions) == 3
+    strings = {str(p) for p in permissions}
+    assert "g:Thing1" in strings
+    assert "g:Thing2" in strings
+
+
+@override_settings(EDD_DEFAULT_STUDY_READ_GROUPS=["foobar"])
+def test_Study_created_with_missing_default_group(db):
+    # not creating the group first will raise warning
+    with pytest.warns(UserWarning):
+        study = factory.StudyFactory()
+
+    # only creator permission, not any group permission
+    permissions = list(study.get_combined_permission())
+    assert len(permissions) == 1
+    assert permissions[0].is_write()
+
+
+def test_Study_gets_unique_slug(db, faker):
+    name = faker.catch_phrase()
+    study1 = factory.StudyFactory(name=name)
+    study2 = factory.StudyFactory(name=name)
+
+    # names the same, slugs different
+    assert str(study1) == str(study2)
+    assert study1.slug != study2.slug
+
+
+def test_Study_comment_cast_to_string_is_body(db, faker):
+    study = factory.StudyFactory()
+    text = faker.paragraph()
+    comment = study.comments.create(body=text)
+
+    assert str(comment) == text
+
+
+def test_Study_attachment_cast_to_string_is_filename(db, faker):
+    study = factory.StudyFactory()
+    filename = faker.file_name()
+    file = SimpleUploadedFile(filename, b"")
+    attachment = study.files.create(filename=filename, file=file)
+
+    assert str(attachment) == filename
+    assert str(study.id) in attachment.file.path

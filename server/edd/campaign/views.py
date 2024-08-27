@@ -217,6 +217,11 @@ class CampaignDetailView(generic.edit.FormMixin, generic.DetailView):
         )
         return context
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update(user=self.request.user)
+        return kwargs
+
     def get_queryset(self):
         qs = super().get_queryset().order_by("pk")
         if self.request.user.is_superuser:
@@ -310,9 +315,7 @@ class CampaignPermissionView(generic.DetailView):
         except PermissionDenied:
             raise
         except Exception as e:
-            logger.exception(
-                f"Error modifying campaign ({self.object}) permissions: {e}"
-            )
+            logger.exception(f"Error modifying campaign ({self.object}) permissions: {e}")
             return HttpResponse(status=HTTPStatus.SERVER_ERROR)
         return HttpResponse(status=HTTPStatus.NO_CONTENT)
 

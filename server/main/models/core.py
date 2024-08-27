@@ -1,10 +1,12 @@
+import functools
 import json
-import os
-from collections import defaultdict, namedtuple
+import warnings
+from collections import namedtuple
 from itertools import chain
 
 import arrow
 from django.conf import settings
+from django.contrib.auth.models import Group
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
@@ -57,14 +59,7 @@ class Comment(models.Model):
 
 def attachment_path(instance, filename):
     datepath = arrow.now().strftime("%Y/%m/%d")
-    if instance and instance.object_ref_id:
-        # attachments created by bootstrap migration go in root
-        if instance.object_ref.created.mod_by_id == 1:
-            return filename
-        # others go in directory for date with parent ID prepended
-        return f"{datepath}/{instance.object_ref_id}-{filename}"
-    # otherwise, use filename directly
-    return f"{datepath}/{filename}"
+    return f"{datepath}/{instance.object_ref_id}-{filename}"
 
 
 class Attachment(models.Model):
@@ -115,68 +110,12 @@ class Attachment(models.Model):
         verbose_name=_("Size"),
     )
 
-    extensions_to_icons = defaultdict(
-        lambda: "icon-generic.png",
-        {
-            ".zip": "icon-zip.png",
-            ".gzip": "icon-zip.png",
-            ".bzip": "icon-zip.png",
-            ".gz": "icon-zip.png",
-            ".dmg": "icon-zip.png",
-            ".rar": "icon-zip.png",
-            ".ico": "icon-image.gif",
-            ".gif": "icon-image.gif",
-            ".jpg": "icon-image.gif",
-            ".jpeg": "icon-image.gif",
-            ".png": "icon-image.gif",
-            ".tif": "icon-image.gif",
-            ".tiff": "icon-image.gif",
-            ".psd": "icon-image.gif",
-            ".svg": "icon-image.gif",
-            ".mov": "icon-video.png",
-            ".avi": "icon-video.png",
-            ".mkv": "icon-video.png",
-            ".txt": "icon-text.png",
-            ".rtf": "icon-text.png",
-            ".wri": "icon-text.png",
-            ".htm": "icon-text.png",
-            ".html": "icon-text.png",
-            ".pdf": "icon-pdf.gif",
-            ".ps": "icon-pdf.gif",
-            ".key": "icon-keynote.gif",
-            ".mdb": "icon-mdb.png",
-            ".doc": "icon-word.png",
-            ".ppt": "icon-ppt.gif",
-            ".xls": "icon-excel.png",
-            ".xlsx": "icon-excel.png",
-        },
-    )
-
     def __str__(self):
         return self.filename
 
     @property
     def user_initials(self):
         return self.created.initials
-
-    @property
-    def icon(self):
-        base, ext = os.path.splitext(self.filename)
-        return self.extensions_to_icons[ext]
-
-    def user_can_delete(self, user):
-        """
-        Verify that a user has the appropriate permissions to delete
-        an attachment.
-        """
-        return self.object_ref.user_can_write(user)
-
-    def user_can_read(self, user):
-        """
-        Verify that a user has the appropriate permissions to see (that is,
-        download) an attachment.
-        """
-        return self.object_ref.user_can_read(user)
 
 
 class EDDObjectManager(models.Manager):
@@ -236,24 +175,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
         verbose_name=_("UUID"),
     )
 
-    @property
-    def mod_epoch(self):
-        return arrow.get(self.updated.mod_time).int_timestamp
-
-    @property
-    def last_modified(self):
-        return self.updated.format_timestamp()
-
-    def was_modified(self):
-        return self.updates.count() > 1
-
-    @property
-    def date_created(self):
-        return self.created.format_timestamp()
-
+    @functools.cache
     def get_attachment_count(self):
-        if hasattr(self, "_file_count"):
-            return self._file_count
         return self.files.count()
 
     @property
@@ -264,9 +187,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
     def comment_list(self):
         return self.comments.order_by("created__mod_time").all()
 
+    @functools.cache
     def get_comment_count(self):
-        if hasattr(self, "_comment_count"):
-            return self._comment_count
         return self.comments.count()
 
     @classmethod
@@ -311,17 +233,6 @@ class EDDObject(EDDMetadata, EDDSerialize):
             "created": created.to_json(depth) if created else None,
         }
 
-    def to_json_str(self, depth=0):
-        """
-        Used in overview.html. Serializing directly in the template creates
-        strings like "u'description'" that Javascript can't parse.
-        """
-        json_dict = self.to_json(depth)
-        return json.dumps(json_dict, ensure_ascii=False).encode("utf8")
-
-    def user_can_read(self, user):
-        return True
-
     def user_can_write(self, user):
         return user and user.is_superuser
 
@@ -353,12 +264,11 @@ class SlugMixin:
         base_slug = self._slug_append(name)
         slug = base_slug
         # test uniqueness, add more stuff to end if not unique
-        if self._slug_exists(slug):
-            # try with last 4 of UUID appended, trimming off space if needed
-            slug = self._slug_concat(base_slug, uuid, frag_length=4)
-            if self._slug_exists(slug):
-                # full length of uuid should be 32 characters
-                slug = self._slug_concat(base_slug, uuid, frag_length=32)
+        fragment = 4
+        while self._slug_exists(slug):
+            # try with successively more of UUID appended
+            slug = self._slug_concat(base_slug, uuid, frag_length=fragment)
+            fragment += 4
         return slug
 
     def _slug_append(self, *items):
@@ -517,9 +427,7 @@ class Study(SlugMixin, EDDObject):
             return "__".join(via + list(args))
 
         # set access filter for public/anonymous access
-        access_filter = Q(
-            **{filter_key("everyonepermission", "permission_type", "in"): access}
-        )
+        access_filter = Q(**{filter_key("everyonepermission", "permission_type", "in"): access})
         if user:
             access_filter |= (
                 # set access for user
@@ -579,11 +487,11 @@ class Study(SlugMixin, EDDObject):
 
     @staticmethod
     def user_can_create(user):
-        if hasattr(settings, "EDD_ONLY_SUPERUSER_CREATE"):
-            if settings.EDD_ONLY_SUPERUSER_CREATE == "permission":
-                return user.has_perm("main.add_study") and user.is_active
-            elif settings.EDD_ONLY_SUPERUSER_CREATE:
-                return user.is_superuser and user.is_active
+        su_create = getattr(settings, "EDD_ONLY_SUPERUSER_CREATE", False)
+        if su_create == "permission":
+            return user.has_perm("main.add_study") and user.is_active
+        elif su_create:
+            return user.is_superuser and user.is_active
         return True
 
     def get_combined_permission(self):
@@ -642,9 +550,34 @@ class Study(SlugMixin, EDDObject):
         else:
             contact = {"id": contact, "extra": self.contact_extra}
         json_dict.update(
-            contact=contact, metabolic_map=self.get_attr_depth("metabolic_map", depth)
+            contact=contact,
+            metabolic_map=self.get_attr_depth("metabolic_map", depth),
         )
         return json_dict
+
+    def save(self, *args, **kwargs):
+        creating = not bool(self.pk)
+        super().save(*args, **kwargs)
+        if creating:
+            self._set_default_permissions()
+
+    def _set_default_permissions(self):
+        # default permissions for creator
+        creator = dict(permission_type=StudyPermission.WRITE)
+        reader = dict(permission_type=StudyPermission.READ)
+        self.userpermission_set.update_or_create(user=self.created.mod_by, defaults=creator)
+        # default groups from settings
+        names = getattr(settings, "EDD_DEFAULT_STUDY_READ_GROUPS", [])
+        if names:
+            group_ids = Group.objects.filter(name__in=names).values_list("pk", flat=True)
+            for group_id in group_ids:
+                self.grouppermission_set.update_or_create(group_id=group_id, defaults=reader)
+            if len(names) != len(group_ids):
+                warnings.warn(
+                    f"Setting only {len(group_ids)} of {len(names)} read permissions "
+                    f"for study `{self.slug}`. Check that all group names set in the "
+                    "`EDD_DEFAULT_STUDY_READ_GROUPS` setting are valid group names."
+                )
 
 
 class Protocol(models.Model):
@@ -1246,9 +1179,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     experimenter = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         blank=True,
-        help_text=_(
-            "EDD User that set up the experimental conditions of this Measurement."
-        ),
+        help_text=_("EDD User that set up the experimental conditions of this Measurement."),
         null=True,
         on_delete=models.PROTECT,
         related_name="measurement_experimenter_set",
@@ -1282,9 +1213,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     )
     active = models.BooleanField(
         default=True,
-        help_text=_(
-            "Flag indicating this Measurement is active and should be displayed."
-        ),
+        help_text=_("Flag indicating this Measurement is active and should be displayed."),
         verbose_name=_("Active"),
     )
     compartment = VarCharField(

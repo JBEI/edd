@@ -17,11 +17,6 @@ class StudyCreateView(generic.edit.CreateView):
     model = models.Study
     template_name = "main/create_study.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context.update(can_create=models.Study.user_can_create(self.request.user))
-        return context
-
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs.update(user=self.request.user)

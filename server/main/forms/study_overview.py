@@ -3,9 +3,7 @@
 import logging
 
 from django import forms
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
@@ -64,40 +62,6 @@ class ModifyStudyForm(forms.ModelForm):
         if not self.cleaned_data.get("contact", None):
             self.cleaned_data["contact"] = self._user
 
-    def save(self, commit=True, *args, **kwargs):
-        # perform updates atomically to the study and related user permissions
-        with transaction.atomic():
-            # save the study
-            s = super().save(commit=commit, *args, **kwargs)
-            # make sure the creator has write permission, and ESE has read
-            s.userpermission_set.update_or_create(
-                permission_type=models.StudyPermission.WRITE,
-                user=s.created.mod_by,
-            )
-            # if configured, apply default group read permissions to the new study
-            self._apply_default_read_permissions(s)
-        return s
-
-    def _apply_default_read_permissions(self, study):
-        _SETTING_NAME = "EDD_DEFAULT_STUDY_READ_GROUPS"
-        default_group_names = getattr(settings, _SETTING_NAME, None)
-        if default_group_names:
-            default_groups = Group.objects.filter(name__in=default_group_names)
-            default_groups = default_groups.values_list("pk", flat=True)
-            requested_groups = len(default_group_names)
-            found_groups = len(default_groups)
-            if requested_groups != found_groups:
-                logger.error(
-                    f"Setting only {found_groups} of {requested_groups} read permissions "
-                    f"for study `{study.slug}`. Check that all group names set in the "
-                    f"`{_SETTING_NAME}` value in Django settings is valid."
-                )
-            for group in default_groups:
-                study.grouppermission_set.update_or_create(
-                    group_id=group,
-                    defaults={"permission_type": models.StudyPermission.READ},
-                )
-
 
 class CreateStudyForm(ModifyStudyForm):
     """Form to create a new study."""
@@ -111,12 +75,12 @@ class CreateStudyForm(ModifyStudyForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self.fields exists after super.__init__()
-        if self._user:
-            # make sure lines are in a readable study
-            access = models.Study.access_filter(self._user, via="study")
-            queryset = models.Line.objects.filter(access).distinct()
-            self.fields["lineId"].queryset = queryset
+        if not models.Study.user_can_create(self._user):
+            raise ValidationError(_("You do not have permissions to create a Study."))
+        # make sure lines are in a readable study
+        access = models.Study.access_filter(self._user, via="study")
+        queryset = models.Line.objects.filter(access).distinct()
+        self.fields["lineId"].queryset = queryset
 
     def save(self, commit=True, *args, **kwargs):
         # perform updates atomically to the study and related user permissions
