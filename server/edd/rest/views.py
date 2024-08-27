@@ -107,6 +107,28 @@ class StudiesViewSet(
             return Response(value, status=HTTPStatus.OK)
         return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
 
+    @action(
+        detail=True,
+        filterset_class=None,
+        methods=[HTTPMethod.GET],
+        serializer_class=serializers.PermissionSerializer,
+    )
+    def permissions(self, request, pk=None):
+        study = self.get_object()
+        permissions = list(study.get_combined_permission())
+        page = self.paginate_queryset(permissions)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
+    @permissions.mapping.post
+    def permissions_post(self, request, pk=None):
+        serializer = self.get_serializer(data=request.data, many=True)
+        if serializer.is_valid():
+            saved = list(filter(None, serializer.save(study=self.get_object())))
+            if len(saved) == len(request.data):
+                return Response(status=HTTPStatus.OK)
+        return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
+
     @extend_schema(
         request=setup_serializers.RecordsSerializer,
         responses={

@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from rest_framework import serializers
 
 from main import models
@@ -139,6 +140,87 @@ class StudySerializer(EDDObjectSerializer):
                 'Must specify one of "contact_id" or "contact_extra"'
             )
         return data
+
+
+class EntitySerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False)
+    kind = serializers.ChoiceField(choices=("everyone", "group", "user"))
+    name = serializers.CharField(required=False)
+
+
+class PermissionSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=False, write_only=True)
+    entity = EntitySerializer(read_only=True)
+    group = serializers.CharField(required=False, write_only=True)
+    public = serializers.BooleanField(required=False, write_only=True)
+    read = serializers.BooleanField(required=False)
+    write = serializers.BooleanField(required=False)
+
+    def create(self, validated_data):
+        defaults = {"permission_type": validated_data.pop("permission_type")}
+        try:
+            return self._build_permission(defaults, validated_data)
+        except Exception:
+            self._errors = {"lookup_error": "No matching permission target found."}
+
+    def to_representation(self, instance):
+        entity = {"kind": instance.get_target_type()}
+        if value := instance.get_target_id():
+            entity["id"] = value
+            entity["name"] = instance.get_who_label()
+        return {
+            "entity": entity,
+            "read": instance.is_read(),
+            "write": instance.is_write(),
+        }
+
+    def validate(self, data):
+        who = {"email", "group", "public"}
+        missing = who - data.keys()
+        sent = who - missing
+        # if there's 3 items in set, none of the keys were sent
+        if len(missing) == 3:
+            raise serializers.ValidationError("Must specify who permission applies to.")
+        # if anything more than one is sent, raise error
+        if len(sent) > 1:
+            raise serializers.ValidationError(f"Must send only one of: {sent}.")
+        # must include at least one of "read" or "write"
+        match data:
+            case {"write": True}:
+                data.update(permission_type=models.StudyPermission.WRITE)
+            case {"read": True}:
+                data.update(permission_type=models.StudyPermission.READ)
+            case _:
+                raise serializers.ValidationError("Must include one of `read` or `write`.")
+        return data
+
+    def _build_permission(self, defaults, validated_data):
+        study = validated_data["study"]
+        match validated_data:
+            case {"email": value}:
+                user = self._get_user(value)
+                p, _ = study.userpermission_set.update_or_create(user=user, defaults=defaults)
+                return p
+            case {"group": value}:
+                group = self._get_group(value)
+                p, _ = study.grouppermission_set.update_or_create(group=group, defaults=defaults)
+                return p
+            case {"public": True}:
+                p, _ = study.everyonepermission_set.update_or_create(defaults=defaults)
+                return p
+
+    def _get_group(self, group):
+        queryset = Group.objects.filter(name__iexact=group)[:2]
+        if len(queryset) == 1:
+            return queryset[0]
+        return None
+
+    def _get_user(self, email):
+        User = get_user_model()
+        queryset = User.profiles.filter(email__iexact=email)[:2]
+        if len(queryset) == 1:
+            return queryset[0]
+        return None
 
 
 class LineSerializer(EDDObjectSerializer):

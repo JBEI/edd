@@ -851,3 +851,210 @@ def test_study_users_list(client, db):
 
     assert response.status_code == HTTPStatus.OK
     assert "count" in response.data
+
+
+def test_study_permission_list(client, db):
+    user = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    study.everyonepermission_set.create(permission_type=models.StudyPermission.READ)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.get(url)
+
+    # study has creator's permission and public permission
+    assert response.status_code == HTTPStatus.OK
+    assert response.data["count"] == 2
+
+
+def test_study_permission_add_user_read(client, db):
+    user = UserFactory()
+    reader = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"email": reader.email, "read": True}],
+        content_type="application/json",
+    )
+
+    # verify the permission is there
+    assert response.status_code == HTTPStatus.OK
+    p = study.userpermission_set.get(user=reader)
+    assert p.is_read()
+    assert not p.is_write()
+
+
+def test_study_permission_add_user_write(client, db):
+    user = UserFactory()
+    writer = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"email": writer.email, "write": True}],
+        content_type="application/json",
+    )
+
+    # verify the permission is there
+    assert response.status_code == HTTPStatus.OK
+    p = study.userpermission_set.get(user=writer)
+    assert p.is_read()
+    assert p.is_write()
+
+
+def test_study_permission_add_user_missing_read_write(client, db):
+    user = UserFactory()
+    demo = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(url, data=[{"email": demo.email}], content_type="application/json")
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_study_permission_add_user_missing_email(client, db):
+    user = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(url, data=[{"read": True}], content_type="application/json")
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_study_permission_add_user_too_many_fields(client, db):
+    user = UserFactory()
+    demo = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"email": demo.email, "public": True, "write": True}],
+        content_type="application/json",
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_study_permission_add_user_false_permission(client, db):
+    user = UserFactory()
+    reader = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"email": reader.email, "read": False, "write": False}],
+        content_type="application/json",
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_study_permission_add_user_invalid_email(client, db, faker):
+    user = UserFactory()
+    email = faker.email()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"email": email, "read": True}],
+        content_type="application/json",
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_study_permission_add_group_read(client, db):
+    user = UserFactory()
+    reader = GroupFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"group": reader.name, "read": True}],
+        content_type="application/json",
+    )
+
+    # verify the permission is there
+    assert response.status_code == HTTPStatus.OK
+    p = study.grouppermission_set.get(group=reader)
+    assert p.is_read()
+    assert not p.is_write()
+
+
+def test_study_permission_add_group_invalid_name(client, db, faker):
+    user = UserFactory()
+    name = faker.catch_phrase()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"group": name, "read": True}],
+        content_type="application/json",
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_study_permission_add_public_read(client, db):
+    user = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"public": True, "read": True}],
+        content_type="application/json",
+    )
+
+    # verify the permission is there
+    assert response.status_code == HTTPStatus.OK
+    p = study.everyonepermission_set.get()
+    assert p.is_read()
+    assert not p.is_write()
+
+
+def test_study_permission_add_public_false(client, db):
+    user = UserFactory()
+    update = factory.UpdateFactory(mod_by=user)
+    study = factory.StudyFactory(created=update)
+    url = reverse("rest:studies-permissions", args=[study.id])
+    client.force_login(user)
+
+    response = client.post(
+        url,
+        data=[{"public": False, "read": True}],
+        content_type="application/json",
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
