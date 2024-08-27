@@ -18,7 +18,7 @@ function prepareIt(): void {
                 "render": (data, type, row, meta) =>
                     `<a href="${row.url}">${row.name}</a>`,
             },
-            { "data": "description" },
+            { "data": "description", "defaultContent": "" },
             { "data": "creator_name" },
             {
                 "data": "created",
