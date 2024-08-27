@@ -11,7 +11,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import exceptions, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.negotiation import DefaultContentNegotiation
-from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from rest_framework.permissions import DjangoModelPermissions
 from rest_framework.response import Response
 
 from edd.load import serializers as load_serializers
@@ -131,6 +131,21 @@ class StudiesViewSet(
             value = submit_setup_rest(study.uuid, request.user, request.data)
             return Response(value, status=HTTPStatus.OK)
         return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
+
+    @action(
+        detail=True,
+        filterset_class=None,
+        methods=[HTTPMethod.GET],
+        serializer_class=serializers.UserSerializer,
+    )
+    def users(self, request, pk=None):
+        User = get_user_model()
+        uf = filters.UserFilter()
+        study = self.get_object()
+        queryset = uf.used_in_study(User.profiles.all(), None, study.slug)
+        page = self.paginate_queryset(queryset)
+        serializer = serializers.UserSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
 
 class LoadViewSet(viewsets.ViewSet):
@@ -405,18 +420,3 @@ class ProtocolViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = filters.ProtocolFilter
     queryset = models.Protocol.objects.order_by("pk")
     serializer_class = serializers.ProtocolSerializer
-
-
-class UsersViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API endpoint that allows privileged users to get read-only information on
-    the current set of EDD user accounts.
-    """
-
-    filterset_class = filters.UserFilter
-    permission_classes = [IsAuthenticated]
-    serializer_class = serializers.UserSerializer
-
-    def get_queryset(self):
-        User = get_user_model()
-        return User.profiles.order_by("pk")

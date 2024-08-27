@@ -20,7 +20,6 @@ router.register("stream-export", views.StreamingExportViewSet, basename="stream-
 router.register("studies", views.StudiesViewSet, basename="studies")
 router.register("types", views.MeasurementTypesViewSet, basename="types")
 router.register("units", views.MeasurementUnitViewSet, basename="units")
-router.register("users", views.UsersViewSet, basename="users")
 
 urlpatterns = [
     path("", include(router.urls)),

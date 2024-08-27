@@ -786,20 +786,6 @@ class MiscellanyTests(EddApiTestCaseMixin, APITestCase):
         self._check_status(response, HTTPStatus.OK)
         assert response.data["count"] == 0
 
-    def test_users_list_without_study(self):
-        url = reverse("rest:users-list")
-        self.client.force_login(self.admin)
-        response = self.client.get(url)
-        self._check_status(response, HTTPStatus.BAD_REQUEST)
-
-    def test_users_list_with_study(self):
-        study = factory.StudyFactory()
-        url = reverse("rest:users-list")
-        self.client.force_login(self.admin)
-        response = self.client.get(url, {"in_study": study.slug})
-        self._check_status(response, HTTPStatus.OK)
-        assert "count" in response.data
-
 
 def test_object_active_filter(client, db):
     user = UserFactory()
@@ -849,3 +835,19 @@ def test_line_control_filter(client, db):
     # default value returns *all* lines, whether control or experimental
     response = client.get(url)
     assert response.data["count"] == 2
+
+
+def test_study_users_list(client, db):
+    user = UserFactory()
+    study = factory.StudyFactory()
+    study.userpermission_set.update_or_create(
+        user=user,
+        defaults={"permission_type": models.StudyPermission.READ},
+    )
+    url = reverse("rest:studies-users", args=[study.id])
+    client.force_login(user)
+
+    response = client.get(url)
+
+    assert response.status_code == HTTPStatus.OK
+    assert "count" in response.data

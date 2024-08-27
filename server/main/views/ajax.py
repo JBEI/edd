@@ -37,9 +37,7 @@ def load_study(
     if pk is not None:
         return get_object_or_404(models.Study.objects.distinct(), permission, Q(pk=pk))
     elif slug is not None:
-        return get_object_or_404(
-            models.Study.objects.distinct(), permission, Q(slug=slug)
-        )
+        return get_object_or_404(models.Study.objects.distinct(), permission, Q(slug=slug))
     raise Http404()
 
 
@@ -67,7 +65,7 @@ def study_access(request, pk=None, slug=None):
             "urlProtocol": reverse("rest:protocols-list"),
             "urlType": reverse("rest:types-list"),
             "urlUnit": reverse("rest:units-list"),
-            "urlUser": reverse("rest:users-list"),
+            "urlUser": reverse("rest:studies-users", args=[model.pk]),
         },
         encoder=utilities.JSONEncoder,
     )
