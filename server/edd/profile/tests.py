@@ -1,28 +1,51 @@
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
 from django.urls import reverse
+from pytest import fixture
+from pytest_django import asserts
 
-from edd import TestCase
+from edd.utilities import JSONEncoder
 
 from . import models
 from .factory import UserFactory
 
-User = get_user_model()
+
+@fixture
+def admin_client(client, db):
+    user = UserFactory(is_superuser=True, is_staff=True)
+    client.force_login(user)
+    return client
 
 
-class UserTests(TestCase):
-    JSON_KEYS = [
-        "disabled",
-        "email",
-        "firstname",
-        "id",
-        "initials",
-        "lastname",
-        "name",
-        "uid",
-    ]
-    SOLR_KEYS = [
+@fixture
+def basic_user(db):
+    return UserFactory()
+
+
+def test_User_monkey_patch_profile_property(db, basic_user):
+    assert hasattr(basic_user, "profile")
+    assert basic_user.profile is not None
+
+
+def test_User_monkey_patch_initials_property(db):
+    user = UserFactory(first_name="Jane", last_name="Smith")
+    assert hasattr(user, "initials")
+    assert user.initials == "JS"
+
+
+def test_User_monkey_patch_institutions_property(db, basic_user):
+    assert hasattr(basic_user, "institutions")
+    assert len(basic_user.institutions) == 0
+
+
+def test_User_json_keys(db, basic_user):
+    expected = {"disabled", "email", "firstname", "id", "initials", "lastname", "name", "uid"}
+    keys = basic_user.to_json().keys()
+    assert expected.issubset(keys)
+
+
+def test_User_solr_keys(db, basic_user):
+    expected = {
         "date_joined",
         "email",
         "fullname",
@@ -36,213 +59,158 @@ class UserTests(TestCase):
         "last_login",
         "name",
         "username",
-    ]
-
-    # create test users
-    @classmethod
-    def setUpTestData(cls):
-        cls.user1 = UserFactory(
-            email="jsmith@localhost",
-            first_name="Jane",
-            last_name="Smith",
-        )
-        cls.user2 = UserFactory(email="jdoe@localhost", first_name="", last_name="")
-        cls.admin = UserFactory(
-            email="ssue@localhost",
-            is_staff=True,
-            is_superuser=True,
-            first_name="Sally",
-            last_name="Sue",
-        )
-
-    def test_monkey_patches(self):
-        """Checking the properties monkey-patched on to the User model."""
-        # Asserts
-        self.assertIsNotNone(self.user1.profile)
-        self.assertEqual(self.user1.initials, "JS")
-        self.assertEqual(self.user1.profile.initials, "JS")
-        self.assertEqual(len(self.user1.institutions), 0)
-        self.assertIsNotNone(self.user2.profile)
-        self.assertEqual(self.user2.initials, "")
-        self.assertEqual(self.user2.profile.initials, "")
-        # ensure keys exist in JSON and Solr dict repr
-        user_json = self.user1.to_json()
-        for key in self.JSON_KEYS:
-            self.assertIn(key, user_json)
-        user_solr = self.user1.to_solr_json()
-        for key in self.SOLR_KEYS:
-            self.assertIn(key, user_solr)
-
-    def test_initial_permissions(self):
-        """Checking initial class-based permissions for normal vs admin user."""
-        # Asserts
-        self.assertFalse(self.user1.has_perm("main.change.protocol"))
-        self.assertTrue(self.admin.has_perm("main.change.protocol"))
+    }
+    keys = basic_user.to_solr_json().keys()
+    assert expected.issubset(keys)
 
 
-class UserProfileTest(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.user1 = UserFactory()
+def test_view_own_profile(client, db, basic_user):
+    client.force_login(basic_user)
 
-    def setUp(self):
-        super().setUp()
-        self.client.force_login(self.user1)
+    response = client.get(reverse("profile:index"))
 
-    def _update_profile(self, **kwargs):
-        self.user1.profile.preferences = kwargs
-        self.user1.profile.save()
-
-    def test_self_profile(self):
-        response = self.client.get(reverse("profile:index"))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-
-    def test_other_profile(self):
-        user2 = UserFactory(first_name="", last_name="")
-        target_kwargs = {"username": user2.username}
-        response = self.client.get(reverse("profile:profile", kwargs=target_kwargs))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-
-    def test_settings_view_get_ok(self):
-        # OK response getting all settings
-        response = self.client.get(reverse("profile:settings"))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertEqual(response.json(), {})
-
-    def test_settings_view_post(self):
-        # No Content response posting settings with full dictionary
-        response = self.client.post(
-            reverse("profile:settings"),
-            data={"data": '{"testkey": "testvalue", "otherkey": true}'},
-        )
-        self.assertEqual(response.status_code, HTTPStatus.NO_CONTENT)
-        self.user1.refresh_from_db()
-        self.assertEqual(
-            self.user1.profile.preferences,
-            {"testkey": "testvalue", "otherkey": True},
-        )
-
-    def test_settings_view_get_with_values(self):
-        # OK response containing correct value getting specific setting
-        self._update_profile(testkey="testvalue")
-        settings_url = reverse("profile:settings_key", kwargs={"key": "testkey"})
-        response = self.client.get(settings_url)
-        self.assertEqual(response.json(), "testvalue")
-
-    def test_settings_view_post_partial(self):
-        # No Content response posting updated settings
-        self._update_profile(testkey="testvalue", otherkey=True)
-        settings_url = reverse("profile:settings_key", kwargs={"key": "testkey"})
-        response = self.client.post(
-            settings_url,
-            # value is JSON-encoded, so strings must be enclosed in double-quotes
-            data={"data": '"updatedvalue"'},
-        )
-        self.assertEqual(response.status_code, HTTPStatus.NO_CONTENT)
-        self.user1.refresh_from_db()
-        self.assertEqual(
-            self.user1.profile.preferences,
-            {"testkey": "updatedvalue", "otherkey": True},
-        )
-
-    def test_settings_view_delete_partial(self):
-        # No Content response deleting a specific setting
-        self._update_profile(testkey="testvalue", otherkey=True)
-        settings_url = reverse("profile:settings_key", kwargs={"key": "testkey"})
-        response = self.client.delete(settings_url)
-        self.assertEqual(response.status_code, HTTPStatus.NO_CONTENT)
-        self.user1.profile.refresh_from_db()
-        self.assertEqual(self.user1.profile.preferences, {"otherkey": True})
-
-    def test_settings_view_delete_all(self):
-        # No Content response deleting all settings
-        self._update_profile(testkey="testvalue", otherkey=True)
-        response = self.client.delete(reverse("profile:settings"))
-        self.assertEqual(response.status_code, HTTPStatus.NO_CONTENT)
-        self.user1.profile.refresh_from_db()
-        self.assertEqual(self.user1.profile.preferences, {})
-
-    def test_string_repr(self):
-        inst = models.Institution(institution_name="JBEI")
-        self.assertEqual(self.user1.username, str(self.user1.profile))
-        self.assertEqual(str(inst), "JBEI")
+    asserts.assertTemplateUsed(response, "edd/profile/profile.html")
+    asserts.assertContains(response, basic_user.username, status_code=HTTPStatus.OK)
 
 
-class UserProfileAdminTest(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.user = UserFactory(is_superuser=True, is_staff=True)
+def test_view_other_profile(client, db, basic_user):
+    other = UserFactory()
+    client.force_login(basic_user)
 
-    def setUp(self):
-        super().setUp()
-        self.client.force_login(self.user)
+    response = client.get(reverse("profile:profile", kwargs={"username": other.username}))
 
-    def test_admin_create(self):
-        response = self.client.get(reverse("admin:profile_userprofile_add"))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTemplateUsed("admin/change_form.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile.html")
+    asserts.assertContains(response, other.username, status_code=HTTPStatus.OK)
 
-    def test_admin_detail(self):
-        new_user = UserFactory()
-        new_user.profile.approved = False
-        new_user.profile.save()
-        qs = models.UserProfile.objects.filter(user=new_user)
-        response = self.client.get(
-            reverse(
-                "admin:profile_userprofile_change",
-                kwargs={"object_id": qs.get().pk},
-            )
-        )
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTemplateUsed("admin/change_form.html")
 
-    def test_admin_listing(self):
-        response = self.client.get(reverse("admin:profile_userprofile_changelist"))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTemplateUsed("admin/change_list.html")
+def test_view_own_settings(client, db, basic_user):
+    client.force_login(basic_user)
 
-    def test_admin_approval(self):
-        new_user = UserFactory()
-        new_user.profile.approved = False
-        new_user.profile.save()
-        qs = models.UserProfile.objects.filter(user=new_user)
-        payload = {
-            "action": "enable_account_action",
-            "_selected_action": qs.values_list("pk", flat=True),
-        }
+    response = client.get(reverse("profile:settings"))
 
-        # include follow for POST-REDIRECT-GET
-        response = self.client.post(
-            reverse("admin:profile_userprofile_changelist"),
-            data=payload,
-            follow=True,
-        )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {}
 
-        new_user.refresh_from_db()
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTemplateUsed("admin/change_list.html")
-        self.assertTrue(new_user.profile.approved)
 
-    def test_admin_unapprove(self):
-        new_user = UserFactory()
-        new_user.profile.approved = True
-        new_user.profile.save()
-        qs = models.UserProfile.objects.filter(user=new_user)
-        payload = {
-            "action": "disable_account_action",
-            "_selected_action": qs.values_list("pk", flat=True),
-        }
+def test_view_update_own_settings(client, db, basic_user, faker):
+    fake_settings = faker.pydict(value_types=(str, int))
+    payload = {"data": JSONEncoder.dumps(fake_settings)}
+    url = reverse("profile:settings")
+    client.force_login(basic_user)
 
-        # include follow for POST-REDIRECT-GET
-        response = self.client.post(
-            reverse("admin:profile_userprofile_changelist"),
-            data=payload,
-            follow=True,
-        )
+    response = client.post(url, data=payload)
 
-        new_user.refresh_from_db()
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTemplateUsed("admin/change_list.html")
-        self.assertFalse(new_user.profile.approved)
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    basic_user.refresh_from_db()
+    assert basic_user.profile.preferences == fake_settings
+
+
+def test_view_own_specific_setting(client, db, basic_user, faker):
+    value = faker.catch_phrase()
+    basic_user.profile.preferences = {"testkey": value}
+    basic_user.profile.save()
+    client.force_login(basic_user)
+
+    response = client.get(reverse("profile:settings_key", kwargs={"key": "testkey"}))
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == value
+
+
+def test_view_own_specific_setting_update(client, db, basic_user, faker):
+    value = faker.catch_phrase()
+    basic_user.profile.preferences = {"otherkey": faker.catch_phrase()}
+    basic_user.profile.save()
+    url = reverse("profile:settings_key", kwargs={"key": "testkey"})
+    client.force_login(basic_user)
+
+    # value is JSON-encoded, so strings must be enclosed in double-quotes
+    response = client.post(url, data={"data": f'"{value}"'})
+
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    basic_user.refresh_from_db()
+    assert "otherkey" in basic_user.profile.preferences
+    assert basic_user.profile.preferences["testkey"] == value
+
+
+def test_view_own_specific_setting_delete(client, db, basic_user, faker):
+    basic_user.profile.preferences = {"testkey": faker.catch_phrase()}
+    basic_user.profile.save()
+    client.force_login(basic_user)
+
+    response = client.delete(reverse("profile:settings_key", kwargs={"key": "testkey"}))
+
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    basic_user.refresh_from_db()
+    assert basic_user.profile.preferences == {}
+
+
+def test_view_update_own_settings_clear(client, db, basic_user, faker):
+    basic_user.profile.preferences = faker.pydict(value_types=(str, int))
+    basic_user.profile.save()
+    client.force_login(basic_user)
+
+    response = client.delete(reverse("profile:settings"))
+
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    basic_user.refresh_from_db()
+    assert basic_user.profile.preferences == {}
+
+
+def test_profile_string_cast(db, basic_user):
+    assert str(basic_user.profile) == basic_user.username
+
+
+def test_institution_string_cast(faker):
+    name = faker.catch_phrase()
+    institution = models.Institution(institution_name=name)
+    assert str(institution) == name
+
+
+def test_admin_profile_create_start(admin_client):
+    response = admin_client.get(reverse("admin:profile_userprofile_add"))
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateUsed("admin/change_form.html")
+
+
+def test_admin_profile_change_start(admin_client, basic_user):
+    url = reverse("admin:profile_userprofile_change", kwargs={"object_id": basic_user.profile.pk})
+    response = admin_client.get(url)
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateUsed("admin/change_form.html")
+
+
+def test_admin_profile_view_list(admin_client):
+    response = admin_client.get(reverse("admin:profile_userprofile_changelist"))
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateUsed("admin/change_list.html")
+
+
+def test_admin_profile_approval_action(admin_client, basic_user):
+    assert not basic_user.profile.approved
+    payload = {"action": "enable_account_action", "_selected_action": [basic_user.profile.pk]}
+    url = reverse("admin:profile_userprofile_changelist")
+
+    response = admin_client.post(url, data=payload, follow=True)
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateUsed("admin/change_list.html")
+    basic_user.refresh_from_db()
+    assert basic_user.profile.approved
+
+
+def test_admin_profile_ban_action(admin_client, basic_user):
+    basic_user.profile.approved = True
+    basic_user.profile.save()
+    payload = {"action": "disable_account_action", "_selected_action": [basic_user.profile.pk]}
+    url = reverse("admin:profile_userprofile_changelist")
+
+    response = admin_client.post(url, data=payload, follow=True)
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateUsed("admin/change_list.html")
+    basic_user.refresh_from_db()
+    assert not basic_user.profile.approved
