@@ -42,6 +42,7 @@ CELERY_TASK_QUEUES = (
     Queue("edd.load.tasks.wizard_save"),
     Queue("edd.load.tasks.wizard_update"),
     Queue("edd.profile.tasks.send_approved_account_email"),
+    Queue("edd.search.tasks.reindex_all"),
     Queue("edd.setup.tasks.setup_commit"),
     Queue("edd.setup.tasks.setup_process"),
     Queue("edd.setup.tasks.setup_rest_payload"),

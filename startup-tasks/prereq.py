@@ -93,18 +93,24 @@ def solr(context, limit=10):
     util.retry(util.is_solr_available, limit=limit)
 
 
-# solr_ready: verifies that search index collections are ready
-@invoke.task(pre=[code, redis, solr])
-def solr_ready(context):
-    # this is touching things that are shared between containers
-    # must grab a lock before proceeding
-    cache = util.get_redis()
+def solr_check(context):
     try:
+        # this is touching things that are shared between containers
+        # must grab a lock before proceeding
+        cache = util.get_redis()
         with cache.lock(b"edd.startup.indexcheck", timeout=60):
             context.run("/code/manage.py edd_index --check")
+            return True
     except Exception as e:
-        print(e)
-        raise invoke.exceptions.Exit("Index check failed") from e
+        print(f"Solr index check failed with {e}")
+    return False
+
+
+# solr_ready: verifies that search index collections are ready
+@invoke.task(pre=[code, redis, solr])
+def solr_ready(context, limit=10):
+    """Waits for Solr search cores to check out as ready."""
+    util.retry(lambda: solr_check(context), limit=limit)
 
 
 # migrations: Run migrations
@@ -133,13 +139,12 @@ def migrations(context):
                     context.run("/code/manage.py migrate")
                     # clean Solr indices
                     context.run("/code/manage.py edd_index --clean", warn=True)
-                    # force re-index in the background
-                    context.run("/code/manage.py edd_index --force &", disown=True)
+                    # force re-index
+                    context.run("/code/manage.py edd_index --force")
                 else:
                     # doing --fake-initial will mark squashed migrations as applied
                     context.run("/code/manage.py migrate --fake-initial")
-                    # re-index in the background
-                    context.run("/code/manage.py edd_index &", disown=True)
+                    context.run("/code/manage.py edd_index")
         # mark this version as recently checked
         # expire in a week
         # avoids cost of checking every time
@@ -166,9 +171,7 @@ def errorpage(context):
         # check that it has the right version
         version_hash = util.get_version_hash(context)
         version_number = util.env("EDD_VERSION", default="unversioned")
-        result = context.run(
-            rf"grep -E '\({version_hash}\)' '{error_html}'", warn=True, hide=True
-        )
+        result = context.run(rf"grep -E '\({version_hash}\)' '{error_html}'", warn=True, hide=True)
         # pull out the version string from grep
         # e.g. "Experiment Data Depot 1.2.3 (abcdef)"
         found_version = result.stdout.strip()
@@ -210,10 +213,7 @@ def checkuser(context):
     adminuser = util.env("EDD_ADMIN_USER", default=None)
     adminemail = util.env("EDD_ADMIN_EMAIL", default=None)
     if not adminuser or not adminemail:
-        print(
-            "EDD_ADMIN_USER or EDD_ADMIN_EMAIL not found -- "
-            "admin account existence not checked"
-        )
+        print("EDD_ADMIN_USER or EDD_ADMIN_EMAIL not found -- admin account existence not checked")
         return
     try:
         create_command = (

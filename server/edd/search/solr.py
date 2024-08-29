@@ -8,7 +8,6 @@ from django.contrib import auth
 from django.db.models import Count, F, Prefetch
 from django.template.loader import get_template
 from django.utils.translation import gettext_lazy as _
-from django_auth_ldap.backend import _LDAPUser
 
 from edd import utilities
 from main import models
@@ -503,22 +502,9 @@ class UserSearch(SolrSearch):
 
     def get_queryset(self):
         User = auth.get_user_model()
-        queryset = User.objects.select_related("userprofile").prefetch_related(
+        return User.objects.select_related("userprofile").prefetch_related(
             "userprofile__institutions"
         )
-        # load any LDAP backends
-        backends = [b for b in auth.get_backends() if hasattr(b, "ldap")]
-        # attempt to load groups from LDAP before yielding
-        for user in queryset:
-            for backend in backends:
-                # doing this saves a database query over directly loading
-                ldap_user = _LDAPUser(backend, user=user)
-                try:
-                    ldap_user._mirror_groups()
-                except Exception:
-                    # do nothing on failure to find user in backend
-                    pass
-            yield user
 
     def query(self, query="is_active:true", options=None):
         """

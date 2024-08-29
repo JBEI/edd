@@ -6,7 +6,7 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 
-from edd.search import solr
+from edd.search import solr, tasks
 
 retry_limit = 10
 retry_duration = 15
@@ -83,13 +83,7 @@ class Command(BaseCommand):
             self.output_normal(self.style.SUCCESS(f"Clean {searcher} OK"))
 
     def do_reindex(self, *args, **options):
-        for searcher in (self.user_core, self.study_core, self.measurement_core):
-            self.output_normal(f"Checking index {searcher} ... ", ending="")
-            if options["force"] or len(searcher) == 0:
-                searcher.reindex()
-                self.output_normal(self.style.SUCCESS("DONE"))
-            else:
-                self.output_normal(self.style.SUCCESS("OK"))
+        tasks.reindex_all.delay(force=options["force"])
 
     def output_normal(self, message, **kwargs):
         if self.verbosity >= 1:
