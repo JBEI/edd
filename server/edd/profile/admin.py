@@ -1,17 +1,14 @@
-import itertools
 import logging
 
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model, hashers
 from django.contrib.auth.admin import UserAdmin
 from django.forms.widgets import TextInput
-from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
 from django_auth_ldap.backend import LDAPBackend
 
 from edd.fields import VarCharField
-from edd.search.registry import StrainRegistry
 from edd.search.solr import UserSearch
 
 from . import models, tasks
@@ -130,7 +127,6 @@ class EDDUserAdmin(UserAdmin):
     actions = UserAdmin.actions + (
         "solr_index",
         "update_groups_from_ldap",
-        "search_ice_as_action",
         "deactivate_user_action",
         "migrate_local_to_ldap",
     )
@@ -157,29 +153,6 @@ class EDDUserAdmin(UserAdmin):
             except Exception:
                 # _mirror_groups fails when ldap_user is not Active, so delete all groups
                 user.groups.clear()
-
-    @admin.action(description=_("Search ICE as User"))
-    def search_ice_as_action(self, request, queryset):
-        # intentionally throw error when multiple users selected
-        user = queryset.get()
-        context = self.admin_site.each_context(request)
-        term = request.POST.get("term", "")
-        registry = StrainRegistry()
-        with registry.login(user):
-            try:
-                results = registry.search(term)
-                context.update(
-                    ice=registry.base_url,
-                    results=list(itertools.islice(results, 20)),
-                    impersonate=user,
-                )
-            except Exception:
-                self.message_user(
-                    request,
-                    _("Failed to execute search in ICE, check the ICE logs."),
-                    messages.ERROR,
-                )
-        return render(request, "admin/strain_impersonate_search.html", context=context)
 
     @admin.action(description=_("Deactivate Users"))
     def deactivate_user_action(self, request, queryset):

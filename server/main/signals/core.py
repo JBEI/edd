@@ -84,9 +84,6 @@ def ensure_uuid(sender, instance, raw, using, **kwargs):
 
 @receiver(pre_save, sender=has_update)
 def ensure_updates(sender, instance, raw, using, **kwargs):
-    if raw:
-        # cannot access database when doing raw signal
-        return
     update = models.Update.load_update()
     if getattr(instance, "created_id", None) is None:
         instance.created = update
@@ -98,9 +95,6 @@ def ensure_updates(sender, instance, raw, using, **kwargs):
 
 @receiver(post_save, sender=core_eddobject)
 def log_update(sender, instance, created, raw, using, **kwargs):
-    if raw:
-        # cannot access database when doing raw signal
-        return
     instance.updates.add(instance.updated)
 
 
@@ -111,9 +105,6 @@ def log_update(sender, instance, created, raw, using, **kwargs):
 def study_slug(sender, instance, raw, using, **kwargs):
     # sanity check, make sure ensure_uuid is called first
     ensure_uuid(sender, instance, raw, using, **kwargs)
-    if raw:
-        # cannot access database when doing raw signal
-        return
     if instance.slug is None:
         instance.slug = instance._build_slug(instance.name, instance.uuid.hex)
 
@@ -125,9 +116,6 @@ def study_name_change_check(sender, instance, raw, using, **kwargs):
     """
     if check_ice_cannot_proceed():
         # abort when no ICE configured
-        return
-    if raw:
-        # cannot access database when doing raw signal
         return
     # cache Study name as stored in the database so we can detect renaming
     try:
@@ -155,9 +143,6 @@ def study_update_ice(sender, instance, created, raw, using, **kwargs):
     if check_ice_cannot_proceed():
         # abort when no ICE configured
         return
-    if raw:
-        # cannot access database when doing raw signal
-        return
     if getattr(instance, "_pre_save_name", instance.name) == instance.name:
         # abort if no change detected in name
         return
@@ -175,9 +160,7 @@ def study_update_ice(sender, instance, created, raw, using, **kwargs):
 @receiver(post_save, sender=models.Study)
 def study_saved(sender, instance, created, raw, using, **kwargs):
     """Forwards a signal indicating a study was saved."""
-    # raw save == database may be inconsistent; do not forward next signal
-    if not raw:
-        study_modified.send(sender=sender, study=instance, using=using)
+    study_modified.send(sender=sender, study=instance, using=using)
 
 
 # ----- Line signal handlers -----
@@ -210,9 +193,7 @@ def line_removed(sender, instance, **kwargs):
         return
     if not hasattr(instance, "_pre_delete"):
         return
-    queryset = models.Strain.objects.filter(
-        line__study_id=instance._pre_delete.study
-    ).distinct()
+    queryset = models.Strain.objects.filter(line__study_id=instance._pre_delete.study).distinct()
     # find the set of strains on the Study after the delete
     post_delete_strain_ids = set(queryset.values_list("id", flat=True))
     # calculate which strains were removed as the set difference
@@ -221,16 +202,12 @@ def line_removed(sender, instance, **kwargs):
     logger.debug(f"Post-deletion strains: {post_delete_strain_ids}")
     logger.debug(f"Removed strains: {removed_strains}")
     # after transaction commits, schedule Celery task to unlink in ICE.
-    partial = functools.partial(
-        submit_ice_unlink, instance._pre_delete.study, removed_strains
-    )
+    partial = functools.partial(submit_ice_unlink, instance._pre_delete.study, removed_strains)
     connection.on_commit(partial)
 
 
 @receiver(m2m_changed, sender=models.Line.strains.through)
-def line_strain_changed(
-    sender, instance, action, reverse, model, pk_set, using, **kwargs
-):
+def line_strain_changed(sender, instance, action, reverse, model, pk_set, using, **kwargs):
     """
     Handles changes to the Line <-> Strain relationship caused by
     adding/removing/changing the strain associated with a single line in a
@@ -256,9 +233,7 @@ def line_strain_changed(
 
 def check_ice_cannot_proceed():
     if not getattr(settings, "ICE_URL", False):
-        logger.warning(
-            "ICE URL is not configured. Skipping ICE experiment link updates."
-        )
+        logger.warning("ICE URL is not configured. Skipping ICE experiment link updates.")
         return True
     return False
 

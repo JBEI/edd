@@ -3,52 +3,44 @@ import pytest
 from . import auth
 
 
-def test_HmacAuth_key_deregistration():
-    auth.HmacAuth.register_key("fake", b"12345678")
-    fake = auth.HmacAuth("fake")
-    assert fake
-    auth.HmacAuth.deregister_key("fake")
+def test_HmacAuth_requires_secret():
     with pytest.raises(ValueError):
-        fake = auth.HmacAuth("fake")
+        auth.HmacAuth("fake")
+
+
+@pytest.fixture
+def fake_hmac_auth():
+    return auth.HmacAuth("fake", b"12345678")
 
 
 class FakeRequest:
-    def __init__(
-        self, body=None, headers=None, method="GET", url="https://www.example.com/"
-    ):
+    def __init__(self, body=None, headers=None, method="GET", url="https://www.example.com/"):
         self.body = body
         self.headers = {} if headers is None else dict(headers)
         self.method = method
         self.url = url
 
 
-def test_HmacAuth_simple_signature():
-    auth.HmacAuth.register_key("fake", b"12345678")
-    # create a fake auth object
-    fake = auth.HmacAuth("fake")
+def test_HmacAuth_simple_signature(fake_hmac_auth):
     # create a fake request object
     request = FakeRequest()
     # verify signature generation
-    request = fake(request)
+    request = fake_hmac_auth(request)
     assert request.headers["Authorization"] == "1:fake::/GdqX6+zllPT+ADHUfpYI/+HUN8="
 
 
-def test_HmacAuth_query_param_signature():
-    auth.HmacAuth.register_key("fake", b"12345678")
-    # create a fake auth object
-    fake = auth.HmacAuth("fake")
+def test_HmacAuth_query_param_signature(fake_hmac_auth):
     # create a fake request object
     request = FakeRequest(url="https://www.example.com/?param=1")
     # verify signature generation
-    request = fake(request)
+    request = fake_hmac_auth(request)
     assert request.headers["Authorization"] == "1:fake::h3Uk7B4l+83AKR/C8fyC/WU3II8="
 
 
 def test_HmacAuth_different_users():
-    auth.HmacAuth.register_key("fake", b"12345678")
     # create fake auth objects, different users
-    alice = auth.HmacAuth("fake", username="alice")
-    betty = auth.HmacAuth("fake", username="betty")
+    alice = auth.HmacAuth("fake", b"12345678", username="alice")
+    betty = auth.HmacAuth("fake", b"12345678", username="betty")
     # create a fake request object
     alice_request = FakeRequest()
     betty_request = FakeRequest()
@@ -63,23 +55,17 @@ def test_HmacAuth_different_users():
     assert "betty" in betty_sig
 
 
-def test_HmacAuth_string_body():
-    auth.HmacAuth.register_key("fake", b"12345678")
-    # create a fake auth object
-    fake = auth.HmacAuth("fake")
+def test_HmacAuth_string_body(fake_hmac_auth):
     # create a fake request object
     request = FakeRequest(body="some body text", method="POST")
     # verify signature generation
-    request = fake(request)
+    request = fake_hmac_auth(request)
     assert request.headers["Authorization"] == "1:fake::a8JtB9GIHsb9neaRvO37xFYKjlM="
 
 
-def test_HmacAuth_bytes_body():
-    auth.HmacAuth.register_key("fake", b"12345678")
-    # create a fake auth object
-    fake = auth.HmacAuth("fake")
+def test_HmacAuth_bytes_body(fake_hmac_auth):
     # create a fake request object
     request = FakeRequest(body=b"some body bytes", method="POST")
     # verify signature generation
-    request = fake(request)
+    request = fake_hmac_auth(request)
     assert request.headers["Authorization"] == "1:fake::hJ9LGdRihldx9C0aeAxPV5JJIpc="

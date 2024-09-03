@@ -20,13 +20,6 @@ class RegistryError(Exception):
 
 
 class StrainRegistry:
-    # Folder Collections
-    FEATURED = "FEATURED"
-    PERSONAL = "PERSONAL"
-    SHARED = "SHARED"
-    # don't care about SAMPLES, PENDING, or DRAFTS
-    ALL_COLLECTIONS = (FEATURED, PERSONAL, SHARED)
-
     def __init__(self):
         self.auth = None
         self.session = None
@@ -39,41 +32,17 @@ class StrainRegistry:
         self.session.close()
         self.session = None
 
-    def build_entry_url(self, entry_id):
+    def _build_entry_url(self, entry_id):
         return self._rest(f"parts/{entry_id}")
-
-    def build_folder_url(self, folder_id):
-        return self._rest(f"folders/{folder_id}")
-
-    def create_folder(self, folder_name):
-        self._check_session()
-        try:
-            response = self.session.post(
-                self._rest("folders"),
-                json={"folderName": folder_name},
-            )
-            response.raise_for_status()
-            return Folder(self, response.json())
-        except Exception as e:
-            raise RegistryError("Could not create folder") from e
 
     def get_entry(self, entry_id):
         self._check_session()
         try:
-            response = self.session.get(self.build_entry_url(entry_id))
+            response = self.session.get(self._build_entry_url(entry_id))
             response.raise_for_status()
             return Entry(self, response.json())
         except Exception as e:
             raise RegistryError("Could not load Registry Entry") from e
-
-    def get_folder(self, folder_id):
-        self._check_session()
-        try:
-            response = self.session.get(self.build_folder_url(folder_id))
-            response.raise_for_status()
-            return Folder(self, response.json())
-        except Exception as e:
-            raise RegistryError("Could not load Registry Folder") from e
 
     def iter_entries(self, collection="available", **extra):
         self._check_session()
@@ -104,19 +73,11 @@ class StrainRegistry:
         except Exception as e:
             raise RegistryError("Could not list Registry Entries") from e
 
-    def list_folders(self, collection="FEATURED"):
-        self._check_session()
-        try:
-            # this endpoint does not support paging
-            response = self.session.get(self._rest(f"collections/{collection}/folders"))
-            response.raise_for_status()
-            return [Folder(self, item) for item in response.json()]
-        except Exception as e:
-            raise RegistryError("Could not list Registry Folders") from e
-
     def login(self, user):
-        if key_id := getattr(settings, "ICE_KEY_ID", None):
-            self.auth = HmacAuth(key_id=key_id, username=user.email)
+        key_id = getattr(settings, "ICE_KEY_ID", None)
+        secret_key = getattr(settings, "ICE_SECRET_HMAC_KEY", None)
+        if key_id and secret_key:
+            self.auth = HmacAuth(key_id=key_id, secret_key=secret_key, username=user.email)
         return self
 
     def logout(self):
@@ -132,14 +93,13 @@ class StrainRegistry:
 
     def search_page(self, term, start):
         self._check_session()
+        search = {
+            "parameters": {"start": start, "sortField": "RELEVANCE"},
+            "queryString": term,
+        }
         response = self.session.post(
             self._rest("search"),
-            data=json.dumps(
-                {
-                    "parameters": {"start": start, "sortField": "RELEVANCE"},
-                    "queryString": term,
-                }
-            ),
+            data=json.dumps(search),
             headers={"Content-Type": "application/json; charset=utf8"},
         )
         response.raise_for_status()
@@ -227,10 +187,7 @@ class AdminRegistry(StrainRegistry):
         self._check_session()
         try:
             # create the upload session
-            response = self.session.put(
-                self._rest("uploads"),
-                json={"type": "strain"},
-            )
+            response = self.session.put(self._rest("uploads"), json={"type": "strain"})
             response.raise_for_status()
             upload_id = response.json()["id"]
             # add the file
@@ -252,9 +209,7 @@ class AdminRegistry(StrainRegistry):
         user_id = self.create_user(user, **extra)
         payload = self.build_ice_user_record(user, accountType="ADMIN", **extra)
         try:
-            response = self.session.put(
-                f"{self.base_url}/rest/users/{user_id}", json=payload
-            )
+            response = self.session.put(f"{self.base_url}/rest/users/{user_id}", json=payload)
             response.raise_for_status()
         except Exception as e:
             raise RegistryError(f"Failed to mark {user} as ADMIN") from e
@@ -290,8 +245,10 @@ class AdminRegistry(StrainRegistry):
             raise RegistryError(f"Failed to find user {user}") from e
 
     def login(self):
-        if key_id := getattr(settings, "ICE_KEY_ID", None):
-            self.auth = HmacAuth(key_id=key_id, username="Administrator")
+        key_id = getattr(settings, "ICE_KEY_ID", None)
+        secret_key = getattr(settings, "ICE_SECRET_HMAC_KEY", None)
+        if key_id and secret_key:
+            self.auth = HmacAuth(key_id=key_id, secret_key=secret_key, username="Administrator")
         return self
 
 
@@ -327,16 +284,12 @@ class Entry:
             for item in response.json():
                 yield (item["id"], item["label"], item["url"])
         except Exception as e:
-            raise RegistryError(
-                f"Failed to load experiment links from {self.db_id}"
-            ) from e
+            raise RegistryError(f"Failed to load experiment links from {self.db_id}") from e
 
     def remove_link(self, link_id):
         self.registry._check_session()
         try:
-            response = self.registry.session.delete(
-                self._rest(f"experiments/{link_id}/")
-            )
+            response = self.registry.session.delete(self._rest(f"experiments/{link_id}/"))
             response.raise_for_status()
         except Exception as e:
             raise RegistryError(f"Failed to remove experiment link {link_id}") from e
@@ -359,40 +312,6 @@ class Entry:
 
     def _rest(self, path):
         return self.registry._rest(f"parts/{self.db_id}/{path}")
-
-
-class Folder:
-    def __init__(self, registry, payload):
-        self.registry = registry
-        self.folder_id = payload["id"]
-        self.name = payload["folderName"]
-
-    def add_entries(self, entries):
-        self.registry._check_session()
-        try:
-            response = self.registry.session.put(
-                self.registry._rest("folders/entries"),
-                json={
-                    "all": False,
-                    "destination": [{"id": self.folder_id}],
-                    "entries": [entry.db_id for entry in entries],
-                },
-            )
-            response.raise_for_status()
-        except Exception as e:
-            raise RegistryError("Could not add Entries to Folder") from e
-
-    def list_entries(self, **extra):
-        self.registry._check_session()
-        try:
-            response = self.registry.session.get(
-                self.registry._rest(f"folders/{self.folder_id}/entries"),
-                params=extra,
-            )
-            response.raise_for_status()
-            return [Entry(self.registry, item) for item in response.json()["entries"]]
-        except Exception as e:
-            raise RegistryError("Could not list Folder Entries") from e
 
 
 class RegistryValidator:
@@ -466,9 +385,7 @@ class RegistryValidator:
                 self.save_strain(self.load_part_from_ice(value))
             elif count > 1:
                 raise ValidationError(
-                    _(
-                        "Selected ICE record is already linked to EDD strains: %(strains)s"
-                    ),
+                    _("Selected ICE record is already linked to EDD strains: %(strains)s"),
                     code="existing records",
                     params={"strains": list(qs)},
                 )
@@ -488,7 +405,6 @@ class RegistryValidator:
 __all__ = [
     AdminRegistry,
     Entry,
-    Folder,
     RegistryError,
     RegistryValidator,
     StrainRegistry,

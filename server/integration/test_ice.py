@@ -32,9 +32,7 @@ class IceIntegrationTests(TestCase):
                 # make sure ICE has users matching EDD users
                 cls._ensureTestUsers(registry)
                 # populate ICE with some strains
-                entries = cls._populateTestStrains(registry)
-                # add strains to a folder
-                cls._populateTestFolder(registry, entries)
+                cls._populateTestStrains(registry)
             except Exception as e:
                 cls.tearDownClass()
                 raise e
@@ -75,15 +73,6 @@ class IceIntegrationTests(TestCase):
         # stash the part IDs for use in tests
         cls.entry_ids = [entry.part_id for entry in entries]
         return entries
-
-    @classmethod
-    def _populateTestFolder(cls, registry, entries):
-        # create folder
-        cls.folder = registry.create_folder(faker.catch_phrase())
-        # set it to public
-        # ice.session.put(ice_url(f"/folders/{cls.folder_id}/permissions/public"))
-        # add our parts to it
-        cls.folder.add_entries(entries)
 
     @override_settings(ICE_URL=None)
     def test_no_configured_ICE_raises_error(self):
@@ -161,64 +150,22 @@ class IceIntegrationTests(TestCase):
             with self.assertRaises(RegistryError):
                 self.registry.get_entry(self.entry_ids[5])
 
-    def test_get_folder_known_id_admin_user(self):
-        with self.registry.login(self.admin_ice_user):
-            folder = self.registry.get_folder(self.folder.folder_id)
-            assert folder is not None
-            assert folder.folder_id == self.folder.folder_id
-            assert folder.name == self.folder.name
-
-    def test_get_folder_known_id_reader_user(self):
-        with self.registry.login(self.read_ice_user):
-            with self.assertRaises(RegistryError):
-                self.registry.get_folder(self.folder.folder_id)
-
-    def test_get_folder_known_id_none_user(self):
-        with self.registry.login(self.none_ice_user):
-            with self.assertRaises(RegistryError):
-                self.registry.get_folder(self.folder.folder_id)
-
-    def test_get_folder_known_bad_id(self):
-        with self.registry.login(self.admin_ice_user):
-            with self.assertRaises(RegistryError):
-                self.registry.get_folder(self.folder.folder_id + 1)
-
-    def test_get_folder_entries(self):
-        with self.registry.login(self.admin_ice_user):
-            folder = self.registry.get_folder(self.folder.folder_id)
-            entries = folder.list_entries()
-            assert len(list(entries)) == 10
-
-    def test_list_folders(self):
-        with self.registry.login(self.none_ice_user):
-            # we're not setting up any FEATURED folders
-            folders = self.registry.list_folders("FEATURED")
-            assert len(folders) == 0
-
-    def test_create_folder_upstream_failure(self):
-        with self.registry.login(
-            self.none_ice_user
-        ), self._request_failure(), self.assertRaises(RegistryError):
-            self.registry.create_folder("Special Folder")
-
     def test_iter_entries_upstream_failure(self):
-        with self.registry.login(
-            self.none_ice_user
-        ), self._request_failure(), self.assertRaises(RegistryError):
+        with (
+            self.registry.login(self.none_ice_user),
+            self._request_failure(),
+            self.assertRaises(RegistryError),
+        ):
             # this is a generator, so must force iterate it to get Exception
             next(self.registry.iter_entries())
 
     def test_list_entries_upstream_failure(self):
-        with self.registry.login(
-            self.none_ice_user
-        ), self._request_failure(), self.assertRaises(RegistryError):
+        with (
+            self.registry.login(self.none_ice_user),
+            self._request_failure(),
+            self.assertRaises(RegistryError),
+        ):
             self.registry.list_entries()
-
-    def test_list_folders_upstream_failure(self):
-        with self.registry.login(
-            self.none_ice_user
-        ), self._request_failure(), self.assertRaises(RegistryError):
-            self.registry.list_folders()
 
     def test_search(self):
         with self.registry.login(self.admin_ice_user):
@@ -228,9 +175,11 @@ class IceIntegrationTests(TestCase):
             next(results)
 
     def test_search_upstream_failure(self):
-        with self.registry.login(
-            self.none_ice_user
-        ), self._request_failure(), self.assertRaises(RegistryError):
+        with (
+            self.registry.login(self.none_ice_user),
+            self._request_failure(),
+            self.assertRaises(RegistryError),
+        ):
             results = self.registry.search("pRS426")
             # iterating results throws RegistryError
             next(results)
@@ -320,14 +269,6 @@ class IceIntegrationTests(TestCase):
             with self._request_failure(), self.assertRaises(RegistryError):
                 # iterating results to throw RegistryError
                 next(entry.list_links())
-
-    def test_folder_add_list_entries_upstream_failure(self):
-        with self.registry.login(self.admin_ice_user):
-            folder = self.registry.get_folder(self.folder.folder_id)
-            with self._request_failure(), self.assertRaises(RegistryError):
-                folder.add_entries([])
-            with self._request_failure(), self.assertRaises(RegistryError):
-                folder.list_entries()
 
     def test_ice_protein_link(self):
         protein = models.ProteinIdentifier.load_or_create(

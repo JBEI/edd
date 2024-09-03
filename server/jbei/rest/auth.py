@@ -18,23 +18,12 @@ class HmacAuth(AuthBase):
     Instances of HmacAuth are immutable and are therefore safe to use in multiple threads.
     """
 
-    KEYSTORE = {}
-
-    @classmethod
-    def deregister_key(cls, key_id):
-        del cls.KEYSTORE[key_id]
-
-    @classmethod
-    def register_key(cls, key_id, secret_key):
-        cls.KEYSTORE[key_id] = secret_key
-
-    def __init__(self, key_id, username=None):
+    def __init__(self, key_id, secret_key=None, username=None):
         """
         :param key_id: identifier of the key registered with HmacAuth
         :param username: the ID of the user to send to the remote service
         :raises ValueError: if no matching key is found
         """
-        secret_key = self.KEYSTORE.get(key_id, None)
         if not secret_key:
             raise ValueError("A secret key is required input for HMAC authentication")
         self._KEY_ID = key_id
