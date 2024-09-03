@@ -64,9 +64,11 @@ class UserProfileAdmin(admin.ModelAdmin):
     def enable_account_action(self, request, queryset):
         # filter to currently unapproved accounts
         to_approve = queryset.filter(approved=False)
+        # stash profiles in a list, because we're about to update the queryset
+        updating = list(to_approve)
         updated = to_approve.update(approved=True)
         # send approval emails out
-        for profile in to_approve:
+        for profile in updating:
             tasks.send_approved_account_email.delay(profile.user_id)
         self.message_user(
             request,

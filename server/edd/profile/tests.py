@@ -1,12 +1,14 @@
 from http import HTTPStatus
+from unittest.mock import patch
 
+from django.core import mail
 from django.urls import reverse
 from pytest import fixture
 from pytest_django import asserts
 
 from edd.utilities import JSONEncoder
 
-from . import models
+from . import models, tasks
 from .factory import UserFactory
 
 
@@ -182,6 +184,51 @@ def test_admin_profile_change_start(admin_client, basic_user):
     asserts.assertTemplateUsed("admin/change_form.html")
 
 
+def test_admin_profile_change_approve_sends_email(admin_client, basic_user):
+    payload = {
+        # this is the actual thing we're changing
+        "approved": True,
+        # these are needed to validate the inline forms
+        "institutionid_set-TOTAL_FORMS": 0,
+        "institutionid_set-INITIAL_FORMS": 0,
+    }
+    url = reverse("admin:profile_userprofile_change", kwargs={"object_id": basic_user.profile.pk})
+
+    with patch("edd.profile.tasks.send_approved_account_email") as task:
+        response = admin_client.post(url, data=payload, follow=True)
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateNotUsed("admin/change_form.html")
+    # task sending an email would have been called
+    task.delay.assert_called_once()
+    # verify the email itself
+    tasks.send_approved_account_email(*task.delay.call_args.args)
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [basic_user.email]
+
+
+def test_admin_profile_change_name_sends_no_email(admin_client, basic_user):
+    payload = {
+        # this is the actual thing we're changing
+        "display_name": "name",
+        # these are needed to validate the inline forms
+        "institutionid_set-TOTAL_FORMS": 0,
+        "institutionid_set-INITIAL_FORMS": 0,
+    }
+    url = reverse("admin:profile_userprofile_change", kwargs={"object_id": basic_user.profile.pk})
+
+    with patch("edd.profile.tasks.send_approved_account_email") as task:
+        response = admin_client.post(url, data=payload, follow=True)
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateNotUsed("admin/change_form.html")
+    # task sending an email not called
+    task.delay.assert_not_called()
+    # name is updated
+    basic_user.refresh_from_db()
+    assert basic_user.profile.display_name == "name"
+
+
 def test_admin_profile_view_list(admin_client):
     response = admin_client.get(reverse("admin:profile_userprofile_changelist"))
 
@@ -194,12 +241,20 @@ def test_admin_profile_approval_action(admin_client, basic_user):
     payload = {"action": "enable_account_action", "_selected_action": [basic_user.profile.pk]}
     url = reverse("admin:profile_userprofile_changelist")
 
-    response = admin_client.post(url, data=payload, follow=True)
+    with patch("edd.profile.tasks.send_approved_account_email") as task:
+        response = admin_client.post(url, data=payload, follow=True)
 
     assert response.status_code == HTTPStatus.OK
     asserts.assertTemplateUsed("admin/change_list.html")
+    # user account is now approved
     basic_user.refresh_from_db()
     assert basic_user.profile.approved
+    # task sending an email would have been called
+    task.delay.assert_called_once()
+    # verify the email itself
+    tasks.send_approved_account_email(*task.delay.call_args.args)
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [basic_user.email]
 
 
 def test_admin_profile_ban_action(admin_client, basic_user):
@@ -214,3 +269,18 @@ def test_admin_profile_ban_action(admin_client, basic_user):
     asserts.assertTemplateUsed("admin/change_list.html")
     basic_user.refresh_from_db()
     assert not basic_user.profile.approved
+
+
+def test_admin_profile_reset_display_name_action(admin_client, basic_user, faker):
+    original_name = basic_user.profile.display_name
+    basic_user.profile.display_name = faker.catch_phrase()
+    basic_user.profile.save()
+    payload = {"action": "reset_display_name", "_selected_action": [basic_user.profile.pk]}
+    url = reverse("admin:profile_userprofile_changelist")
+
+    response = admin_client.post(url, data=payload, follow=True)
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateUsed("admin/change_list.html")
+    basic_user.refresh_from_db()
+    assert basic_user.profile.display_name == original_name
