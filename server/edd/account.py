@@ -1,6 +1,6 @@
 import logging
 
-from allauth.account import adapter, forms, utils
+from allauth.account import adapter, app_settings, forms, utils
 from django.conf import settings
 from django.contrib import auth, sites
 from django.contrib.auth.password_validation import password_validators_help_text_html
@@ -25,6 +25,12 @@ class EDDAccountAdapter(adapter.DefaultAccountAdapter):
     """
     Adapter overrides default behavior for username selection and email verification.
     """
+
+    def can_delete_email(self, email):
+        # never allow deleting a primary email when it's required
+        if app_settings.EMAIL_REQUIRED and email.primary:
+            return False
+        return super().can_delete_email(email)
 
     def confirm_email(self, request, email_address):
         super().confirm_email(request, email_address)

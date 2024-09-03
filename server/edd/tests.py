@@ -435,3 +435,73 @@ def test_reset_password_email(client, db):
     reset_url = reset_url[reset_url.index(base_url) :]
     reset = client.get(reset_url, follow=True)
     asserts.assertTemplateUsed(reset, "account/password_reset_from_key.html")
+
+
+@pytest.fixture
+def user_with_email(db):
+    user = UserFactory()
+    address = allauth_models.EmailAddress.objects.create(
+        email=user.email,
+        primary=True,
+        user=user,
+        verified=True,
+    )
+    return user, address
+
+
+@override_settings(
+    ACCOUNT_ADAPTER="allauth.account.adapter.DefaultAccountAdapter",
+    ACCOUNT_EMAIL_REQUIRED=True,
+)
+def test_stock_account_adapter_allows_deleting_primary_email(client, user_with_email):
+    # if this test ever starts to fail,
+    # can remove `can_delete_email` override on EDDAccountAdapter
+    user, address = user_with_email
+    client.force_login(user)
+    url = reverse("account_email")
+    payload = {"action_remove": "", "email": user.email}
+
+    response = client.post(url, data=payload, follow=True)
+
+    assert response.status_code == http.HTTPStatus.OK
+    qs = allauth_models.EmailAddress.objects.filter(pk=address.pk)
+    assert not qs.exists()
+
+
+@override_settings(
+    ACCOUNT_ADAPTER="edd.account.EDDAccountAdapter",
+    ACCOUNT_EMAIL_REQUIRED=True,
+)
+def test_our_account_adapter_prevents_deleting_primary_email(client, user_with_email):
+    user, address = user_with_email
+    client.force_login(user)
+    url = reverse("account_email")
+    payload = {"action_remove": "", "email": user.email}
+
+    response = client.post(url, data=payload, follow=True)
+
+    qs = allauth_models.EmailAddress.objects.filter(pk=address.pk)
+    assert qs.exists()
+    asserts.assertContains(response, "You cannot remove your primary e-mail address")
+
+
+@override_settings(
+    ACCOUNT_ADAPTER="edd.account.EDDAccountAdapter",
+    ACCOUNT_EMAIL_REQUIRED=False,
+)
+def test_our_account_adapter_allows_deleting_non_required_email(client, user_with_email):
+    user, address = user_with_email
+    client.force_login(user)
+    url = reverse("account_email")
+    payload = {"action_remove": "", "email": user.email}
+
+    response = client.post(url, data=payload, follow=True)
+
+    assert response.status_code == http.HTTPStatus.OK
+    qs = allauth_models.EmailAddress.objects.filter(pk=address.pk)
+    assert not qs.exists()
+
+
+def test_admin_login_uses_base_login_form_and_template(client, db):
+    response = client.get(reverse("admin:login"))
+    asserts.assertTemplateUsed(response, "account/login.html")
