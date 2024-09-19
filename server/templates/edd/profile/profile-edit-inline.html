@@ -1,0 +1,8 @@
+{% load i18n %}
+<h2>{% translate "User Information" %}</h2>
+<form action="{{ edit_url }}" method="POST">
+  {% csrf_token %}
+  {{ form }}
+  <button class="btn btn-primary" type="submit">{% translate "Update Profile" %}</button>
+  <a class="px-4" href="{% url "profile:index" %}">{% translate "Cancel" %}</a>
+</form>

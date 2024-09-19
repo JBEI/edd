@@ -1,0 +1,11 @@
+{% load i18n %}
+<h2>{% translate "User Information" %}</h2>
+{% translate "<i>Blank</i>" as blank_value %}
+<dl>
+  <dt>{% translate "Login ID" %}</dt>
+  <dd>{{ profile_user.username }}</dd>
+  <dt>{% translate "Display Name" %}</dt>
+  <dd>{{ profile.display_name|default:blank_value }}</dd>
+  <dt>{% translate "Initials" %}</dt>
+  <dd>{{ profile.initials|default:blank_value }}</dd>
+</dl>

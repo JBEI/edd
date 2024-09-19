@@ -3,7 +3,7 @@
 
 
 {% block head_title %}
-  {% firstof user.profile.display_name user.username as name %}
+  {% firstof profile.display_name profile_user.username as name %}
   {% blocktranslate trimmed with name=name %}
   Profile: {{ name }}
   {% endblocktranslate %}
@@ -12,50 +12,17 @@
 
 
 {% block body_title %}
-  {% firstof user.profile.display_name user.username %}
+  {% firstof profile.display_name profile_user.username %}
 {% endblock body_title %}
 
 
 {% block content %}
 <div class="row my-3 justify-content-lg-center">
-  <div class="col-lg-4">
-    <h2>{% translate "User Information" %}</h2>
-    {% translate "<i>Blank</i>" as blank_value %}
-    <dl>
-      <dt>{% translate "Login ID" %}</dt>
-      <dd>{{ profile_user.username }}</dd>
-      <dt>{% translate "Display Name" %}</dt>
-      <dd>{{ profile.display_name|default:blank_value }}</dd>
-      <dt>{% translate "Initials" %}</dt>
-      <dd>{{ profile.initials|default:blank_value }}</dd>
-    </dl>
+  <div class="col-lg-4" id="edd-profile-userinfo">
+    {% include "edd/profile/profile-userinfo.html" %}
   </div>
-  <div class="col-lg-4">
-    <h2>{% translate "Affiliations" %}</h2>
-    <table class="table table-condensed table-striped">
-      <thead>
-        <tr>
-          <th></th>
-          <th>{% translate "Institution" %}</th>
-          <th>{% translate "Identifier" %}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for iid in institutions %}
-        <tr>
-          <td>{{ iid.sort_key }}</td>
-          <td>{{ iid.institution.institution_name }}</td>
-          <td>{{ iid.identifier }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td class="text-center" colspan="3">
-            <i>{% translate "No Known Affiliations" %}</i>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="col-lg-4" id="edd-profile-affiliates">
+    {% include "edd/profile/profile-affiliates.html" %}
   </div>
 </div>
 {% if user == profile_user %}
@@ -63,12 +30,21 @@
   <div class="col-lg-8">
     <a
       class="btn btn-secondary"
-      href="{% url 'account_change_password' %}"
+      href="{% url "account_change_password" %}"
     >{% translate "Change Password" %}</a>
     <a
       class="btn btn-secondary"
-      href="{% url 'account_email' %}"
+      href="{% url "account_email" %}"
     >{% translate "Manage Email" %}</a>
+    <a
+      class="btn btn-primary"
+      href="{% url "profile:edit" %}"
+    >{% translate "Edit Bio" %}</a>
+  </div>
+</div>
+<div class="row my-3 justify-content-lg-center">
+  <div class="col-lg-8" id="edd-profile-applinks">
+    {% include "edd/profile/profile-applinks.html" %}
   </div>
 </div>
 {% endif %}

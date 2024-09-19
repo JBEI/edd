@@ -1,0 +1,85 @@
+{% load i18n %}
+<h2>{% translate "Application Links" %}</h2>
+<table class="table table-condensed table-striped">
+  <thead>
+    <tr>
+      <th></th>
+      <th>{% translate "URL" %}</th>
+      <th>{% translate "Comment" %}</th>
+      <th>{% translate "Secret ID" %}</th>
+      <th>{% translate "Created" %}</th>
+      <th class="text-end">{% translate "Actions" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for link in applinks %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td><a href="{{ link.url }}" target="_new">{{ link.url }}</a></td>
+      <td>{{ link.comment }}</td>
+      <td>{{ link.secret_id }}</td>
+      <td>{{ link.created }}</td>
+      <td class="text-end">
+        <form action="{% url "profile:applink_edit" pk=link.pk %}" method="POST">
+          {% csrf_token %}
+          {% if not forloop.first %}
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            name="up"
+            title="{% translate "Move Up" context "button" %}"
+            type="submit"
+            value="1"
+          >
+            <i class="fas fa-circle-up"></i>
+          </button>
+          {% endif %}
+          {% if not forloop.last %}
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            name="down"
+            title="{% translate "Move Down" context "button" %}"
+            type="submit"
+            value="1"
+          >
+            <i class="fas fa-circle-down"></i>
+          </button>
+          {% endif %}
+          <button
+            class="btn btn-outline-danger btn-sm"
+            name="remove"
+            title="{% translate "Remove Link" context "button" %}"
+            type="submit"
+          >
+            <i class="fas fa-trash-can"></i>
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td class="text-center" colspan="6">
+        <i>{% translate "No Linked Applications" %}</i>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<h3>{% translate "Add Link" %}</h3>
+<p>
+  {% blocktranslate %}
+  To link EDD with ICE to search for strains, you need to provide an API key.
+  Create one by logging into your ICE account, and click your email in the
+  top-right corner to view your profile. Then click the "API KEYS" icon on the
+  right. Then click the "Create Key" button. Give ICE an ID for this key, and
+  use the same ID in the "Secret ID" field in the form below. Click the
+  "Generate" button, then copy the long randomized text ICE provides after the
+  "X-ICE-API-Token" label, and paste into the "Secret" field below. The "URL"
+  field is the address bar before "/profile", e.g. "https://registry.jbei.org".
+  {% endblocktranslate %}
+</p>
+<form action="{% url "profile:applink" %}" method="POST">
+  {% csrf_token %}
+  {{ link_form }}
+  <button class="btn btn-primary" type="submit">{% translate "Add Link" %}</button>
+  <button class="btn btn-link px-4" type="reset">{% translate "Cancel" %}</button>
+</form>

@@ -11,6 +11,8 @@ from edd.utilities import JSONEncoder
 from . import models, tasks
 from .factory import UserFactory
 
+AJAX_HEADER = {"X-Requested-With": "XMLHttpRequest"}
+
 
 @fixture
 def admin_client(client, db):
@@ -157,6 +159,261 @@ def test_view_update_own_settings_clear(client, db, basic_user, faker):
     assert response.status_code == HTTPStatus.NO_CONTENT
     basic_user.refresh_from_db()
     assert basic_user.profile.preferences == {}
+
+
+def test_view_edit_own_profile_start(client, db, basic_user):
+    client.force_login(basic_user)
+
+    response = client.get(reverse("profile:edit"))
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateUsed(response, "edd/profile/profile-edit.html")
+
+
+def test_view_edit_own_profile_start_inline(client, db, basic_user):
+    client.force_login(basic_user)
+
+    response = client.get(reverse("profile:edit"), headers=AJAX_HEADER)
+
+    assert response.status_code == HTTPStatus.OK
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile-edit.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-edit-inline.html")
+
+
+def test_view_edit_own_profile_update(client, db, basic_user, faker):
+    new_name = faker.catch_phrase()
+    payload = {"display_name": new_name}
+    client.force_login(basic_user)
+
+    response = client.post(reverse("profile:edit"), data=payload, follow=True)
+
+    asserts.assertTemplateUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile-edit.html")
+    asserts.assertContains(response, new_name, status_code=HTTPStatus.OK)
+
+
+def test_view_edit_own_profile_update_inline(client, db, basic_user, faker):
+    new_name = faker.catch_phrase()
+    payload = {"display_name": new_name}
+    client.force_login(basic_user)
+
+    response = client.post(reverse("profile:edit"), data=payload, headers=AJAX_HEADER)
+
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile-edit.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-userinfo.html")
+    asserts.assertContains(response, new_name, status_code=HTTPStatus.OK)
+
+
+def test_view_edit_own_profile_update_rejects_huge_name(client, db, basic_user, faker):
+    # generate an extremely long "name" that will get rejected
+    new_name = faker.paragraph(nb_sentences=20, variable_nb_sentences=False)
+    payload = {"display_name": new_name}
+    client.force_login(basic_user)
+
+    response = client.post(reverse("profile:edit"), data=payload, follow=True)
+
+    asserts.assertTemplateUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile-edit.html")
+    asserts.assertContains(
+        response,
+        "There was a problem updating the profile.",
+        status_code=HTTPStatus.OK,
+    )
+
+
+def test_view_edit_own_profile_update_rejects_huge_name_inline(client, db, basic_user, faker):
+    # generate an extremely long "name" that will get rejected
+    new_name = faker.paragraph(nb_sentences=20, variable_nb_sentences=False)
+    payload = {"display_name": new_name}
+    client.force_login(basic_user)
+
+    response = client.post(reverse("profile:edit"), data=payload, headers=AJAX_HEADER)
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile-edit.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-edit-inline.html")
+
+
+def test_view_cannot_edit_others_profile(client, db, basic_user):
+    other = UserFactory()
+    client.force_login(basic_user)
+    response = client.get(reverse("profile:pedit", kwargs={"username": other.username}))
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_view_add_applink_valid(client, db, basic_user):
+    client.force_login(basic_user)
+    token = "some long string of api key"
+    payload = {
+        "apptype": "1",  # migration auto-creates ICE apptype at index 1
+        "comment": "hello world",
+        "secret_id": "some client",
+        "secret": token,
+        "url": "https://example.com/api/",
+    }
+    response = client.post(reverse("profile:applink"), data=payload, follow=True)
+
+    asserts.assertRedirects(response, reverse("profile:index"))
+    asserts.assertContains(response, "Saved link to https://example.com/api/")
+    assert basic_user.profile.applinks.count() == 1
+    assert basic_user.profile.applinks.first().api_token == token
+
+
+def test_view_add_applink_invalid(client, db, basic_user):
+    client.force_login(basic_user)
+    token = "some long string of api key"
+    payload = {
+        "apptype": "1",  # migration auto-creates ICE apptype at index 1
+        "comment": "hello world",
+        "secret_id": "some client",
+        "secret": token,
+        "url": "not a url",
+    }
+    response = client.post(reverse("profile:applink"), data=payload, follow=True)
+
+    asserts.assertRedirects(response, reverse("profile:index"))
+    asserts.assertContains(
+        response,
+        "There was a problem adding your application link.",
+        status_code=HTTPStatus.OK,
+    )
+    assert basic_user.profile.applinks.count() == 0
+
+
+def test_view_add_applink_inline_and_valid(client, db, basic_user):
+    client.force_login(basic_user)
+    token = "some long string of api key"
+    payload = {
+        "apptype": "1",  # migration auto-creates ICE apptype at index 1
+        "comment": "hello world",
+        "secret_id": "some client",
+        "secret": token,
+        "url": "https://example.com/api/",
+    }
+    response = client.post(reverse("profile:applink"), data=payload, headers=AJAX_HEADER)
+
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-applinks.html")
+    assert basic_user.profile.applinks.count() == 1
+    assert basic_user.profile.applinks.first().api_token == token
+
+
+def test_view_add_applink_inline_and_invalid(client, db, basic_user):
+    client.force_login(basic_user)
+    token = "some long string of api key"
+    payload = {
+        "apptype": "1",  # migration auto-creates ICE apptype at index 1
+        "comment": "hello world",
+        "secret_id": "some client",
+        "secret": token,
+        "url": "not a url",
+    }
+    response = client.post(reverse("profile:applink"), data=payload, headers=AJAX_HEADER)
+
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-applinks.html")
+    assert basic_user.profile.applinks.count() == 0
+
+
+def create_user_ice_applink(user, faker):
+    return models.AppLink.objects.create(
+        apptype_id=1,
+        comment=faker.sentence(),
+        profile=user.profile,
+        secret_id=faker.catch_phrase(),
+        secret=faker.paragraph(),
+        url=faker.url(),
+    )
+
+
+def test_view_get_single_applink_method_not_allowed(client, db, basic_user, faker):
+    link = create_user_ice_applink(basic_user, faker)
+    client.force_login(basic_user)
+
+    response = client.get(reverse("profile:applink_edit", kwargs={"pk": link.pk}))
+    assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
+
+
+def test_view_post_single_applink_order_up(client, db, basic_user, faker):
+    first = create_user_ice_applink(basic_user, faker)
+    second = create_user_ice_applink(basic_user, faker)
+    third = create_user_ice_applink(basic_user, faker)
+    url = reverse("profile:applink_edit", kwargs={"pk": third.pk})
+    client.force_login(basic_user)
+
+    response = client.post(url, data={"up": 1}, headers=AJAX_HEADER)
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-applinks.html")
+    assert list(basic_user.profile.get_applink_order()) == [first.pk, third.pk, second.pk]
+
+
+def test_view_post_single_applink_order_down(client, db, basic_user, faker):
+    first = create_user_ice_applink(basic_user, faker)
+    second = create_user_ice_applink(basic_user, faker)
+    third = create_user_ice_applink(basic_user, faker)
+    url = reverse("profile:applink_edit", kwargs={"pk": second.pk})
+    client.force_login(basic_user)
+
+    response = client.post(url, data={"down": 1}, headers=AJAX_HEADER)
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-applinks.html")
+    assert list(basic_user.profile.get_applink_order()) == [first.pk, third.pk, second.pk]
+
+
+def test_view_post_single_applink_remove(client, db, basic_user, faker):
+    link = create_user_ice_applink(basic_user, faker)
+    url = reverse("profile:applink_edit", kwargs={"pk": link.pk})
+    client.force_login(basic_user)
+
+    response = client.post(url, data={"remove": True}, follow=True)
+    asserts.assertRedirects(response, reverse("profile:index"))
+    assert basic_user.profile.applinks.count() == 0
+
+
+def test_view_post_single_applink_remove_ajax(client, db, basic_user, faker):
+    link = create_user_ice_applink(basic_user, faker)
+    url = reverse("profile:applink_edit", kwargs={"pk": link.pk})
+    client.force_login(basic_user)
+
+    response = client.post(url, data={"remove": True}, headers=AJAX_HEADER)
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-applinks.html")
+    assert basic_user.profile.applinks.count() == 0
+
+
+def test_view_post_single_applink_unknown_command(client, db, basic_user, faker):
+    link = create_user_ice_applink(basic_user, faker)
+    url = reverse("profile:applink_edit", kwargs={"pk": link.pk})
+    client.force_login(basic_user)
+
+    response = client.post(url, data={"foobar": True}, follow=True)
+    asserts.assertRedirects(response, reverse("profile:index"))
+    assert basic_user.profile.applinks.count() == 1
+
+
+def test_view_post_single_applink_unknown_command_ajax(client, db, basic_user, faker):
+    link = create_user_ice_applink(basic_user, faker)
+    url = reverse("profile:applink_edit", kwargs={"pk": link.pk})
+    client.force_login(basic_user)
+
+    response = client.post(url, data={"foobar": True}, headers=AJAX_HEADER)
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateUsed(response, "edd/profile/profile-applinks.html")
+    assert basic_user.profile.applinks.count() == 1
+
+
+def test_view_admin_update_others_profile(admin_client, db, basic_user, faker):
+    new_name = faker.catch_phrase()
+    payload = {"display_name": new_name}
+    url = reverse("profile:pedit", kwargs={"username": basic_user.username})
+
+    response = admin_client.post(url, data=payload, follow=True)
+
+    asserts.assertTemplateUsed(response, "edd/profile/profile.html")
+    asserts.assertTemplateNotUsed(response, "edd/profile/profile-edit.html")
+    asserts.assertContains(response, new_name, status_code=HTTPStatus.OK)
 
 
 def test_profile_string_cast(db, basic_user):

@@ -1,0 +1,26 @@
+{% load i18n %}
+<h2>{% translate "Affiliations" %}</h2>
+<table class="table table-condensed table-striped">
+  <thead>
+    <tr>
+      <th></th>
+      <th>{% translate "Institution" %}</th>
+      <th>{% translate "Identifier" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for iid in institutions %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ iid.institution.institution_name }}</td>
+      <td>{{ iid.identifier }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td class="text-center" colspan="3">
+        <i>{% translate "No Known Affiliations" %}</i>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
