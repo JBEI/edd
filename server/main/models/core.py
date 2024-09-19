@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
+from django.core.validators import URLValidator
 from django.db import models
 from django.db.models import Case, Count, F, Q, When
 from django.template.defaultfilters import slugify
@@ -705,55 +706,35 @@ def protocol_autocomplete(request):
     return found.values("id", "name", "text")[start:end], count > end
 
 
-class Strain(EDDObject):
-    """A link to a strain/part in the JBEI ICE Registry."""
+class Strain(models.Model):
+    """A link to a strain/part in an external strain repository."""
 
     class Meta:
-        db_table = "strain"
+        db_table = "main_strain"
 
-    object_ref = models.OneToOneField(
-        EDDObject, on_delete=models.CASCADE, parent_link=True, related_name="+"
+    name = VarCharField(help_text=_("Name of this Strain"), verbose_name=_("Name"))
+    external_id = VarCharField(
+        editable=False,
+        help_text=_("External identifier for this Strain"),
+        verbose_name=_("External ID"),
     )
-    registry_id = models.UUIDField(
-        blank=True,
-        help_text=_("The unique ID of this strain in the ICE Registry."),
-        null=True,
-        verbose_name=_("Registry UUID"),
+    external_url = VarCharField(
+        help_text=_("The URL in external service (e.g. ICE)"),
+        unique=True,
+        validators=[URLValidator(schemes=("http", "https"))],
+        verbose_name=_("External URL"),
     )
-    registry_url = models.URLField(
-        blank=True,
-        help_text=_("The URL of this strain in the ICE Registry."),
-        max_length=255,
-        null=True,
-        verbose_name=_("Registry URL"),
+    created = models.ForeignKey(
+        Update,
+        editable=False,
+        help_text=_("Update used to create this Strain."),
+        on_delete=models.PROTECT,
+        related_name="strain_created",
+        verbose_name=_("Created"),
     )
 
     def __str__(self):
         return self.name
-
-    def to_solr_value(self):
-        return f"{self.registry_id}@{self.name}"
-
-    def to_json(self, depth=0):
-        # explicitly ignoring parent EDDObject.to_json
-        return dict(
-            id=self.pk,
-            name=self.name,
-            registry_id=self.registry_id,
-            registry_url=self.registry_url,
-        )
-
-    @staticmethod
-    def user_can_change(user):
-        return user.has_perm("edd.change_strain")
-
-    @staticmethod
-    def user_can_create(user):
-        return user.has_perm("edd.add_strain")
-
-    @staticmethod
-    def user_can_delete(user):
-        return user.has_perm("edd.delete_strain")
 
 
 class LineManager(EDDObjectManager):
@@ -818,7 +799,7 @@ class Line(EDDObject):
     strains = models.ManyToManyField(
         Strain,
         blank=True,
-        db_table="line_strain",
+        db_table="main_line_strain",
         help_text=_("Strain(s) used in this Line."),
         verbose_name=_("Strain(s)"),
     )

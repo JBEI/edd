@@ -45,17 +45,13 @@ def truthy(value):
     return str(value).lower() in {"true", "t", "yes", "y", "1"}
 
 
-class ModelChoiceInFilter(
-    django_filters.BaseInFilter, django_filters.ModelChoiceFilter
-):
+class ModelChoiceInFilter(django_filters.BaseInFilter, django_filters.ModelChoiceFilter):
     pass
 
 
 class EDDObjectFilter(filters.FilterSet):
     active = django_filters.CharFilter(
-        help_text=_(
-            "Filter on currently active/visible items (True/1/yes or false/0/no)"
-        ),
+        help_text=_("Filter on currently active/visible items (True/1/yes or false/0/no)"),
         method="filter_is_active",
     )
     created_before = django_filters.IsoDateTimeFilter(
@@ -168,8 +164,8 @@ class LineFilter(EDDObjectFilter):
                 uuid_values.append(UUID(value))
             except ValueError:
                 url_values.append(value)
-        match_uuid = Q(strains__registry_id__in=uuid_values)
-        match_url = Q(strains__registry_url__in=url_values)
+        match_uuid = Q(strains__external_id__in=uuid_values)
+        match_url = Q(strains__external_url__in=url_values)
         return queryset.filter(match_uuid | match_url)
 
     def group_replicates(self, queryset, name, value):
@@ -217,9 +213,7 @@ class AssayFilter(EDDObjectFilter):
 
 class MeasurementFilter(filters.FilterSet):
     active = django_filters.CharFilter(
-        help_text=_(
-            "Filter on currently active/visible items (True/1/yes or false/0/no)"
-        ),
+        help_text=_("Filter on currently active/visible items (True/1/yes or false/0/no)"),
         method="filter_is_active",
     )
     assay = ModelChoiceInFilter(
@@ -240,16 +234,13 @@ class MeasurementFilter(filters.FilterSet):
     compartment = django_filters.ChoiceFilter(
         choices=models.Measurement.Compartment.CHOICE,
         field_name="compartment",
-        help_text=_(
-            "One of the compartment codes, 0, 1, 2 for N/A, Intracellular, Extracellular"
-        ),
+        help_text=_("One of the compartment codes, 0, 1, 2 for N/A, Intracellular, Extracellular"),
     )
     format = django_filters.ChoiceFilter(
         choices=models.Measurement.Format.CHOICE,
         field_name="measurement_format",
         help_text=_(
-            "One of the format codes; currently only '0' for Scalar "
-            "format values is supported"
+            "One of the format codes; currently only '0' for Scalar " "format values is supported"
         ),
     )
     in_study = django_filters.CharFilter(
@@ -347,9 +338,7 @@ class ExportFilter(filters.FilterSet):
     )
     measure_id = django_filters.ModelMultipleChoiceFilter(
         field_name="measurement_id",
-        help_text=_(
-            "List of ID values, separated by commas, for measurements to export"
-        ),
+        help_text=_("List of ID values, separated by commas, for measurements to export"),
         lookup_expr="in",
         queryset=export_queryset(models.Measurement),
     )
@@ -442,9 +431,7 @@ class ExportLineFilter(ExportFilter):
     # overriding to lookup based on Line instead of MeasurementValue
     measure_id = django_filters.ModelMultipleChoiceFilter(
         field_name="assay__measurement",
-        help_text=_(
-            "List of ID values, separated by commas, for measurements to export"
-        ),
+        help_text=_("List of ID values, separated by commas, for measurements to export"),
         lookup_expr="in",
         queryset=export_queryset(models.Measurement),
     )

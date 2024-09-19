@@ -1,4 +1,5 @@
 """Tests for Solr API"""
+
 import collections
 from http import HTTPStatus
 from unittest.mock import patch
@@ -13,7 +14,7 @@ from edd.profile import factory as profile_factory
 from main import models
 from main.tests import factory
 
-from . import signals, solr, widgets
+from . import registry, signals, solr, widgets
 
 fake = Faker()
 fake_solr = fake.url()
@@ -167,9 +168,7 @@ class SolrTests(TestCase):
         study = factory.StudyFactory(description="Lorem ipsum dolor sit amet")
         self.collection.update([study])
         post_add = self.collection.query(query="description:dolor")
-        self.assertEqual(
-            post_add["response"]["numFound"], 1, "Added study was not found in query"
-        )
+        self.assertEqual(post_add["response"]["numFound"], 1, "Added study was not found in query")
 
     def test_acl(self):
         user = profile_factory.UserFactory()
@@ -344,8 +343,7 @@ class Select2Tests(TestCase):
         results = basic_response.json()["results"]
         assert any(item["id"] == meta.id for item in results)
         assert all(
-            any(item["id"] == meta.id for item in r.json()["results"])
-            for r in typed_responses
+            any(item["id"] == meta.id for item in r.json()["results"]) for r in typed_responses
         )
 
     def test_autocomplete_line_metadata(self):
@@ -366,8 +364,7 @@ class Select2Tests(TestCase):
         results = basic_response.json()["results"]
         assert any(item["id"] == meta.id for item in results)
         assert all(
-            any(item["id"] == meta.id for item in r.json()["results"])
-            for r in typed_responses
+            any(item["id"] == meta.id for item in r.json()["results"]) for r in typed_responses
         )
 
     def test_autocomplete_protein(self):
@@ -499,3 +496,49 @@ def test_select2_sbml_species():
     assert 'data-eddautocompletetype="SbmlSpecies"' in html
     assert "data-eddautocompleteurl" in html
     assert f'data-eddauto-template="{sbml_id}"' in html
+
+
+def test_registry_search_empty_term(db, ice_users):
+    ice = registry.StrainRegistry(ice_users["readonly"])
+    results = ice.search("")
+    # could be more than ten if tests run multiple times in succession
+    assert len(results) >= 10
+
+
+def test_registry_search_without_api_key(db):
+    user = profile_factory.UserFactory()
+    ice = registry.StrainRegistry(user)
+    results = ice.search("")
+    assert results == []
+
+
+def test_registry_autocomplete_valid_single_strain(db, ice_strains, ice_users):
+    ice = registry.StrainRegistry(ice_users["readonly"])
+    entry = ice_strains[0]
+    results = list(ice.clean_autocomplete_value({"part_id": entry["partId"]}))
+    # there can be only one
+    assert len(results) == 1
+
+
+def test_registry_autocomplete_valid_multiple_strains(db, ice_strains, ice_users):
+    ice = registry.StrainRegistry(ice_users["readonly"])
+    a = ice_strains[0]
+    b = ice_strains[1]
+    value = [{"part_id": a["partId"]}, {"part_id": b["partId"]}]
+    results = list(ice.clean_autocomplete_value(value))
+    # there must be two
+    assert len(results) == 2
+
+
+def test_registry_autocomplete_invalid_value(db, ice_users):
+    ice = registry.StrainRegistry(ice_users["readonly"])
+    results = list(ice.clean_autocomplete_value("invalid value"))
+    # must be empty
+    assert len(results) == 0
+
+
+def test_registry_autocomplete_invalid_part(db, ice_users):
+    ice = registry.StrainRegistry(ice_users["readonly"])
+    results = list(ice.clean_autocomplete_value({"part_id": "invalid value"}))
+    # must be empty
+    assert len(results) == 0

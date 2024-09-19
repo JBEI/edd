@@ -1,16 +1,26 @@
 import json
 import logging
-from functools import partial
+import typing
+from collections.abc import Iterable
+from functools import cache
+from itertools import chain
 
+import requests
 from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
+from django.template.loader import get_template
 from requests.sessions import Session
 
 from jbei.rest.auth import HmacAuth
 from main import models
 
 from .select2 import Select2
+
+if typing.TYPE_CHECKING:
+    from django.contrib.auth import get_user_model
+
+    from edd.profile.models import AppLink
+
+    User: typing.TypeAlias = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +29,123 @@ class RegistryError(Exception):
     pass
 
 
+class Entry:
+    def __init__(self, app: "AppLink", payload: dict):
+        self.app = app
+        self.db_id = payload["id"]
+        self.registry_id = payload["recordId"]
+        base_url = app.url.rstrip("/")
+        self.registry_url = f"{base_url}/entry/{self.db_id}"
+        self.name = payload["name"]
+        self.part_id = payload["partId"]
+        # keep this in case anything needs to look up the other fields
+        self.payload = payload
+
+
 class StrainRegistry:
+    def __init__(self, user: "User"):
+        self.user = user
+
+    def clean_autocomplete_value(self, value) -> Iterable[models.Strain]:
+        match value:
+            case [*items]:
+                for v in items:
+                    yield from self.clean_autocomplete_value(v)
+            case {"part_id": part_id}:
+                if (strain := self.find_entry(part_id)) is not None:
+                    yield strain
+
+    def find_entry(self, part_id: str) -> models.Strain | None:
+        for app in self._get_apps():
+            if found := self._find_entry_in_app(app, part_id):
+                defaults = {"name": found.name, "external_url": found.registry_url}
+                strain, created = models.Strain.objects.get_or_create(
+                    external_id=found.registry_id,
+                    defaults=defaults,
+                )
+                return strain
+        return None
+
+    def is_configured(self) -> bool:
+        for app in self._get_apps():
+            return True
+        return False
+
+    def search(self, term: str) -> list[Entry]:
+        # NOTE: we are not supporting paging at all with this API
+        # TODO: should do this in an async thread to search in parallel across apps, not serial
+        result_groups = [self._search_in_app(app, term) for app in self._get_apps()]
+        # best we can do for relevance is sort by relative score across remote servers
+        return [v[0] for v in sorted(chain(*result_groups), key=lambda v: v[1] / v[2])]
+
+    def _build_url(self, app: "AppLink", *path: str) -> str:
+        base = app.url.rstrip("/")
+        return "/".join([base, *path])
+
+    def _find_entry_in_app(self, app: "AppLink", part_id: str) -> Entry | None:
+        try:
+            url = self._build_url(app, "rest", "parts", part_id)
+            response = requests.get(url, headers=self._get_headers(app))
+            response.raise_for_status()
+            payload = response.json()
+            return Entry(app, payload)
+        except Exception as e:
+            # debug level because we expect that a part ID won't exist in many linked apps
+            logger.debug("No part ID found", exc_info=e)
+        return None
+
+    def _get_apps(self):
+        driver = "edd.search.registry.StrainRegistry"
+        yield from self.user.profile.applinks.filter(apptype__driver=driver)
+
+    def _get_headers(self, app, **extra):
+        return {
+            **extra,
+            "X-ICE-API-Token-Client": app.secret_id,
+            "X-ICE-API-Token": app.api_token,
+        }
+
+    def _search_in_app(self, app: "AppLink", term: str) -> list[tuple[Entry, float, float]]:
+        try:
+            url = self._build_url(app, "rest", "search")
+            search = {
+                "parameters": {"sortField": "RELEVANCE"},
+                "queryString": term,
+            }
+            headers = self._get_headers(app, **{"Content-Type": "application/json; charset=utf8"})
+            response = requests.post(url, data=json.dumps(search), headers=headers)
+            response.raise_for_status()
+            raw_results = response.json()["results"]
+            return [
+                (Entry(app, item["entryInfo"]), item["score"], item["maxScore"])
+                for item in raw_results
+            ]
+        except Exception as e:
+            logger.debug("Search failed", exc_info=e)
+        return []
+
+
+@Select2("Registry")
+@Select2("Strain")
+def strain_autocomplete(request):
+    ice = StrainRegistry(request.user)
+    template = get_template("edd/search/strain.html")
+    return [
+        {
+            "html": template.render({"part": entry}),
+            "id": json.dumps({"part_id": entry.part_id}),
+            "text": entry.name,
+        }
+        for entry in ice.search(request.term)
+    ], False
+
+
+class AdminHmacRegistry:
+    """
+    An API to an ICE instance that includes admin functions. Only for use with
+    integration tests, depends on the default "Administrator" user.
+    """
+
     def __init__(self):
         self.auth = None
         self.session = None
@@ -29,87 +155,10 @@ class StrainRegistry:
         self.session.auth = self.auth
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.session.close()
-        self.session = None
-
-    def _build_entry_url(self, entry_id):
-        return self._rest(f"parts/{entry_id}")
-
-    def get_entry(self, entry_id):
-        self._check_session()
-        try:
-            response = self.session.get(self._build_entry_url(entry_id))
-            response.raise_for_status()
-            return Entry(self, response.json())
-        except Exception as e:
-            raise RegistryError("Could not load Registry Entry") from e
-
-    def iter_entries(self, collection="available", **extra):
-        self._check_session()
-
-        def entries_api(start):
-            response = self.session.get(
-                self._rest(f"collections/{collection}/entries"),
-                params={"start": start, **extra},
-            )
-            response.raise_for_status()
-            raw_results = response.json()["data"]
-            return [Entry(self, item) for item in raw_results]
-
-        try:
-            yield from self._yield_paged_records(entries_api)
-        except Exception as e:
-            raise RegistryError("Could not iterate Registry Entries") from e
-
-    def list_entries(self, collection="available", **extra):
-        self._check_session()
-        try:
-            response = self.session.get(
-                self._rest(f"collections/{collection}/entries"),
-                params=extra,
-            )
-            response.raise_for_status()
-            return [Entry(self, item) for item in response.json()["data"]]
-        except Exception as e:
-            raise RegistryError("Could not list Registry Entries") from e
-
-    def login(self, user):
-        key_id = getattr(settings, "ICE_KEY_ID", None)
-        secret_key = getattr(settings, "ICE_SECRET_HMAC_KEY", None)
-        if key_id and secret_key:
-            self.auth = HmacAuth(key_id=key_id, secret_key=secret_key, username=user.email)
-        return self
-
-    def logout(self):
-        self.auth = None
-        return self
-
-    def search(self, term):
-        self._check_session()
-        try:
-            yield from self._yield_paged_records(partial(self.search_page, term))
-        except Exception as e:
-            raise RegistryError(f"Could not search Registry for {term}") from e
-
-    def search_page(self, term, start):
-        self._check_session()
-        search = {
-            "parameters": {"start": start, "sortField": "RELEVANCE"},
-            "queryString": term,
-        }
-        response = self.session.post(
-            self._rest("search"),
-            data=json.dumps(search),
-            headers={"Content-Type": "application/json; charset=utf8"},
-        )
-        response.raise_for_status()
-        raw_results = response.json()["results"]
-        return [Entry(self, item["entryInfo"]) for item in raw_results]
+        self.logout()
 
     @property
     def base_url(self):
-        # short-term: use same environment as exists now to load hard-code value
-        # long-term: look up connected registries per user
         try:
             url = getattr(settings, "ICE_URL", None)
             # strip trailing slash, if present
@@ -118,57 +167,6 @@ class StrainRegistry:
             return url
         except Exception as e:
             raise RegistryError("No configured Registry found") from e
-
-    def _check_session(self):
-        if self.session is None:
-            raise RegistryError("No valid session")
-
-    def _rest(self, path):
-        return f"{self.base_url}/rest/{path}"
-
-    def _yield_paged_records(self, api_call):
-        """
-        Handles looping over paged API requests, yielding records as a
-        generator. The api_call argument should be a function taking the start
-        index, and return a list of records for the generator to yield.
-        """
-        start = 0
-        while True:
-            results = api_call(start)
-            count = len(results)
-            if count == 0:
-                break
-            start = start + count
-            yield from results
-
-
-@Select2("Registry")
-@Select2("Strain")
-def strain_autocomplete(request):
-    ice = StrainRegistry()
-    start, end = request.range
-    with ice.login(request.user):
-        # NOTE: this API only supports starting index,
-        # plus gives no indication of further elements
-        search = ice.search_page(request.term, start)
-        return [
-            {
-                "id": entry.registry_id,
-                # TODO: include HTML version so users can see entry ID, url, etc
-                "text": entry.name,
-            }
-            for entry in search
-        ], False
-
-
-class AdminRegistry(StrainRegistry):
-    """
-    An API to an ICE instance that includes admin functions. Only for use with
-    integration tests, depends on the default "Administrator" user.
-    """
-
-    def __init__(self):
-        self.session = None
 
     def build_ice_user_record(self, user, **extra):
         # these fields are all required for ICE
@@ -185,35 +183,50 @@ class AdminRegistry(StrainRegistry):
 
     def bulk_upload(self, file):
         self._check_session()
-        try:
-            # create the upload session
-            response = self.session.put(self._rest("uploads"), json={"type": "strain"})
-            response.raise_for_status()
-            upload_id = response.json()["id"]
-            # add the file
-            response = self.session.post(
-                self._rest(f"uploads/{upload_id}/file"),
-                files={"type": "strain", "file": file},
-            )
-            response.raise_for_status()
-            # "click" the submit button
-            response = self.session.put(
-                self._rest(f"uploads/{upload_id}/status"),
-                json={"id": upload_id, "status": "APPROVED"},
-            )
-            response.raise_for_status()
-        except Exception as e:
-            raise RegistryError("Could not complete Bulk Upload") from e
+        # create the upload session
+        response = self.session.put(self._rest("uploads"), json={"type": "strain"})
+        response.raise_for_status()
+        upload_id = response.json()["id"]
+        # add the file
+        response = self.session.post(
+            self._rest(f"uploads/{upload_id}/file"),
+            files={"type": "strain", "file": file},
+        )
+        response.raise_for_status()
+        # "click" the submit button
+        response = self.session.put(
+            self._rest(f"uploads/{upload_id}/status"),
+            json={"id": upload_id, "status": "APPROVED"},
+        )
+        response.raise_for_status()
 
     def create_admin(self, user, **extra):
         user_id = self.create_user(user, **extra)
         payload = self.build_ice_user_record(user, accountType="ADMIN", **extra)
-        try:
-            response = self.session.put(f"{self.base_url}/rest/users/{user_id}", json=payload)
-            response.raise_for_status()
-        except Exception as e:
-            raise RegistryError(f"Failed to mark {user} as ADMIN") from e
+        response = self.session.put(f"{self.base_url}/rest/users/{user_id}", json=payload)
+        response.raise_for_status()
         return user_id
+
+    def create_api_key(self, user):
+        # need to create a new HmacAuth for specific user
+        sub = AdminHmacRegistry()
+        with sub.login(username=user.email):
+            # POST to /rest/api-keys?client_id=:clientId
+            url = f"{sub.base_url}/rest/api-keys"
+            # ICE enforces client ID uniqueness, and tests may repeatedly add api keys
+            client_id = f"edd.lvh.me-{user.email}-{user.username}"
+            response = sub.session.post(url, params={"client_id": client_id})
+            response.raise_for_status()
+            # response returns clientId + secret + token
+            info = response.json()
+            user.profile.applinks.create(
+                apptype=sub._get_apptype(),
+                comment="Generated via edd/search/registry.py",
+                secret_id=client_id,
+                secret=info["token"],
+                sort_key=1,
+                url=sub.base_url,
+            )
 
     def create_user(self, user, **extra):
         self._check_session()
@@ -229,183 +242,73 @@ class AdminRegistry(StrainRegistry):
         except Exception as e:
             raise RegistryError(f"Failed to create user {user}") from e
 
+    def get_entries(self, collection="available", **extra):
+        self._check_session()
+        response = self.session.get(
+            self._rest(f"collections/{collection}/entries"),
+            params={"currentPage": 1, **extra},
+        )
+        response.raise_for_status()
+        return response.json()["data"]
+
     def get_user_id(self, user):
         self._check_session()
-        try:
-            response = self.session.get(
-                f"{self.base_url}/rest/users",
-                params={"filter": user.email},
-            )
-            response.raise_for_status()
-            info = response.json()
-            if info["resultCount"] != 0:
-                return info["users"][0]["id"]
-            return None
-        except Exception as e:
-            raise RegistryError(f"Failed to find user {user}") from e
+        response = self.session.get(
+            f"{self.base_url}/rest/users",
+            params={"filter": user.email},
+        )
+        response.raise_for_status()
+        info = response.json()
+        if info["resultCount"] != 0:
+            return info["users"][0]["id"]
+        return None
 
-    def login(self):
+    def login(self, username="Administrator"):
         key_id = getattr(settings, "ICE_KEY_ID", None)
         secret_key = getattr(settings, "ICE_SECRET_HMAC_KEY", None)
         if key_id and secret_key:
-            self.auth = HmacAuth(key_id=key_id, secret_key=secret_key, username="Administrator")
+            self.auth = HmacAuth(key_id=key_id, secret_key=secret_key, username=username)
         return self
 
+    def logout(self):
+        self.session = None
+        self.auth = None
+        return self
 
-class Entry:
-    def __init__(self, registry, payload):
-        self.registry = registry
-        self.db_id = payload["id"]
-        self.registry_id = payload["recordId"]
-        self.registry_url = f"{registry.base_url}/entry/{self.db_id}"
-        self.name = payload["name"]
-        self.part_id = payload["partId"]
-        # keep this in case anything needs to look up the other fields
-        self.payload = payload
+    def set_permission(self, entry_id, user_id, permission="READ_ENTRY"):
+        self._check_session()
+        response = self.session.post(
+            f"{self.base_url}/rest/parts/{entry_id}/permissions",
+            json={
+                "article": "ACCOUNT",
+                "articleId": user_id,
+                "type": permission,
+                "typeId": entry_id,
+            },
+        )
+        response.raise_for_status()
 
-    def add_link(self, label, study_url):
-        self.registry._check_session()
-        try:
-            response = self.registry.session.post(
-                self._rest("experiments"),
-                data=json.dumps({"label": label, "url": study_url}),
-                headers={"Content-Type": "application/json"},
-            )
-            response.raise_for_status()
-        except Exception as e:
-            raise RegistryError(f"Failed to add experiment link to {self.db_id}") from e
+    def _check_session(self):
+        if self.session is None:
+            raise RegistryError("No valid session")
 
-    def list_links(self):
-        self.registry._check_session()
-        try:
-            # this endpoint does not support paging
-            response = self.registry.session.get(self._rest("experiments"))
-            response.raise_for_status()
-            for item in response.json():
-                yield (item["id"], item["label"], item["url"])
-        except Exception as e:
-            raise RegistryError(f"Failed to load experiment links from {self.db_id}") from e
+    @cache
+    def _get_apptype(self):
+        from edd.profile.models import AppType
 
-    def remove_link(self, link_id):
-        self.registry._check_session()
-        try:
-            response = self.registry.session.delete(self._rest(f"experiments/{link_id}/"))
-            response.raise_for_status()
-        except Exception as e:
-            raise RegistryError(f"Failed to remove experiment link {link_id}") from e
+        at, created = AppType.objects.get_or_create(
+            driver="edd.search.registry.StrainRegistry",
+            defaults={"display": "ICE"},
+        )
+        return at
 
-    def set_permission(self, user_id, permission="READ_ENTRY"):
-        self.registry._check_session()
-        try:
-            response = self.registry.session.post(
-                self._rest("permissions"),
-                json={
-                    "article": "ACCOUNT",
-                    "articleId": user_id,
-                    "type": permission,
-                    "typeId": self.db_id,
-                },
-            )
-            response.raise_for_status()
-        except Exception as e:
-            raise RegistryError(f"Could not set permission on {self}") from e
-
-    def _rest(self, path):
-        return self.registry._rest(f"parts/{self.db_id}/{path}")
-
-
-class RegistryValidator:
-    """
-    Validator for Strain objects tied to ICE registry. If using outside the
-    context of Form validation (e.g. in a Celery task), ensure that the Update
-    object is created before the callable is called.
-
-    See: https://docs.djangoproject.com/en/dev/ref/validators/
-    """
-
-    def __init__(self, existing_strain=None, existing_entry=None):
-        """
-        If an already-existing Strain object in the database is being updated,
-        initialize RegistryValidator with existing_strain. If an entry has
-        already been queried from ICE, initialize with existing_entry.
-        """
-        self.existing_strain = existing_strain
-        self.existing_entry = existing_entry
-
-    def load_part_from_ice(self, registry_id):
-        if self.existing_entry is not None:
-            return self.existing_entry
-        # using the Update to get the correct user for the search
-        update = models.Update.load_update()
-        registry = StrainRegistry()
-        user_email = update.mod_by.email
-        try:
-            with registry.login(update.mod_by):
-                return registry.get_entry(registry_id)
-        except Exception as e:
-            raise ValidationError(
-                _("Failed to load strain %(uuid)s from ICE for user %(user)s"),
-                code="ice failure",
-                params={"user": user_email, "uuid": registry_id},
-            ) from e
-
-    def save_strain(self, entry):
-        try:
-            if entry and self.existing_strain:
-                self.existing_strain.name = entry.name
-                self.existing_strain.registry_id = entry.registry_id
-                self.existing_strain.registry_url = entry.registry_url
-                self.existing_strain.save()
-            elif entry:
-                # not using get_or_create, so exception is raised if registry_id exists
-                models.Strain.objects.create(
-                    name=entry.name,
-                    registry_id=entry.registry_id,
-                    registry_url=entry.registry_url,
-                )
-        except Exception as e:
-            raise ValidationError(
-                _("Failed to save strain from %(entry)s"),
-                code="db failure",
-                params={"entry": entry},
-            ) from e
-
-    def validate(self, value):
-        try:
-            # handle multi-valued inputs by validating each value individually
-            if isinstance(value, (list, tuple)):
-                for v in value:
-                    self.validate(v)
-                return
-            qs = models.Strain.objects.filter(registry_id=value)
-            if self.existing_strain:
-                qs = qs.exclude(pk__in=[self.existing_strain])
-            count = qs.count()
-            if count == 0:
-                self.save_strain(self.load_part_from_ice(value))
-            elif count > 1:
-                raise ValidationError(
-                    _("Selected ICE record is already linked to EDD strains: %(strains)s"),
-                    code="existing records",
-                    params={"strains": list(qs)},
-                )
-        except ValidationError:
-            raise
-        except Exception as e:
-            raise ValidationError(
-                _("Error querying for an EDD strain with registry_id %(uuid)s"),
-                code="query failure",
-                params={"uuid": value},
-            ) from e
-
-    def __call__(self, value):
-        self.validate(value)
+    def _rest(self, *path):
+        return "/".join((self.base_url, "rest", *path))
 
 
 __all__ = [
-    AdminRegistry,
+    AdminHmacRegistry,
     Entry,
     RegistryError,
-    RegistryValidator,
     StrainRegistry,
 ]

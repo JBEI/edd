@@ -64,7 +64,7 @@ class StrainSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Strain
         depth = 0
-        fields = ("name", "registry_id", "registry_url")
+        fields = ("name", "external_id", "external_url")
 
 
 class AssaySerializer(EDDObjectSerializer):

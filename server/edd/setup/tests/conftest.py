@@ -17,8 +17,8 @@ def filesdir():
 
 
 class Session:
-    def __init__(self, *, permission_type=StudyPermission.READ):
-        self.user = UserFactory()
+    def __init__(self, *, permission_type=StudyPermission.READ, user=None):
+        self.user = UserFactory() if user is None else user
         self.study = main_factory.StudyFactory()
         self.study.userpermission_set.update_or_create(
             user=self.user,
@@ -63,6 +63,11 @@ def readable_session(db):
 @pytest.fixture
 def writable_session(db):
     return Session(permission_type=StudyPermission.WRITE)
+
+
+@pytest.fixture
+def writable_session_ice(db, ice_users):
+    return Session(permission_type=StudyPermission.WRITE, user=ice_users["readonly"])
 
 
 @pytest.fixture

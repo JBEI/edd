@@ -50,9 +50,7 @@ CELERY_TASK_QUEUES = (
     Queue("main.admin.migrate_storage"),
     Queue("main.models.measurement_type.lookup_protein_in_uniprot"),
     Queue("main.models.measurement_type.metabolite_load_pubchem"),
-    Queue("main.tasks.link_ice_entry_to_study"),
     Queue("main.tasks.template_sync_species"),
-    Queue("main.tasks.unlink_ice_entry_from_study"),
 )
 # map task to own queue, leaving out the first (default) queue
 CELERY_TASK_ROUTES = {q.name: q.name for q in CELERY_TASK_QUEUES[1:]}

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 
 from main import models as edd_models
@@ -88,6 +89,19 @@ def test_SetupRequest_process_excel(dir_of_test_files, writable_session):
         setup.process_upload(writable_session.user)
         progress = setup.progress
     assert progress["resolved"] == 2
+    assert progress["tokens"] == 0
+    assert progress["unresolved"] == 0
+
+
+def test_SetupRequest_process_file_with_known_strain(writable_session_ice, ice_strains):
+    with writable_session_ice.setup() as setup:
+        part_id = ice_strains[0]["partId"]
+        content = f"Line Name,Part ID\nA,{part_id}\n"
+        f = SimpleUploadedFile("strain.csv", content.encode("utf8"), content_type="text/csv")
+        assert setup.upload({"file": f})
+        setup.process_upload(writable_session_ice.user)
+        progress = setup.progress
+    assert progress["resolved"] == 1
     assert progress["tokens"] == 0
     assert progress["unresolved"] == 0
 
@@ -210,7 +224,7 @@ def test_SetupRequest_process_form_metadata(db, writable_session):
             # name "bWV0YTpTcGljZQ" translates to field for "Spice"
             "bWV0YTpTcGljZQ": '{"new":1}',
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         setup.process_form(form)
         assert setup.request.resolved_length() == 2
         assert setup.request.unresolved_length() == 0
@@ -234,28 +248,27 @@ def test_SetupRequest_process_form_assay_metadata(db, writable_session):
             # name "cHJvdG9jb2w6U3BpY2U" translates to protocol for "Spice"
             "cHJvdG9jb2w6U3BpY2U": protocol.pk,
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         setup.process_form(form)
         assert setup.request.resolved_length() == 2
         assert setup.request.unresolved_length() == 0
 
 
-def test_SetupRequest_process_form_strains(db, writable_session):
-    existing_strain = StrainFactory()
-    filename = writable_session.path("strain.csv")
-    with writable_session.setup(upload_file=filename) as setup:
+def test_SetupRequest_process_form_strains(db, writable_session_ice, ice_strains):
+    filename = writable_session_ice.path("strain.csv")
+    with writable_session_ice.setup(upload_file=filename) as setup:
         payload = {
             # name "c3RyYWluOkpCeF8wMDAwMQ" translates to strain ID JBx_00001
-            "c3RyYWluOkpCeF8wMDAwMQ": [existing_strain.registry_id],
+            "c3RyYWluOkpCeF8wMDAwMQ": [{"part_id": ice_strains[0]["partId"]}],
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session_ice.user, data=payload)
         setup.process_form(form)
         assert setup.request.resolved_length() == 1
         assert setup.request.unresolved_length() == 3
 
         # name "Zm9ybTpzdHJhaW4" translates to boolean field for ignoring all strains
         payload = {"Zm9ybTpzdHJhaW4": 1}
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session_ice.user, data=payload)
         setup.process_form(form)
         assert setup.request.resolved_length() == 4
         assert setup.request.unresolved_length() == 0
@@ -276,7 +289,7 @@ def test_SetupRequest_process_payload(db, writable_session):
             ],
         ),
         # record with a strain
-        Record(name="B", strain=[{"uuids": [str(existing_strain.registry_id)]}]),
+        Record(name="B", strain=[{"urls": [str(existing_strain.external_url)]}]),
         # record with one- and two-level assay metadata
         Record(
             assays={
@@ -314,7 +327,7 @@ def test_SetupRequest_commit_with_assay_metadata(client, writable_session):
     with writable_session.setup(upload_file=filename) as setup:
         # update assay metadata with protocol, field is "cHJvdG9jb2w6QXNzYXkgTmFtZQ"
         payload = {"cHJvdG9jb2w6QXNzYXkgTmFtZQ": ProtocolFactory().pk}
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         setup.process_form(form)
         # save
         setup.commit(writable_session.user)
@@ -324,43 +337,43 @@ def test_SetupRequest_commit_with_assay_metadata(client, writable_session):
     assert edd_models.Assay.objects.filter(study_id=study_id).count() == 4
 
 
-def test_SetupRequest_commit_with_strains(client, writable_session):
-    client.force_login(writable_session.user)
-    filename = writable_session.path("strain.csv")
-    with writable_session.setup(upload_file=filename) as setup:
+def test_SetupRequest_commit_with_strains(client, writable_session_ice, ice_strains):
+    client.force_login(writable_session_ice.user)
+    filename = writable_session_ice.path("strain.csv")
+    with writable_session_ice.setup(upload_file=filename) as setup:
         # update fields with strain references, each a single item list of new strain
         payload = {
-            "c3RyYWluOkpCeF8wMDAwMQ": [StrainFactory().registry_id],
-            "c3RyYWluOkpCeF8wMDAwMg": [StrainFactory().registry_id],
-            "c3RyYWluOkpCeF8wMDAwMw": [StrainFactory().registry_id],
-            "c3RyYWluOkpCeF8wMDAwNA": [StrainFactory().registry_id],
+            "c3RyYWluOkpCeF8wMDAwMQ": [{"part_id": ice_strains[0]["partId"]}],
+            "c3RyYWluOkpCeF8wMDAwMg": [{"part_id": ice_strains[1]["partId"]}],
+            "c3RyYWluOkpCeF8wMDAwMw": [{"part_id": ice_strains[2]["partId"]}],
+            "c3RyYWluOkpCeF8wMDAwNA": [{"part_id": ice_strains[3]["partId"]}],
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session_ice.user, data=payload)
         setup.process_form(form)
         # save
-        setup.commit(writable_session.user)
+        setup.commit(writable_session_ice.user)
 
-    study_id = writable_session.study.pk
+    study_id = writable_session_ice.study.pk
     assert edd_models.Line.objects.filter(study_id=study_id).count() == 4
     assert edd_models.Strain.objects.filter(line__study_id=study_id).count() == 4
 
 
-def test_SetupRequest_commit_with_strains_some_missing(client, writable_session):
-    client.force_login(writable_session.user)
-    filename = writable_session.path("strain.csv")
-    with writable_session.setup(upload_file=filename) as setup:
+def test_SetupRequest_commit_with_strains_some_missing(client, writable_session_ice, ice_strains):
+    client.force_login(writable_session_ice.user)
+    filename = writable_session_ice.path("strain.csv")
+    with writable_session_ice.setup(upload_file=filename) as setup:
         # update fields with strain references, each a single item list of new strain
         # two have strain references resolved, and two do not
         payload = {
-            "c3RyYWluOkpCeF8wMDAwMQ": [StrainFactory().registry_id],
-            "c3RyYWluOkpCeF8wMDAwMg": [StrainFactory().registry_id],
+            "c3RyYWluOkpCeF8wMDAwMQ": [{"part_id": ice_strains[0]["partId"]}],
+            "c3RyYWluOkpCeF8wMDAwMg": [{"part_id": ice_strains[1]["partId"]}],
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session_ice.user, data=payload)
         setup.process_form(form)
         # save
-        setup.commit(writable_session.user)
+        setup.commit(writable_session_ice.user)
 
-    study_id = writable_session.study.pk
+    study_id = writable_session_ice.study.pk
     assert edd_models.Line.objects.filter(study_id=study_id).count() == 2
     assert edd_models.Strain.objects.filter(line__study_id=study_id).count() == 2
 

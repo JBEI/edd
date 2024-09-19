@@ -126,7 +126,7 @@ class SetupInterpretView(ExperimentSetupInstanceView):
     def get_token_form(self):
         setup = self.get_setup_request()
         page = self.kwargs.get("page", 1)
-        return ResolveTokensForm(setup_request=setup, page=page)
+        return ResolveTokensForm(setup_request=setup, user=self.request.user, page=page)
 
     def post(self, request, *args, **kwargs):
         self.check_write_permission(request)
@@ -135,7 +135,7 @@ class SetupInterpretView(ExperimentSetupInstanceView):
             return self._do_abort(request, setup)
         elif "save" in request.POST:
             return self._do_save(request, setup)
-        form = ResolveTokensForm(setup_request=setup, data=request.POST)
+        form = ResolveTokensForm(setup_request=setup, user=request.user, data=request.POST)
         if form.is_valid():
             payload_key = setup.form_payload_stash(request.POST)
             submit_update(setup, payload_key, request.user)

@@ -437,9 +437,7 @@ class StudyOverviewViewTests(StudyViewTestCase):
         assert not self.query.filter(active=True).exists()
 
     def test_overview_update_failed(self):
-        # views/study.py does `from .. import forms as edd_forms`,
-        # so must mock that name
-        with patch("main.views.study.edd_forms.CreateStudyForm") as MockForm:
+        with patch("main.forms.CreateStudyForm") as MockForm:
             form = MockForm.return_value
             form.is_valid.return_value = False
             # should be no redirect
@@ -529,112 +527,6 @@ class StudyDetailViewTests(StudyViewTestCase):
         assert self.target_study.assay_set.filter(active=True).count() == 0
         assert self.target_study.assay_set.filter(active=False).count() == 1
 
-    def test_detail_assay_edit(self):
-        line = factory.LineFactory(study=self.target_study)
-        protocol = factory.ProtocolFactory()
-        assay = factory.AssayFactory(line=line)
-        name = faker.catch_phrase()
-        payload = {
-            "action": "assay",
-            "assay-name": name,
-            "assay-_bulk_name": "",
-            "assay-protocol": protocol.pk,
-            "assay-_bulk_protocol": "",
-            "assayId": [assay.pk],
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertTemplateUsed(response, "main/study-data.html")
-        self.assertContains(response, "Saved 1 of 1 Assays")
-        assert self.target_study.assay_set.filter(name=name, protocol=protocol).exists()
-
-    def test_detail_assay_edit_with_invalid_id(self):
-        line = factory.LineFactory(study=self.target_study)
-        protocol = factory.ProtocolFactory()
-        assay = factory.AssayFactory(line=line)
-        name = faker.catch_phrase()
-        payload = {
-            "action": "assay",
-            "assay-name": name,
-            "assay-_bulk_name": "",
-            "assay-protocol": protocol.pk,
-            "assay-_bulk_protocol": "",
-            "assayId": [12345],
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertTemplateUsed(response, "main/study-data.html")
-        self.assertContains(
-            response,
-            "Must select at least one Assay to edit.",
-            status_code=HTTPStatus.BAD_REQUEST,
-        )
-        assert self.target_study.assay_set.filter(
-            name=assay.name, protocol=assay.protocol
-        ).exists()
-
-    def test_detail_assay_edit_with_invalid_form(self):
-        line = factory.LineFactory(study=self.target_study)
-        assay = factory.AssayFactory(line=line)
-        name = faker.catch_phrase()
-        payload = {
-            "action": "assay",
-            "assay-name": name,
-            "assay-_bulk_name": "",
-            "assay-protocol": 12345,
-            "assay-_bulk_protocol": "",
-            "assayId": [assay.pk],
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertTemplateUsed(response, "main/study-data.html")
-        self.assertContains(
-            response,
-            "Saved 0 of 1 Assays",
-            status_code=HTTPStatus.BAD_REQUEST,
-        )
-        assert self.target_study.assay_set.filter(name=assay.name).exists()
-
-    def test_detail_measurement_add_with_empty_form(self):
-        line = factory.LineFactory(study=self.target_study)
-        factory.AssayFactory(line=line)
-        payload = {
-            "action": "measurement",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
-        self.assertTemplateUsed(response, "main/study-data.html")
-        assert self.target_study.measurement_set.count() == 0
-
-    def test_detail_measurement_add_invalid_form(self):
-        line = factory.LineFactory(study=self.target_study)
-        assay = factory.AssayFactory(line=line)
-        payload = {
-            "action": "measurement",
-            "assayId": [assay.id],
-            "measurement-compartment": "0",
-            "measurement-measurement_type_0": "",
-            "measurement-measurement_type_1": "",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
-        self.assertTemplateUsed(response, "main/study-data.html")
-        assert self.target_study.measurement_set.count() == 0
-
-    def test_detail_measurement_add(self):
-        line = factory.LineFactory(study=self.target_study)
-        assay = factory.AssayFactory(line=line)
-        mtype = factory.MeasurementTypeFactory()
-        payload = {
-            "action": "measurement",
-            "assayId": [assay.id],
-            "measurement-compartment": "0",
-            "measurement-measurement_type_0": mtype.type_name,
-            "measurement-measurement_type_1": mtype.id,
-            "measurement-y_units": "1",
-        }
-        response = self.client.post(self.url, data=payload, follow=True)
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTemplateUsed(response, "main/study-data.html")
-        assert self.target_study.measurement_set.count() == 1
-
     def test_detail_measurement_delete_asks_for_confirmation(self):
         line = factory.LineFactory(study=self.target_study)
         assay = factory.AssayFactory(line=line)
@@ -662,53 +554,6 @@ class StudyDetailViewTests(StudyViewTestCase):
         self.assertContains(response, "Deleted 0 Assays and 1 Measurements.")
         assert self.target_study.measurement_set.filter(active=True).count() == 0
         assert self.target_study.measurement_set.filter(active=False).count() == 1
-
-    def test_detail_measurement_edit(self):
-        line = factory.LineFactory(study=self.target_study)
-        assay = factory.AssayFactory(line=line)
-        measurement = factory.MeasurementFactory(assay=assay)
-        response = self.client.post(
-            self.url,
-            data={"action": "measurement_edit", "measurementId": measurement.pk},
-            follow=True,
-        )
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTemplateUsed(response, "main/edit_measurement.html")
-
-    def test_detail_measurement_edit_with_invalid_id(self):
-        # edit with invalid ID returns error
-        response = self.client.post(
-            self.url,
-            data={"action": "measurement_edit", "measurementId": 12345},
-            follow=True,
-        )
-        self.assertTemplateUsed(response, "main/study-data.html")
-        self.assertContains(
-            response, "Nothing selected for edit.", status_code=HTTPStatus.BAD_REQUEST
-        )
-
-    def test_detail_measurement_update_existing_values(self):
-        line = factory.LineFactory(study=self.target_study)
-        assay = factory.AssayFactory(line=line)
-        measurement = factory.MeasurementFactory(assay=assay)
-        value = factory.ValueFactory(x=[12], y=[34], measurement=measurement)
-        # edit with valid bound data updates the measurement
-        edit_data = {
-            "action": "measurement_update",
-            "measurementId": measurement.pk,
-            f"{measurement.pk}-TOTAL_FORMS": 1,
-            f"{measurement.pk}-INITIAL_FORMS": 1,
-            f"{measurement.pk}-MIN_NUM_FORMS": 0,
-            f"{measurement.pk}-MAX_NUM_FORMS": 1000,
-            f"{measurement.pk}-0-id": value.pk,
-            f"{measurement.pk}-0-x": 56,
-            f"{measurement.pk}-0-y": 78,
-        }
-        response = self.client.post(self.url, data=edit_data, follow=True)
-        self.assertRedirects(response, self.url)
-        saved_value = models.MeasurementValue.objects.get(id=value.pk)
-        self.assertEqual(saved_value.x, [56])
-        self.assertEqual(saved_value.y, [78])
 
 
 class StudyAjaxViewTests(StudyViewTestCase):

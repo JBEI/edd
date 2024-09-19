@@ -228,7 +228,6 @@ def test_load_create_simple(client, writable_session):
     with patch("edd.load.tasks.run_rest_import") as task:
         response = client.post(url, payload, content_type=JSON_CONTENT)
 
-    print(response.data)
     assert response.status_code == HTTPStatus.OK
     assert "uuid" in response.data
     assert response.data["url"] == reverse("rest:load-detail", args=[response.data["uuid"]])

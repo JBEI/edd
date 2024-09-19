@@ -503,7 +503,7 @@ class StrainFilterSection extends FilterSection<StrainRecord, string> {
     }
 
     protected keyValue(value: StrainRecord): string {
-        return value.registry_id;
+        return value.external_id;
     }
 
     valueToDisplay(value: StrainRecord): string {

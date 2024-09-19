@@ -626,7 +626,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
     def test_lines_list_filter_by_strain_uuid(self):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
-        response = self.client.get(url, {"strain": self.strains[0].registry_id})
+        response = self.client.get(url, {"strain": self.strains[0].external_id})
         self._check_status(response, HTTPStatus.OK)
         # first strain will appear for 0th, 3rd, 6th, 9th
         assert response.data["count"] == 4
@@ -634,7 +634,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
     def test_lines_list_filter_by_strain_url(self):
         url = reverse("rest:lines-list")
         self.client.force_login(self.readonly_user)
-        response = self.client.get(url, {"strain": self.strains[1].registry_url})
+        response = self.client.get(url, {"strain": self.strains[1].external_url})
         self._check_status(response, HTTPStatus.OK)
         # second strain will appear for 1st, 4th, 7th
         assert response.data["count"] == 3
@@ -645,7 +645,7 @@ class LinesTests(EddApiTestCaseMixin, APITestCase):
         response = self.client.get(
             url,
             {
-                "strain": f"{self.strains[0].registry_url},{self.strains[1].registry_id}",
+                "strain": f"{self.strains[0].external_url},{self.strains[1].external_id}",
             },
         )
         self._check_status(response, HTTPStatus.OK)

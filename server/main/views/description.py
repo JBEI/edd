@@ -46,6 +46,7 @@ class DescriptionMixin(StudyObjectMixin):
             initial=initial,
             instance=instance,
             study=study,
+            user=self.request.user,
         )
 
     def build_select_form(self):
@@ -109,15 +110,12 @@ class StudyDescriptionPartial(DescriptionMixin, generic.DetailView):
     the Overview without scripting.
     """
 
-    default_error_message = _(
-        "Something went wrong with your update. "
-        "Please try again, or contact support."
-    )
+    try_again = _("Something went wrong with your update. Please try again, or contact support.")
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(study=self.get_object(), **kwargs)
 
-    def error(self, message=default_error_message, **kwargs):
+    def error(self, message=try_again, **kwargs):
         """
         If the view is inline, send a rendered template response. Otherwise,
         add an error message to the messages framework and redirect to the
@@ -193,6 +191,7 @@ class InitialModifyLineView(DescriptionMixin, generic.DetailView):
                     includeField=False,
                     initial=forms.MetadataUpdateForm.initial_from_items(lines),
                     typeFilter=models.MetadataType.LINE,
+                    user=request.user,
                 ),
                 select_form=form,
                 url_action=self.study_reverse("main:line_edit"),
@@ -234,6 +233,7 @@ class BaseLineSave(StudyDescriptionPartial):
                 includeField=False,
                 typeFilter=models.MetadataType.LINE,
                 types=init_form.selection,
+                user=self.request.user,
             )
             return form
         return init_form
@@ -254,6 +254,7 @@ class CreateLineView(BaseLineSave):
                 includeField=False,
                 typeFilter=models.MetadataType.LINE,
                 types=types,
+                user=request.user,
             ),
         )
 

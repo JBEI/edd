@@ -64,20 +64,7 @@ class Resolver(RecordResolver):
         """
         Given a strain part ID, return a database ID.
         """
-        # TODO: update this when replacing single-ICE
-        try:
-            ice = StrainRegistry()
-            with ice.login(self.user):
-                if part := ice.get_entry(name):
-                    defaults = {
-                        "name": part.name,
-                        "registry_url": part.registry_url,
-                    }
-                    strain, created = edd_models.Strain.objects.get_or_create(
-                        registry_id=part.registry_id,
-                        defaults=defaults,
-                    )
-                    return [strain]
-        except Exception as e:
-            logger.warning(f"Error looking up strain from part `{name}`: {e}")
+        ice = StrainRegistry(self.user)
+        if strain := ice.find_entry(name):
+            return [strain]
         return []

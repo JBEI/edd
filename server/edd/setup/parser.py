@@ -40,7 +40,7 @@ AssayMeta: typing.TypeAlias = dict[str, list[MetaInfo | list[MetaInfo]]]
 
 class StrainInfo(typing.TypedDict):
     name: typing.NotRequired[str]
-    uuids: list[str] | None
+    urls: list[str] | None
 
 
 class RecordResolver(typing.Protocol):
@@ -161,11 +161,11 @@ class Record:
         failed: set[str],
     ) -> Generator[StrainInfo, None, None]:
         for s in self.strain:
-            if s["uuids"]:
+            if s["urls"]:
                 yield s
             elif not resolver.is_strain_ignored(strain_name := s.get("name", "")):
-                if strains := resolver.strains_from_name(strain_name):
-                    s["uuids"] = [x.registry_id for x in strains]
+                if strains := list(resolver.strains_from_name(strain_name)):
+                    s["urls"] = [x.external_url for x in strains]
                 else:
                     failed.add("form:strain")
                     failed.add(f"strain:{strain_name}")
@@ -295,7 +295,7 @@ class StrainHeading(RegexHeading):
     def update(self, record: Record, value: Cell) -> None:
         if value:
             # adding a StrainInfo dict to the list
-            record.strain.append({"name": value, "uuids": None})
+            record.strain.append({"name": value, "urls": None})
 
 
 class MetadataHeading(HeadingPrototype[str]):

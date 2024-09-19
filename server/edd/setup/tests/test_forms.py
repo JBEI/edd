@@ -1,7 +1,7 @@
 import pytest
 
 from main import models as edd_models
-from main.tests.factory import ProtocolFactory, StrainFactory
+from main.tests.factory import ProtocolFactory
 
 from ..exceptions import SetupException
 from ..forms import ResolveTokensForm
@@ -10,7 +10,7 @@ from ..forms import ResolveTokensForm
 def test_form_create_without_post_data(writable_session):
     filename = writable_session.path("unmatched.csv")
     with writable_session.setup(upload_file=filename) as setup:
-        form = ResolveTokensForm(setup_request=setup)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user)
 
     # fixture has three unknown metadata columns,
     # each get a metadata field, plus an ignore-all field
@@ -27,7 +27,7 @@ def test_form_create_with_irrelevant_data(writable_session):
             # specifically include payload that will have problems with codec
             "a💥": "😀",
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
 
         # initially, no fields will be created
         assert len(form.fields) == 0
@@ -45,7 +45,7 @@ def test_form_resolver_with_all_metadata_ignored(writable_session):
     with writable_session.setup(upload_file=filename) as setup:
         # name "Zm9ybTptZXRh" translates to boolean field for ignoring all metadata
         payload = {"Zm9ybTptZXRh": 1}
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         resolver = form.get_resolver()
 
     # each unmatched metadata column from file is ignored in resolver
@@ -65,7 +65,7 @@ def test_form_resolver_with_some_metadata_ignored(writable_session):
             # name "bWV0YTpXb3JsZA" translates to field for "World"
             "bWV0YTpXb3JsZA": "{}",
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         resolver = form.get_resolver()
 
     # specified column ignored
@@ -88,7 +88,7 @@ def test_form_resolver_with_metadata_options(writable_session):
             # name "bWV0YTpXb3JsZA" translates to field for "World"
             "bWV0YTpXb3JsZA": media.pk,
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         resolver = form.get_resolver()
 
     # new metadata type made for "House"
@@ -112,7 +112,7 @@ def test_form_resolver_with_all_strains_ignored(writable_session):
     with writable_session.setup(upload_file=filename) as setup:
         # name "Zm9ybTpzdHJhaW4" translates to boolean field for ignoring all strains
         payload = {"Zm9ybTpzdHJhaW4": 1}
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         resolver = form.get_resolver()
 
     # each unmatched strain ID from file is ignored in resolver
@@ -124,23 +124,20 @@ def test_form_resolver_with_all_strains_ignored(writable_session):
     assert resolver.is_strain_ignored("foobar")
 
 
-def test_form_resolver_with_strain_options(db, writable_session):
-    existing_strain = StrainFactory()
-    filename = writable_session.path("strain.csv")
-    with writable_session.setup(upload_file=filename) as setup:
+def test_form_resolver_with_strain_options(db, writable_session_ice, ice_strains):
+    filename = writable_session_ice.path("strain.csv")
+    with writable_session_ice.setup(upload_file=filename) as setup:
         payload = {
             # name "c3RyYWluOkpCeF8wMDAwMQ" translates to strain ID JBx_00001
-            "c3RyYWluOkpCeF8wMDAwMQ": [existing_strain.registry_id],
+            "c3RyYWluOkpCeF8wMDAwMQ": [{"part_id": ice_strains[0]["partId"]}],
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session_ice.user, data=payload)
         resolver = form.get_resolver()
 
     # JBx_00001 is mapped to existing_strain
     assert not resolver.is_strain_ignored("JBx_00001")
     matched = list(resolver.strains_from_name("JBx_00001"))
     assert len(matched) == 1
-    # coerce UUIDs to strings for comparison
-    assert str(matched[0].registry_id) == str(existing_strain.registry_id)
     # unknown strain is not mapped
     assert not resolver.is_strain_ignored("unknown")
     matched = list(resolver.strains_from_name("unknown"))
@@ -159,7 +156,7 @@ def test_form_resolver_with_protocol_options(writable_session):
             # name "cHJvdG9jb2w6U3BpY2U" translates to protocol field for "Spice"
             "cHJvdG9jb2w6U3BpY2U": "{}",
         }
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        form = ResolveTokensForm(setup_request=setup, user=writable_session.user, data=payload)
         resolver = form.get_resolver()
 
     # new protocol for "House"

@@ -83,7 +83,7 @@ function onLazyInit(event, spec: AccessSpec): void {
 }
 
 function strainToLink(strain: StrainRecord): string {
-    return `<a href="${strain.registry_url}" target="_blank">${strain.name}</a>`;
+    return `<a href="${strain.external_url}" target="_blank">${strain.name}</a>`;
 }
 
 class LinesTable {

@@ -1,41 +1,12 @@
 from http import HTTPStatus
 
-from django.urls import reverse
-from pytest import fixture, mark
+from pytest import mark
 from pytest_django import asserts
 
 from .. import models
 from . import factory
 
 AJAX_HEADER = {"X-Requested-With": "XMLHttpRequest"}
-
-
-class StudySession:
-    """
-    Defines the basic records required to test viewing a Study. Provides a
-    generated user, with configurable permission level to a generated study.
-    """
-
-    def __init__(self, permission_type=models.StudyPermission.READ):
-        self.user = factory.UserFactory()
-        self.study = factory.StudyFactory()
-        self.study.userpermission_set.update_or_create(
-            user=self.user,
-            defaults={"permission_type": permission_type},
-        )
-
-    def url(self, name):
-        return reverse(name, kwargs={"slug": self.study.slug})
-
-
-@fixture
-def readable_session(db):
-    return StudySession()
-
-
-@fixture
-def writable_session(db):
-    return StudySession(permission_type=models.StudyPermission.WRITE)
 
 
 def test_get(client, readable_session):
@@ -231,14 +202,18 @@ def test_edit_single_line_with_invalid_form(client, writable_session):
     asserts.assertTemplateNotUsed(response, "main/study-description.html")
 
 
-def test_edit_single_line_with_strain(client, writable_session):
-    url = writable_session.url("main:line_edit")
-    line = factory.LineFactory(study=writable_session.study)
-    strain = factory.StrainFactory()
-    client.force_login(writable_session.user)
+def test_edit_single_line_with_strain(client, ice_linked_session, ice_strains):
+    url = ice_linked_session.url("main:line_edit")
+    line = factory.LineFactory(study=ice_linked_session.study)
+    client.force_login(ice_linked_session.user)
 
     # name is required, form will be invalid
-    payload = {"lineId": [line.id], "name": line.name, "strains": [strain.registry_id]}
+    payload = {
+        "lineId": [line.id],
+        "name": line.name,
+        # widget is multi-valued, so will be an array; must json serialize contents
+        "strains": [f'{{"part_id": "{ice_strains[0]["partId"]}"}}'],
+    }
     response = client.post(url, data=payload, headers=AJAX_HEADER)
 
     updated = models.Line.objects.get(pk=line.id)

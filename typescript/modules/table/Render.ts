@@ -91,9 +91,10 @@ export function register(): void {
             if (value.length > 0) {
                 td.innerHTML = value
                     .map((strain) => {
-                        if (strain.registry_url) {
-                            return `<a href="${strain.registry_url}"
-                                target="_blank">${strain.name}</a>`;
+                        if (strain.external_url) {
+                            const url = strain.external_url;
+                            const label = strain.name;
+                            return `<a href="${url}" target="_blank">${label}</a>`;
                         }
                         return strain.name;
                     })

@@ -10,7 +10,6 @@ from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.db import connection, transaction
 from django.db.models import Count, Q
-from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.html import escape, format_html
@@ -22,7 +21,6 @@ from edd.search.solr import StudySearch
 from edd.utilities import S3MediaStorage
 
 from . import models
-from .forms import MeasurementTypeAutocompleteWidget, RegistryAutocompleteWidget
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -255,13 +253,11 @@ def render_study_links(study_queryset, *, limit=10):
     return None
 
 
-class StrainAdmin(EDDObjectAdmin):
+class StrainAdmin(admin.ModelAdmin):
     """Definition for admin-edit of Strains"""
 
-    actions = ["merge_with_action"]
     list_display = (
         "name",
-        "description",
         "hyperlink_strain",
         "num_lines",
         "num_studies",
@@ -276,13 +272,10 @@ class StrainAdmin(EDDObjectAdmin):
         return False
 
     def get_fields(self, request, obj=None):
-        return ["name", "description", "registry_url", "study_list"]
+        return ["name", "study_list"]
 
     def get_readonly_fields(self, request, obj=None):
-        if obj and not obj.registry_id:
-            # existing strain without link to ICE
-            return ["study_list"]
-        return ["name", "description", "registry_url", "study_list"]
+        return ["study_list"]
 
     def get_queryset(self, request):
         num_lines = Count("line")
@@ -291,83 +284,30 @@ class StrainAdmin(EDDObjectAdmin):
         q = q.annotate(num_lines=num_lines, num_studies=num_studies)
         return q.select_related("created__mod_by")
 
+    @admin.display(description=_("Registry Link"), ordering="url")
     def hyperlink_strain(self, instance):
-        if instance.registry_url:
-            return format_html(
-                '<a href="{}" target="_new">ICE entry</a>', instance.registry_url
-            )
+        if instance.external_url:
+            text = _("link")
+            return format_html('<a href="{}" target="_new">{}</a>', instance.external_url, text)
         return "-"
 
-    hyperlink_strain.admin_order_field = "registry_url"
-    hyperlink_strain.short_description = "ICE Link"
-
-    class MergeWithStrainForm(forms.Form):
-        # same name as admin site uses for checkboxes to select items for actions
-        _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
-        strain = forms.ModelChoiceField(
-            models.Strain.objects.exclude(Q(registry_id=None) | Q(registry_url=None)),
-            widget=RegistryAutocompleteWidget,
-            to_field_name="registry_id",
-        )
-
-    def merge_with_action(self, request, queryset):
-        form = None
-        # only allow merges when registry_id or registry_url are None
-        queryset = queryset.filter(Q(registry_id=None) | Q(registry_url=None))
-        if "merge" in request.POST:
-            form = self.MergeWithStrainForm(request.POST)
-            if form.is_valid():
-                strain = form.cleaned_data["strain"]
-                # Update all lines referencing strains in queryset to reference `strain` instead
-                lines = models.Line.objects.filter(strains__in=queryset)
-                for line in lines:
-                    line.strains.remove(*queryset.all())
-                    line.strains.add(strain)
-                strain_count = queryset.count()
-                queryset.delete()
-                messages.info(
-                    request,
-                    _("Merged %(strain_count)d strains, updating %(line_count)d lines.")
-                    % {"strain_count": strain_count, "line_count": lines.count()},
-                )
-                return HttpResponseRedirect(request.get_full_path())
-        if not form:
-            form = self.MergeWithStrainForm(
-                initial={"_selected_action": request.POST.getlist(ACTION_CHECKBOX_NAME)}
-            )
-        return render(
-            request,
-            "admin/merge_strain.html",
-            context={"strains": queryset, "form": form},
-        )
-
-    merge_with_action.short_description = "Merge records into …"
-
-    # annotated queryset with count of lines referencing strain, need method to load annotation
+    @admin.display(description=_("# Lines"), ordering="num_lines")
     def num_lines(self, instance):
         return instance.num_lines
 
-    num_lines.admin_order_field = "num_lines"
-    num_lines.short_description = "# Lines"
-
-    # annotated queryset with count of studies referencing strain, need method to load annotation
+    @admin.display(description=_("# Studies"), ordering="num_studies")
     def num_studies(self, instance):
         return instance.num_studies
 
-    num_studies.admin_order_field = "num_studies"
-    num_studies.short_description = "# Studies"
-
+    @admin.display(description=_("Referenced in Studies"))
     def study_list(self, instance):
-        qs = models.Study.objects.filter(line__strains=instance).distinct()
+        qs = models.Study.objects.filter(line__strains=instance).distinct()[:10]
         return render_study_links(qs)
-
-    study_list.short_description = "Referenced in Studies"
 
 
 class MeasurementTypeAdmin(admin.ModelAdmin):
     """Definition for admin-edit of Measurement Types"""
 
-    actions = ["merge_with_action"]
     search_fields = ("type_name", "alt_names")
 
     def get_fields(self, request, obj=None):
@@ -388,58 +328,16 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             "type_source",
         ]
 
-    def get_merge_autowidget(self):
-        return MeasurementTypeAutocompleteWidget()
-
-    def get_merge_form(self, request):
-        class MergeForm(forms.Form):
-            # same name as admin site uses for checkboxes to select items for actions
-            _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
-            mtype = forms.ModelChoiceField(
-                self.get_queryset(request),
-                label=self.model._meta.verbose_name,
-                widget=self.get_merge_autowidget(),
-            )
-
-        return MergeForm
-
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         if self.model == models.MeasurementType:
             qs = qs.filter(type_group=models.MeasurementType.Group.GENERIC)
-        qs = qs.annotate(
-            num_studies=Count("measurement__assay__line__study", distinct=True)
-        )
+        qs = qs.annotate(num_studies=Count("measurement__assay__line__study", distinct=True))
         return qs
 
     def get_readonly_fields(self, request, obj=None):
         # TODO: need to make a custom ModelForm to properly handle alt_names
         return ["alt_names", "type_source", "study_list"]
-
-    def merge_with_action(self, request, queryset):
-        MergeForm = self.get_merge_form(request)
-        form = None
-        if "merge" in request.POST:
-            form = MergeForm(request.POST)
-            if form.is_valid():
-                mtype = form.cleaned_data["mtype"]
-                # update all measurements referencing mtype
-                models.Measurement.objects.filter(measurement_type__in=queryset).update(
-                    measurement_type=mtype
-                )
-                queryset.delete()
-                return HttpResponseRedirect(request.get_full_path())
-        if not form:
-            form = MergeForm(
-                initial={"_selected_action": request.POST.getlist(ACTION_CHECKBOX_NAME)}
-            )
-        return render(
-            request,
-            "admin/merge_measurement_type.html",
-            context={"types": queryset, "form": form},
-        )
-
-    merge_with_action.short_description = "Merge records into …"
 
     def save_model(self, request, obj, form, change):
         # Save Datasource of editing user first
@@ -514,12 +412,6 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
             "type_source",
         ]
 
-    def get_merge_autowidget(self):
-        opt = {
-            "text_attr": {"class": "autocomp", "data-eddautocompletetype": "Metabolite"}
-        }
-        return MeasurementTypeAutocompleteWidget(opt=opt)
-
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         qs = qs.select_related("type_source")
@@ -586,12 +478,6 @@ class ProteinAdmin(MeasurementTypeAdmin):
             "type_source",
         ]
 
-    def get_merge_autowidget(self):
-        opt = {
-            "text_attr": {"class": "autocomp", "data-eddautocompletetype": "Protein"}
-        }
-        return MeasurementTypeAutocompleteWidget(opt=opt)
-
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("type_source")
 
@@ -632,10 +518,6 @@ class GeneAdmin(MeasurementTypeAdmin):
             "_study_count",
             "type_source",
         ]
-
-    def get_merge_autowidget(self):
-        opt = {"text_attr": {"class": "autocomp", "data-eddautocompletetype": "Gene"}}
-        return MeasurementTypeAutocompleteWidget(opt=opt)
 
 
 class UserPermissionInline(admin.TabularInline):

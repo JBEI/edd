@@ -89,6 +89,7 @@ class InlineMetadataPartialView(TemplateView):
                 includeField=False,
                 typeFilter=models.MetadataType.LINE,
                 types=init_form.selection,
+                user=request.user,
             )
             return self.render_to_response(self.get_context_data(form=form))
         return self.render_to_response(

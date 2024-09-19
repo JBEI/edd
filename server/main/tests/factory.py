@@ -89,9 +89,7 @@ class ProtocolFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ("name",)
 
     name = factory.Faker("bs")
-    sbml_category = factory.Iterator(
-        [code for code, _ in models.Protocol.CATEGORY_CHOICE]
-    )
+    sbml_category = factory.Iterator([code for code, _ in models.Protocol.CATEGORY_CHOICE])
 
 
 class AssayFactory(factory.django.DjangoModelFactory):
@@ -217,5 +215,6 @@ class StrainFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.Strain
 
-    registry_id = factory.Faker("uuid4")
-    registry_url = factory.Faker("url")
+    external_id = factory.Faker("uuid4")
+    external_url = factory.Faker("url")
+    name = factory.Faker("catch_phrase")

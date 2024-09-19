@@ -74,7 +74,7 @@ def test_parse_single_record_csv_file(db):
         Record(
             meta=[{"name": "Shaking Speed", "uuid": None, "value": "90rpm"}],
             name="A",
-            strain=[{"name": "ICE-9", "uuids": None}],
+            strain=[{"name": "ICE-9", "urls": None}],
         )
     ]
 
@@ -107,7 +107,7 @@ def test_parse_file_with_multiple_empty_rows_at_end(db):
         Record(
             meta=[{"name": "Shaking Speed", "uuid": None, "value": "90rpm"}],
             name="A",
-            strain=[{"name": "ICE-9", "uuids": None}],
+            strain=[{"name": "ICE-9", "urls": None}],
         )
     ]
 
@@ -148,7 +148,7 @@ def test_parse_row_with_empty_strain(db):
 
     assert result == [
         Record(name="A"),
-        Record(name="B", strain=[{"name": "ICE-9", "uuids": None}]),
+        Record(name="B", strain=[{"name": "ICE-9", "urls": None}]),
     ]
 
 

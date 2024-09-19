@@ -10,13 +10,18 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from edd.search import widgets as autocomplete
+from edd.search.registry import StrainRegistry
 from main import models as edd_models
 
 from .exceptions import SetupException
 from .parser import RecordResolver
 
 if typing.TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractUser
+
     from . import broker
+
+    User: typing.TypeAlias = AbstractUser
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +56,9 @@ def token_from_name(name: str) -> bytes | None:
 
 
 class FormResolver(RecordResolver):
-    def __init__(self, form):
+    def __init__(self, form, user):
         self.form = form
+        self.ice = StrainRegistry(user)
 
     def is_meta_ignored(self, name: str) -> bool:
         bulk_key = name_from_token(b"form:meta")
@@ -112,9 +118,7 @@ class FormResolver(RecordResolver):
     @functools.cache
     def strains_from_name(self, name: str) -> Iterable[edd_models.Strain]:
         key = name_from_token(f"strain:{name}".encode())
-        if value := self.form.cleaned_data.get(key, None):
-            return value
-        return []
+        yield from self.ice.clean_autocomplete_value(self.form.cleaned_data.get(key, None))
 
     def _new_line_metadata(self, metadata) -> edd_models.MetadataType:
         return edd_models.MetadataType.objects.create(
@@ -135,6 +139,7 @@ class ResolveTokensForm(forms.Form):
     def __init__(
         self,
         setup_request: "broker.SetupRequest",
+        user: "User",
         page: int | None = None,
         data=None,
         *args,
@@ -142,6 +147,7 @@ class ResolveTokensForm(forms.Form):
     ):
         super().__init__(data=data, *args, **kwargs)
         self.setup = setup_request
+        self.user = user
         self.page = page or 1
         if data:
             self._setup_from_data(data)
@@ -159,7 +165,7 @@ class ResolveTokensForm(forms.Form):
 
     def get_resolver(self) -> FormResolver:
         if self.is_valid():
-            return FormResolver(self)
+            return FormResolver(self, self.user)
         raise SetupException(f"Token form is invalid: {self.errors}")
 
     @functools.cached_property
@@ -248,15 +254,26 @@ class ResolveTokensForm(forms.Form):
         )
 
     def _create_strain_field(self, value):
-        help_text = _("Choose a Strain to match {token}").format(token=value)
-        return autocomplete.RegistryField(
-            help_text=help_text,
+        registry = self._get_strain_registry()
+        if registry.is_configured():
+            help_text = _("Choose a Strain to match {token}").format(token=value)
+            return forms.JSONField(
+                help_text=help_text,
+                label=value,
+                required=False,
+                widget=autocomplete.RegistryAutocomplete(),
+            )
+        return forms.JSONField(
+            disabled=True,
+            help_text=autocomplete.RegistryAutocomplete.help_text(),
             label=value,
-            queryset=edd_models.Strain.objects.all(),
             required=False,
-            to_field_name="registry_id",
             widget=autocomplete.RegistryAutocomplete(),
         )
+
+    @functools.cache
+    def _get_strain_registry(self):
+        return StrainRegistry(self.user)
 
     def _setup_from_data(self, data):
         for possible_name in data:

@@ -370,8 +370,8 @@ class DatabaseWriter:
             mtype = self._load_type(meta["uuid"])
             line.metadata_add(mtype, meta["value"])
         for strain in record.strain:
-            for sid in strain["uuids"] or []:
-                line.strains.add(self._load_strain(sid))
+            for url in strain["urls"] or []:
+                line.strains.add(self._load_strain(url))
         line.save()
         return 1, self._create_assays(record, line)
 
@@ -402,8 +402,9 @@ class DatabaseWriter:
         return edd_models.Protocol.objects.get(uuid=uuid)
 
     @functools.cache
-    def _load_strain(self, uuid: str) -> edd_models.Strain:
-        return edd_models.Strain.objects.get(registry_id=uuid)
+    def _load_strain(self, url: str) -> edd_models.Strain:
+        # only external_url can be guaranteed unique
+        return edd_models.Strain.objects.get(external_url=url)
 
     @functools.cache
     def _load_type(self, uuid: str) -> edd_models.MetadataType:

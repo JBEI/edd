@@ -25,7 +25,7 @@ from django.utils.translation import gettext as _
 from threadlocals.threadlocals import get_current_request
 
 from main import models
-from main.forms import (
+from main.forms.widgets import (
     MetadataTypeAutocompleteWidget,
     SbmlExchangeAutocompleteWidget,
     SbmlSpeciesAutocompleteWidget,
@@ -156,9 +156,7 @@ class SbmlExport:
             initial={"sbml_template": self._selection.studies[0].metabolic_map},
             **kwargs,
         )
-        self._from_study_page = (
-            export_settings_form.add_prefix("sbml_template") not in payload
-        )
+        self._from_study_page = export_settings_form.add_prefix("sbml_template") not in payload
         # coming from study page, make sure bound data has default value
         if self._from_study_page:
             export_settings_form.update_bound_data_with_defaults()
@@ -242,18 +240,14 @@ class SbmlExport:
                 data=payload,
                 prefix="ramos",
                 line=line,
-                qfilter=Q(
-                    assay__protocol__sbml_category=models.Protocol.CATEGORY_RAMOS
-                ),
+                qfilter=Q(assay__protocol__sbml_category=models.Protocol.CATEGORY_RAMOS),
                 **kwargs,
             ),
             "omics_select_form": SbmlExportOmicsForm(
                 data=payload,
                 prefix="omics",
                 line=line,
-                qfilter=Q(
-                    assay__protocol__sbml_category=models.Protocol.CATEGORY_TPOMICS
-                ),
+                qfilter=Q(assay__protocol__sbml_category=models.Protocol.CATEGORY_TPOMICS),
                 **kwargs,
             ),
         }
@@ -334,13 +328,9 @@ class SbmlExport:
         """
         # TODO: change to .order_by('x__0') once Django supports ordering on transform
         # https://code.djangoproject.com/ticket/24747
-        values_qs = models.MeasurementValue.objects.filter(x__len=1, y__len=1).order_by(
-            "x"
-        )
+        values_qs = models.MeasurementValue.objects.filter(x__len=1, y__len=1).order_by("x")
         return (
-            m_form.measurement_qs.filter(
-                measurement_format=models.Measurement.Format.SCALAR
-            )
+            m_form.measurement_qs.filter(measurement_format=models.Measurement.Format.SCALAR)
             .select_related("assay__line")
             .prefetch_related(
                 Prefetch("measurementvalue_set", queryset=values_qs, to_attr="values")
@@ -445,9 +435,7 @@ class SbmlExport:
         return None
 
     def _guess_species(self, measurement_type):
-        guesses = generate_species_name_guesses_from_metabolite_name(
-            measurement_type.short_name
-        )
+        guesses = generate_species_name_guesses_from_metabolite_name(measurement_type.short_name)
         lookup = {
             s.species: s
             for s in models.MetaboliteSpecies.objects.filter(
@@ -473,14 +461,10 @@ class SbmlExport:
                 y_next = self._density[-1].y[0]
                 time_delta = float(time - times[-2])
             elif next_index == len(times):
-                logger.warning(
-                    "tried to calculate biomass flux beyond upper range of data"
-                )
+                logger.warning("tried to calculate biomass flux beyond upper range of data")
                 return
             elif next_index == 0 and times[0] != time:
-                logger.warning(
-                    "tried to calculate biomass flux beyond lower range of data"
-                )
+                logger.warning("tried to calculate biomass flux beyond lower range of data")
                 return
             else:
                 # calculate flux to next value for all but last value
@@ -502,9 +486,7 @@ class SbmlExport:
         for mlist in self._measures.values():
             for m in mlist:
                 if m.is_carbon_ratio():
-                    points = models.MeasurementValue.objects.filter(
-                        measurement=m, x__0=time
-                    )
+                    points = models.MeasurementValue.objects.filter(measurement=m, x__0=time)
                     if points.exists():
                         # only get first value object, unwrap values_list tuple to get y-array
                         magnitudes = points.values_list("y")[0][0]
@@ -564,9 +546,7 @@ class SbmlExport:
         if trange["min_t"]:
             self._min = max(trange["min_t"][0], self._min or -sys.maxsize)
         # iff no interpolation, capture intersection of t values bounded by max & min
-        m_inter = measurement_qs.exclude(
-            assay__protocol__in=interpolate
-        ).prefetch_related(
+        m_inter = measurement_qs.exclude(assay__protocol__in=interpolate).prefetch_related(
             Prefetch("measurementvalue_set", queryset=values_qs, to_attr="values")
         )
         for m in m_inter:
@@ -608,14 +588,10 @@ class SbmlExport:
                 times = [v.x[0] for v in values]
                 next_index = bisect(times, time)
                 if time > times[-1]:
-                    logger.warning(
-                        "tried to calculate reaction flux beyond upper range of data"
-                    )
+                    logger.warning("tried to calculate reaction flux beyond upper range of data")
                     continue
                 elif time < times[0]:
-                    logger.warning(
-                        "tried to calculate reaction flux beyond lower range of data"
-                    )
+                    logger.warning("tried to calculate reaction flux beyond lower range of data")
                     continue
                 elif next_index == len(times):
                     # calculate flux based on second-to-last for last element
@@ -647,9 +623,7 @@ class SbmlExport:
                 upper_bound.setValue(max(flux_start, flux_end))
                 lower_bound.setValue(min(flux_start, flux_end))
             except Exception as e:
-                logger.exception(
-                    "hit an error calculating reaction values: %s", type(e)
-                )
+                logger.exception("hit an error calculating reaction values: %s", type(e))
 
     def _update_species(self, builder, our_species, time):
         # loop over all template species, if in our_species set the notes section
@@ -682,9 +656,7 @@ class SbmlExport:
                 # convert units
                 for v in values:
                     units = v.measurement.y_units
-                    f = models.MeasurementUnit.conversion_dict.get(
-                        units.unit_name, None
-                    )
+                    f = models.MeasurementUnit.conversion_dict.get(units.unit_name, None)
                     if f is not None:
                         v.y = [f(y, metabolite) for y in v.y]
                     else:
@@ -939,9 +911,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
         widget=MetadataTypeAutocompleteWidget,
     )
     gcdw_default = forms.DecimalField(
-        help_text=_(
-            "Override the default conversion factor used if no metadata value is found."
-        ),
+        help_text=_("Override the default conversion factor used if no metadata value is found."),
         initial=DEFAULT_GCDW_FACTOR,
         label=_("Default gCDW/L/OD factor"),
         min_value=Decimal(0),

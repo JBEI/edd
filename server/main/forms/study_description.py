@@ -1,4 +1,5 @@
 import itertools
+import json
 import logging
 from collections import defaultdict
 
@@ -8,6 +9,7 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from edd.search import widgets as autocomplete
+from edd.search.registry import StrainRegistry
 from edd.utilities import add_form_validation_classes
 
 from .. import models
@@ -61,14 +63,6 @@ class ModifyLineForm(forms.ModelForm):
         required=False,
         widget=autocomplete.UserAutocomplete(),
     )
-    strains = autocomplete.RegistryField(
-        help_text="",
-        label=_("Strains"),
-        queryset=models.Strain.objects.all(),
-        required=False,
-        to_field_name="registry_id",
-        widget=autocomplete.RegistryAutocomplete(),
-    )
 
     error_css_class = "is-invalid"
     template_name = "main/forms/line.html"
@@ -84,18 +78,41 @@ class ModifyLineForm(forms.ModelForm):
         )
         model = models.Line
 
-    def __init__(self, study, bulk=False, *args, **kwargs):
+    def __init__(self, study: models.Study, user: User | None = None, bulk=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._study = study
         # when modifying many lines at once, we need to ignore the name field
         if bulk:
             self.fields.pop("name", None)
+        # must delay creation of strain field to init, as it looks up URLs for help text
+        # need user object to create validator for strains field, and it must have ICE configured
+        if user is not None and (ice := StrainRegistry(user)).is_configured():
+            self.ice = ice
+            self.fields["strains"] = forms.JSONField(
+                help_text="",
+                label=_("Strains"),
+                required=False,
+                widget=autocomplete.RegistryAutocomplete(),
+            )
+        else:
+            self.fields["strains"] = forms.JSONField(
+                disabled=True,
+                help_text=autocomplete.RegistryAutocomplete.help_text(),
+                label=_("Strains"),
+                required=False,
+                widget=autocomplete.RegistryAutocomplete(),
+            )
 
     def clean(self):
         cleaned = super().clean()
         # if no explicit experimenter is set, make the study contact the experimenter
         if "experimenter" not in cleaned:
             cleaned["experimenter"] = self._study.contact
+        # translate strains JSON to model references
+        # attribute will only exist if form setup has a user and that user has an ICE api key
+        if ice := getattr(self, "ice", None):
+            parsed = [json.loads(v) for v in self.cleaned_data["strains"]]
+            cleaned["strains"] = list(ice.clean_autocomplete_value(parsed))
         # assign validation classes
         add_form_validation_classes(self)
         return cleaned
@@ -231,7 +248,7 @@ class MetadataSelectForm(forms.Form):
 class MetadataUpdateForm(MetadataSelectForm):
     """Form to change Metadata values on an EDD record."""
 
-    def __init__(self, initial=None, types=None, *args, **kwargs):
+    def __init__(self, user: User, initial=None, types=None, *args, **kwargs):
         start = initial or {}
         # only replicate is currently a hidden metadata field
         visible = models.MetadataType.objects.exclude(input_type="replicate")
@@ -241,6 +258,7 @@ class MetadataUpdateForm(MetadataSelectForm):
         initial["selected_meta"] = [t.pk for t in to_add]
         super().__init__(initial=initial, *args, **kwargs)
         self._type_fields = [self._add_type_fields(t) for t in to_add]
+        self.user = user
 
     def _add_type_fields(self, t, initial=None):
         set_field = self._type_set_field(t)
@@ -264,9 +282,7 @@ class MetadataUpdateForm(MetadataSelectForm):
         )
         match t.input_type:
             case "strain":
-                return autocomplete.RegistryField(
-                    queryset=models.Strain.objects.all(),
-                    to_field_name="registry_id",
+                return forms.JSONField(
                     widget=autocomplete.RegistryAutocomplete(),
                     **base_kwargs,
                 )

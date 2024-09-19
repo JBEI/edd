@@ -1,8 +1,6 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from main.tests.factory import StrainFactory
-
 from .. import tasks
 from ..broker import SetupRequest
 from ..exceptions import SetupException
@@ -62,22 +60,21 @@ def test_task_update_with_empty_form(writable_session):
     assert progress["unresolved"] == 1
 
 
-def test_task_update(writable_session):
-    setup = SetupRequest(writable_session.study.uuid)
+def test_task_update(writable_session_ice, ice_strains):
+    setup = SetupRequest(writable_session_ice.study.uuid)
     file = SimpleUploadedFile(
         "example.txt",
         b"Line Name,Strain\nA,JBx_1234\n",
         content_type="text/csv",
     )
     setup.upload({"file": file})
-    setup.process_upload(writable_session.user)
-    strain = StrainFactory()
+    setup.process_upload(writable_session_ice.user)
     # "c3RyYWluOkpCeF8xMjM0" is encoded form of "strain:JBx_1234"
-    payload = {"c3RyYWluOkpCeF8xMjM0": [strain.registry_id]}
+    payload = {"c3RyYWluOkpCeF8xMjM0": [{"part_id": ice_strains[0]["partId"]}]}
     key = setup.form_payload_stash(payload)
 
     # submitting directly, instead of queueing for Celery, with background arg
-    tasks.submit_update(setup, key, writable_session.user, background=False)
+    tasks.submit_update(setup, key, writable_session_ice.user, background=False)
 
     updated = SetupRequest.fetch(setup.request_uuid)
     progress = updated.progress
@@ -118,27 +115,26 @@ def test_task_commit_success(writable_session):
     assert updated.status == SetupRequest.Status.DONE
 
 
-def test_task_commit_partial_resolved_lines(writable_session):
-    setup = SetupRequest(writable_session.study.uuid)
+def test_task_commit_partial_resolved_lines(writable_session_ice, ice_strains):
+    setup = SetupRequest(writable_session_ice.study.uuid)
     file = SimpleUploadedFile(
         "example.txt",
         b"Line Name,Strain\nA,JBx_1234\nB,JBx_5678",
         content_type="text/csv",
     )
     setup.upload({"file": file})
-    setup.process_upload(writable_session.user)
+    setup.process_upload(writable_session_ice.user)
 
-    strain = StrainFactory()
     # "c3RyYWluOkpCeF8xMjM0" is encoded form of "strain:JBx_1234"
-    payload = {"c3RyYWluOkpCeF8xMjM0": [strain.registry_id]}
+    payload = {"c3RyYWluOkpCeF8xMjM0": [{"part_id": ice_strains[0]["partId"]}]}
     key = setup.form_payload_stash(payload)
     # update from "form", then commit
-    tasks.submit_update(setup, key, writable_session.user, background=False)
-    tasks.submit_commit(setup, writable_session.user, background=False)
+    tasks.submit_update(setup, key, writable_session_ice.user, background=False)
+    tasks.submit_commit(setup, writable_session_ice.user, background=False)
 
     updated = SetupRequest.fetch(setup.request_uuid)
     progress = updated.progress
     assert progress["saved"]["lines"] == 1
     assert progress["unresolved"] == 1
-    assert writable_session.study.line_set.count() == 1
+    assert writable_session_ice.study.line_set.count() == 1
     assert updated.status == SetupRequest.Status.READY

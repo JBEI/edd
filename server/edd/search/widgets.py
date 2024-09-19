@@ -1,9 +1,9 @@
 from django import forms
 from django.urls import reverse
+from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 
 from edd.utilities import JSONEncoder
-
-from . import registry
 
 
 class Select2Mixin:
@@ -161,31 +161,16 @@ class ProtocolAutocomplete(Select2Widget):
 class RegistryAutocomplete(Select2Mixin, forms.widgets.SelectMultiple):
     kind = "Registry"
 
-    def optgroups(self, name, value, attrs=None):
-        # don't try to display all options, only those currently selected
-        selected = [str(v) for v in value if v]
-        # filter queryset
-        self.choices.queryset = self.choices.queryset.filter(registry_id__in=selected)
-        # skipping over default implementation that assumes `id` field
-        return super(Select2Mixin, self).optgroups(name, value, attrs)
-
-
-class RegistryField(forms.ModelMultipleChoiceField):
-    """
-    Strain lookups happen outside of EDD, with local models linking to the true
-    source of the strain information. We would like it to act as a regular
-    lookup of a model, but the instance may not exist at the time. This variant
-    of a ModelMultipleChoiceField ensures that the RegistryValidator creates a
-    Strain model before any further operations.
-    """
-
-    def clean(self, value):
-        # validator creates Strain objects if not already in database
-        validator = registry.RegistryValidator()
-        if value:
-            for item in value:
-                validator.validate(item)
-        return super().clean(value)
+    @staticmethod
+    def help_text():
+        text = _(
+            """
+            Setup an ICE API key <a href="{link}" target="_new">in your profile</a>
+            to search for strains.
+            """
+        ).format(link=reverse("profile:index"))
+        # must use mark_safe to allow link to render
+        return mark_safe(text)
 
 
 class SbmlExchange(Select2Widget):

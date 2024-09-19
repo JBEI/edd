@@ -117,7 +117,8 @@ def setup_update(request_uuid, payload_key, user_id):
     try:
         setup = SetupRequest.fetch(request_uuid)
         payload = setup.form_payload_fetch(payload_key)
-        form = ResolveTokensForm(setup_request=setup, data=payload)
+        user = User.objects.get(pk=user_id)
+        form = ResolveTokensForm(setup_request=setup, user=user, data=payload)
         with setup.lock_status(
             active=setup.Status.UPDATING,
             expect=setup.Status.READY,

@@ -422,7 +422,7 @@ class StrainColumn extends TableAccessor<LineRecord, StrainRecord[]> {
 
     forCopy(row: LineRecord, value?: any): string {
         return this.forRender(row, value)
-            .map((strain) => strain.registry_url || strain.name)
+            .map((strain) => strain.external_url || strain.name)
             .join("\n");
     }
 

@@ -19,7 +19,6 @@ from rdflib.term import URIRef
 
 from edd.celery import app
 from edd.fields import VarCharField
-from edd.search.registry import StrainRegistry
 from edd.search.select2 import (
     Select2,
     autocomplete_create_entry,
@@ -86,9 +85,7 @@ class MeasurementType(EDDSerialize, models.Model):
     )
     provisional = models.BooleanField(
         default=False,
-        help_text=_(
-            "Flag indicating if the type is pending lookup in external Datasource"
-        ),
+        help_text=_("Flag indicating if the type is pending lookup in external Datasource"),
         verbose_name=_("Provisional"),
     )
     # linking together EDD instances will be easier later if we define UUIDs now
@@ -300,15 +297,11 @@ class Metabolite(MeasurementType):
         return count
 
     def _load_pubchem(self, pubchem_cid):
-        base_url = (
-            f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{pubchem_cid}"
-        )
+        base_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{pubchem_cid}"
         try:
             self.pubchem_cid = pubchem_cid
             if self._load_pubchem_name(base_url) and self._load_pubchem_props(base_url):
-                self.type_source = Datasource.objects.create(
-                    name="PubChem", url=base_url
-                )
+                self.type_source = Datasource.objects.create(name="PubChem", url=base_url)
                 self.carbon_count = self.extract_carbon_count()
                 self.provisional = False
                 self.save()
@@ -328,9 +321,7 @@ class Metabolite(MeasurementType):
             self.type_name = next(iter(names))
             return True
         except Exception:
-            logger.exception(
-                f"Failed loading names from PubChem for {self.pubchem_cid}"
-            )
+            logger.exception(f"Failed loading names from PubChem for {self.pubchem_cid}")
         return False
 
     def _load_pubchem_props(self, base_url):
@@ -347,9 +338,7 @@ class Metabolite(MeasurementType):
             self.smiles = table.get("CanonicalSMILES", "")
             return True
         except Exception:
-            logger.exception(
-                f"Failed loading properties from Pubchem for {self.pubchem_cid}"
-            )
+            logger.exception(f"Failed loading properties from Pubchem for {self.pubchem_cid}")
         return False
 
     @classmethod
@@ -372,14 +361,12 @@ class Metabolite(MeasurementType):
                 },
             )
             if created:
-                transaction.on_commit(
-                    lambda: metabolite_load_pubchem.delay(metabolite.pk)
-                )
+                transaction.on_commit(lambda: metabolite_load_pubchem.delay(metabolite.pk))
             return metabolite
         raise ValidationError(
-            _u(
-                'Metabolite lookup failed: {pubchem} must match pattern "cid:0000"'
-            ).format(pubchem=pubchem_cid)
+            _u('Metabolite lookup failed: {pubchem} must match pattern "cid:0000"').format(
+                pubchem=pubchem_cid
+            )
         )
 
 
@@ -450,7 +437,7 @@ class GeneIdentifier(MeasurementType):
                 # save link if found in ICE
                 datasource = Datasource.objects.create(
                     name="ICE Registry",
-                    url=link.strain.registry_url,
+                    url=link.strain.external_url,
                 )
                 gene = cls.objects.create(
                     type_name=identifier,
@@ -650,9 +637,7 @@ class ProteinIdentifier(MeasurementType):
         except Exception:
             logger.exception(f"Failed to create from UniProt {uniprot_id}")
             raise ValidationError(
-                _u("Could not create Protein from {uniprot_id}").format(
-                    uniprot_id=uniprot_id
-                )
+                _u("Could not create Protein from {uniprot_id}").format(uniprot_id=uniprot_id)
             )
 
     @classmethod
@@ -710,7 +695,7 @@ class ProteinIdentifier(MeasurementType):
         return f"http://www.uniprot.org/uniprot/{uniprot_id}.rdf"
 
     @classmethod
-    def _load_ice(cls, link):
+    def _load_ice(cls, link, protein_name):
         # strain found in ICE, but may not yet be linked to EDD protein
         existing = ProteinStrainLink.objects.filter(strain=link.strain)[:2]
         if len(existing) == 1:
@@ -719,20 +704,19 @@ class ProteinIdentifier(MeasurementType):
         elif len(existing) == 0:
             # no existing link found, create the protein and link
             datasource = Datasource.objects.create(
-                name="Part Registry", url=link.strain.registry_url
+                name="Part Registry",
+                url=link.strain.external_url,
             )
             protein = cls.objects.create(
                 type_name=link.strain.name,
                 type_source=datasource,
-                accession_id=link.strain.part.part_id,
+                accession_id=protein_name,
             )
             link.protein = protein
             link.save()
             return protein
         raise ValidationError(
-            _u("Multiple entries found for '{part_id}'.").format(
-                part_id=link.strain.part.part_id
-            )
+            _u("Multiple entries found for '{part_id}'.").format(part_id=link.strain.part.part_id)
         )
 
     @classmethod
@@ -752,9 +736,9 @@ class ProteinIdentifier(MeasurementType):
         if len(proteins) > 1:
             # fail if protein couldn't be uniquely matched
             raise ValidationError(
-                _u(
-                    'More than one match was found for protein name "{type_name}".'
-                ).format(type_name=protein_name)
+                _u('More than one match was found for protein name "{type_name}".').format(
+                    type_name=protein_name
+                )
             )
         elif len(proteins) == 0:
             # try to create a new protein
@@ -765,12 +749,12 @@ class ProteinIdentifier(MeasurementType):
                 return cls._load_uniprot(accession_code, protein_name)
             elif link.check_ice(user, protein_name):
                 # if it is found in ICE, create based on ICE info
-                return cls._load_ice(link)
+                return cls._load_ice(link, protein_name)
             elif getattr(settings, "REQUIRE_UNIPROT_ACCESSION_IDS", True):
                 raise ValidationError(
-                    _u(
-                        'Protein name "{type_name}" is not a valid UniProt accession id.'
-                    ).format(type_name=protein_name)
+                    _u('Protein name "{type_name}" is not a valid UniProt accession id.').format(
+                        type_name=protein_name
+                    )
                 )
             logger.info(f"Creating a new ProteinIdentifier for {protein_name}")
             # not requiring accession ID or ICE entry; just create protein with arbitrary name
@@ -844,23 +828,12 @@ class StrainLinkMixin:
     """Common code for objects linked to Strains."""
 
     def check_ice(self, user, name):
-        from .core import Strain
+        from edd.search.registry import StrainRegistry
 
-        try:
-            registry = StrainRegistry()
-            with registry.login(user):
-                entry = registry.get_entry(name)
-                url = f"{registry.base_url}/entry/{entry.db_id}"
-                default = dict(name=entry.name, registry_url=url)
-                self.strain, created = Strain.objects.get_or_create(
-                    registry_id=entry.registry_id, defaults=default
-                )
-                self.strain.part = entry
-                return True
-        except Exception as e:
-            logger.warning(
-                f"Failed to load ICE information on `{name}` for `{user.username}`: {e}",
-            )
+        registry = StrainRegistry(user)
+        if found := registry.find_entry(name):
+            self.strain = found
+            return True
         return False
 
 

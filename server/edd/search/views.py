@@ -93,16 +93,8 @@ def search(request):
 
 
 AUTOCOMPLETE_VIEW_LOOKUP = {
-    "GenericOrMetabolite": autocomplete.search_metaboliteish,
-    "Group": autocomplete.search_group,
-    "MeasurementCompartment": autocomplete.search_compartment,
     "MetaboliteExchange": autocomplete.search_sbml_exchange,
     "MetaboliteSpecies": autocomplete.search_sbml_species,
-    "Registry": autocomplete.search_strain,
-    "Strain": autocomplete.search_strain,
-    "StudyWritable": autocomplete.search_study_writable,
-    "StudyLine": autocomplete.search_study_lines,
-    "User": autocomplete.search_user,
 }
 
 
@@ -116,9 +108,7 @@ def model_search(request, model_name):
         elif meta_pattern.match(model_name):
             match = meta_pattern.match(model_name)
             return autocomplete.search_metadata(request, match.group(1))
-        else:
-            return autocomplete.search_generic(request, model_name)
-
+        return JsonResponse([], status=HTTPStatus.BAD_REQUEST)
     except ValidationError as v:
         return JsonResponse(str(v), status=HTTPStatus.BAD_REQUEST)
     # END uncovered

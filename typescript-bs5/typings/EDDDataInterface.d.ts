@@ -148,8 +148,8 @@ interface ProtocolRecord {
 
 interface StrainRecord {
     name: string;
-    registry_id: string; // a UUID
-    registry_url: string;
+    external_id: string; // a UUID, usually
+    external_url: string;
 }
 
 interface UserRecord {

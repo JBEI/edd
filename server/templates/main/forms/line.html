@@ -59,6 +59,11 @@
       {{ form.strains.label }}
     </label>
     {{ form.strains }}
+    {% if form.strains.help_text %}
+    <div class="form-text" id="{{ form.strains.id_for_label }}_help">
+      {{ form.strains.help_text }}
+    </div>
+    {% endif %}
     {% for error in form.strains.errors %}
     <div class="invalid-feedback">{{ error }}</div>
     {% endfor %}
