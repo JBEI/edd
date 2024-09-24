@@ -12,9 +12,12 @@ from . import models
 class BrandingTagTests(TestCase):
     def build_environment_sample_template(self):
         # boilerplate for following self.test_environment_label_* tests
-        template = Template(
-            r"{% load branding %}{% env_label %}{% env_background_color %}"
-        )
+        template = Template(r"{% load branding %}{% env_label %}{% env_background_color %}")
+        context = Context()
+        return template.render(context)
+
+    def build_environment_bootstrap5_template(self):
+        template = Template(r"{% load branding %}{% env_label_bs5 %}")
         context = Context()
         return template.render(context)
 
@@ -87,6 +90,42 @@ class BrandingTagTests(TestCase):
             # color is reddish
             self.assertEqual(result[-7:], "#fff0f2")
 
+    def test_bootstrap5_label_empty(self):
+        with self.settings(EDD_DEPLOYMENT_ENVIRONMENT=""):
+            result = self.build_environment_bootstrap5_template()
+            # no label
+            self.assertEqual(result, "")
+
+    def test_bootstrap5_label_nonsense(self):
+        with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="SILLY"):
+            result = self.build_environment_bootstrap5_template()
+            # no label
+            self.assertEqual(result, "")
+
+    def test_bootstrap5_label_dev(self):
+        with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="DEVELOPMENT"):
+            result = self.build_environment_bootstrap5_template()
+            # html class
+            self.assertIn("text-danger", result)
+            # label included
+            self.assertIn("DEVELOPMENT", result)
+
+    def test_bootstrap5_label_integration(self):
+        with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="INTEGRATION"):
+            result = self.build_environment_bootstrap5_template()
+            # html class
+            self.assertIn("text-warning", result)
+            # label included
+            self.assertIn("INTEGRATION", result)
+
+    def test_bootstrap5_label_test(self):
+        with self.settings(EDD_DEPLOYMENT_ENVIRONMENT="TESTWITHEXTRAS"):
+            result = self.build_environment_bootstrap5_template()
+            # html class
+            self.assertIn("text-warning", result)
+            # label included
+            self.assertIn("TESTWITHEXTRAS", result)
+
     def test_display_version(self):
         template = Template(r"{% load branding %}{% edd_version_number %}")
         context = Context()
@@ -145,9 +184,7 @@ class BrandingAdminTests(TestCase):
     def setUpTestData(cls):
         super().setUpTestData()
         # admin user to see the admin site
-        cls.admin_user = UserFactory(
-            email="admin@example.org", is_staff=True, is_superuser=True
-        )
+        cls.admin_user = UserFactory(email="admin@example.org", is_staff=True, is_superuser=True)
         # create a Branding instance to test admin action
         models.Branding.objects.create()
 
@@ -157,9 +194,7 @@ class BrandingAdminTests(TestCase):
         url = reverse("admin:branding_branding_changelist")
         data = {
             "action": "use_this_branding",
-            "_selected_action": models.Branding.objects.values_list("pk", flat=True)[
-                :1
-            ],
+            "_selected_action": models.Branding.objects.values_list("pk", flat=True)[:1],
         }
         # use follow to go through redirect to final page
         response = self.client.post(url, data=data, follow=True)
