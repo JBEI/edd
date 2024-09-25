@@ -4,28 +4,23 @@ x-logging: &default-logging
   options:
     max-file: "5"
     max-size: 1m
+x-deploy: &default-deploy
+  update_config:
+    failure_action: rollback
+    order: start-first
+    parallelism: 1
 networks:
   backnet:
 services:
   http:
-    command:
-      - gunicorn
-    deploy:
-      update_config:
-        failure_action: rollback
-        order: start-first
-        parallelism: 1
+    command: ["gunicorn"]
+    deploy: *default-deploy
     healthcheck:
-      test:
-        - CMD
-        - curl
-        - --fail
-        - -LSs
-        - http://localhost:8000/health/
+      test: ["CMD", "curl", "--fail", "-LSs", "http://localhost:8000/health/"]
       interval: 15s
+      retries: 5
       start_period: 120s
       timeout: 5s
-      retries: 5
     image: jbei/edd-core:latest
     logging: *default-logging
     networks:
@@ -34,24 +29,14 @@ services:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
   websocket:
-    command:
-      - daphne
-    deploy:
-      update_config:
-        failure_action: rollback
-        order: start-first
-        parallelism: 1
+    command: ["daphne"]
+    deploy: *default-deploy
     healthcheck:
-      test:
-        - CMD
-        - curl
-        - --fail
-        - -LSs
-        - http://localhost:8000/health/
+      test: ["CMD", "curl", "--fail", "-LSs", "http://localhost:8000/health/"]
       interval: 15s
+      retries: 5
       start_period: 120s
       timeout: 5s
-      retries: 5
     image: jbei/edd-core:latest
     logging: *default-logging
     networks:
@@ -60,29 +45,14 @@ services:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
   worker:
-    command:
-      - celery
-    deploy:
-      update_config:
-        failure_action: rollback
-        order: start-first
-        parallelism: 1
-    environment:
-      C_FORCE_ROOT: "true"
+    command: ["celery"]
+    deploy: *default-deploy
     healthcheck:
-      test:
-        - CMD
-        - celery
-        - -A
-        - edd
-        - --workdir
-        - /code
-        - inspect
-        - ping
+      test: ["CMD", "celery", "-A", "edd", "--workdir", "/code", "inspect", "ping"]
       interval: 1m
+      retries: 3
       start_period: 120s
       timeout: 20s
-      retries: 3
     image: jbei/edd-core:latest
     logging: *default-logging
     networks:

@@ -1,6 +1,6 @@
 import invoke
 
-from . import prereq, util
+from . import prereq
 
 STARS = "*" * 80
 STARTUP_SCRIPT = "/usr/local/bin/start_edd_process.sh"
@@ -33,7 +33,7 @@ def watch_static(context):
     ]
 )
 def gunicorn(context):
-    """Executes EDD as a Django site with Gunicorn."""
+    """Executes EDD as a Django site with Gunicorn+Uvicorn (HTTP + WebSocket)."""
     with open(STARTUP_SCRIPT, "w") as script:
         print("#!/bin/bash", file=script)
         print("set -euxo pipefail", file=script)
@@ -46,9 +46,8 @@ def gunicorn(context):
             "-w 4 "
             # listening on all IPv4 interfaces port 8000
             "-b 0.0.0.0:8000 "
-            # using gthread worker class
-            # this functioned OK with streaming responses, while gevent failed
-            "-k gthread "
+            # uvicorn worker
+            "-k uvicorn.workers.UvicornWorker "
             # use /dev/shm for worker heartbeat files
             # https://pythonspeed.com/articles/gunicorn-in-docker/
             "--worker-tmp-dir /dev/shm "
@@ -57,8 +56,8 @@ def gunicorn(context):
             "--no-sendfile "
             # disable checking front-end IPs as we won't know nginx IP
             "--forwarded-allow-ips '*' "
-            # give the module and name of the WSGI application
-            "edd.wsgi:application ",
+            # give the module and name of the ASGI application
+            "edd.asgi:application ",
             file=script,
         )
     context.run(f'chmod +x "{STARTUP_SCRIPT}"')
@@ -67,9 +66,17 @@ def gunicorn(context):
     print(STARS)
 
 
-@invoke.task(pre=[prereq.errorpage, prereq.owner])
+@invoke.task(
+    pre=[
+        prereq.errorpage,
+        prereq.rabbitmq,
+        prereq.owner,
+        prereq.checkuser,
+        prereq.ice,
+    ]
+)
 def daphne(context):
-    """Executes EDD as a Channels application with Daphne."""
+    """Executes EDD as a Channels application with Daphne (HTTP + WebSocket)."""
     with open(STARTUP_SCRIPT, "w") as script:
         print("#!/bin/bash", file=script)
         print("set -euxo pipefail", file=script)
@@ -95,10 +102,6 @@ def daphne(context):
 @invoke.task(pre=[prereq.migrations, prereq.rabbitmq, prereq.owner])
 def celery(context):
     """Executes EDD as a Celery worker."""
-    # TODO: the below might be removed
-    # some celery code attempted to write to /usr/local/edd/log in the past
-    util.ensure_dir_owner(context, "/usr/local/edd/log")
-
     with open(STARTUP_SCRIPT, "w") as script:
         print("#!/bin/bash", file=script)
         print("set -euxo pipefail", file=script)

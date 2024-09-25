@@ -58,6 +58,8 @@ python-libsbml = "^5.20.1"
 rdflib = "^7.0.0"
 requests = "^2.31.0"
 sqlalchemy = "^2.0.15"
+uvicorn = {extras = ["standard"], version = "^0.31.0"}
+uvicorn-worker = "^0.2.0"
 watchdog = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
