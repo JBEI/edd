@@ -15,6 +15,7 @@ from dateutil import parser as date_parser
 from django.conf import settings
 from django.contrib.staticfiles import storage
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 from django.utils.encoding import force_str
 from django.utils.functional import Promise
 from django.utils.translation import gettext as _
@@ -37,6 +38,13 @@ def add_form_validation_classes(form):
             widget.attrs["class"] = klass + " is-invalid"
         else:
             widget.attrs["class"] = "is-invalid"
+
+
+def ws_reverse(url_name, *args, **kwargs):
+    path = reverse(url_name, urlconf=settings.WEBSOCKET_URLCONF, *args, **kwargs)
+    if domain := getattr(settings, "WEBSOCKET_DOMAIN", None):
+        return domain.rstrip("/") + path
+    return path
 
 
 class JSONEncoder(json.JSONEncoder):

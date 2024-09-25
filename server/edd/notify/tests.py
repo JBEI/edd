@@ -9,6 +9,7 @@ from channels.testing import WebsocketCommunicator
 
 from edd import asgi
 from edd.profile.factory import UserFactory
+from edd.utilities import ws_reverse
 
 from . import backend
 
@@ -39,7 +40,8 @@ def unsaved_user():
 
 
 @contextlib.asynccontextmanager
-async def session(websocket, *, is_open=True, path="/ws/notify/", user=None):
+async def session(websocket, *, is_open=True, user=None):
+    path = ws_reverse("notify:messages")
     communicator = WebsocketCommunicator(websocket, path)
     if user:
         communicator.scope["user"] = user
@@ -190,9 +192,7 @@ async def test_notification_subscribe_empty(edd_websocket, fake_user):
 
 
 @pytest.mark.asyncio
-async def test_notification_subscribe_with_messages(
-    edd_websocket, edd_broker, fake_user
-):
+async def test_notification_subscribe_with_messages(edd_websocket, edd_broker, fake_user):
     await edd_broker.async_notify("Hello, world!")
     async with session(edd_websocket, user=fake_user) as communicator:
         # initial message will have messages and unread count
@@ -281,9 +281,7 @@ async def test_notification_send_dismiss(edd_websocket, edd_broker, fake_user):
 async def test_notification_send_dismiss_older(edd_websocket, edd_broker, fake_user):
     async with session(edd_websocket, user=fake_user) as communicator:
         # manually create a bunch of Notification objects so we can control the time
-        messages = [
-            backend.Notification(f"{i}", None, None, i, uuid4()) for i in range(10)
-        ]
+        messages = [backend.Notification(f"{i}", None, None, i, uuid4()) for i in range(10)]
         for m in messages:
             edd_broker._store(m)
         # arbitrarily pick out the seventh as the one to submit for dismissal

@@ -2,8 +2,8 @@ from django.urls import path
 
 from . import consumers
 
-url_patterns = [
-    path("ws/notify/", consumers.NotifySubscribeConsumer.as_asgi()),
-]
+app_name = "notify"
 
-__all__ = [url_patterns]
+urlpatterns = [
+    path("", consumers.NotifySubscribeConsumer.as_asgi(), name="messages"),
+]

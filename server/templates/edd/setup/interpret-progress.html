@@ -1,9 +1,9 @@
-{% load i18n %}
+{% load asgi i18n %}
 {% translate "Unknown File" as unknown %}
 <div
   class="container"
   id="edd-setup-progress"
-  data-progress-path="/ws/setup/{{ setup.request_uuid }}/"
+  data-progress-path="{% ws_url "setup:progress" uuid=setup.request_uuid %}"
   data-progress-status="{{ setup.status }}"
 >
   <p>

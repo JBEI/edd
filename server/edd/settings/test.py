@@ -12,3 +12,6 @@ STORAGES = {
     "edd.setup": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
     "staticfiles": {"BACKEND": "edd.utilities.StaticFilesStorage"},
 }
+
+# default websockets in test to relative URLs
+WEBSOCKET_DOMAIN = None

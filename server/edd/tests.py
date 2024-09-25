@@ -4,8 +4,9 @@ import pytest
 from allauth.account import models as allauth_models
 from django.core import mail
 from django.core.exceptions import ValidationError
+from django.template import Context, Template
 from django.test import override_settings
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils.translation import gettext_lazy as _
 from pytest_django import asserts
 
@@ -505,3 +506,37 @@ def test_our_account_adapter_allows_deleting_non_required_email(client, user_wit
 def test_admin_login_uses_base_login_form_and_template(client, db):
     response = client.get(reverse("admin:login"))
     asserts.assertTemplateUsed(response, "account/login.html")
+
+
+def test_ws_reverse_on_known_websocket_name():
+    path = utilities.ws_reverse("notify:messages")
+    assert path == "/ws/notify/"
+
+
+@override_settings(WEBSOCKET_DOMAIN="wss://example.com/")
+def test_ws_reverse_with_websocket_domain():
+    path = utilities.ws_reverse("notify:messages")
+    assert path == "wss://example.com/ws/notify/"
+
+
+def test_ws_reverse_unknown_websocket_name_is_an_error():
+    with pytest.raises(NoReverseMatch):
+        utilities.ws_reverse("not a websocket name")
+
+
+def test_ws_url_template_on_known_websocket_name():
+    template = Template(r"{% load asgi %}{% ws_url 'notify:messages' %}")
+    result = template.render(Context())
+    assert result == "/ws/notify/"
+
+
+def test_ws_url_template_unknown_websocket_name_is_an_error():
+    template = Template(r"{% load asgi %}{% ws_url 'not a websocket' %}")
+    with pytest.raises(NoReverseMatch):
+        template.render(Context())
+
+
+def test_ws_url_template_unknown_websocket_name_with_asvar():
+    template = Template(r"{% load asgi %}{% ws_url 'not a websocket' as test_url %}")
+    result = template.render(Context())
+    assert result == ""

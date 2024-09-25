@@ -1,5 +1,5 @@
 <!doctype html>
-{% load branding i18n static %}
+{% load asgi branding i18n static %}
 <html
   dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}"
   lang="{{ LANGUAGE_CODE }}"
@@ -87,7 +87,11 @@
             </a>
           </li>
           {% endif %}
-          <li class="dropdown nav-item" id="notification-menu">
+          <li
+            class="dropdown nav-item"
+            id="notification-menu"
+            data-websocket="{% ws_url "notify:messages" %}"
+          >
             <a
               aria-controls="notification-list"
               aria-expanded="false"

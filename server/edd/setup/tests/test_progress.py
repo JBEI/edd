@@ -5,6 +5,7 @@ from asgiref.sync import sync_to_async
 from channels.testing import WebsocketCommunicator
 
 from edd import asgi
+from edd.utilities import ws_reverse
 
 from ..broker import SetupRequest
 
@@ -29,7 +30,7 @@ def transition(setup: SetupRequest, status: SetupRequest.Status):
 
 @contextlib.asynccontextmanager
 async def session(websocket, setup, *, is_open=True, user=None):
-    path = f"/ws/setup/{setup.request_uuid}/"
+    path = ws_reverse("setup:progress", kwargs={"uuid": setup.request_uuid})
     communicator = WebsocketCommunicator(websocket, path)
     if user:
         communicator.scope["user"] = user

@@ -166,10 +166,14 @@ TEMPLATES = [
                 # also required for django-allauth
                 "django.template.context_processors.request",
             ],
+            "libraries": {
+                "asgi": "edd.asgi",
+            },
         },
     }
 ]
 ROOT_URLCONF = "edd.urls"
+WEBSOCKET_URLCONF = "edd.asgi"
 WSGI_APPLICATION = "edd.wsgi.application"
 
 # include Django Debug Toolbar when DEBUG == True

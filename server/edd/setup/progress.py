@@ -52,12 +52,9 @@ class ProgressConsumer(AsyncJsonWebsocketConsumer):
         return self.scope.get("url_route", {}).get("kwargs", {}).get("uuid", "")
 
 
-url_patterns = [
-    path("ws/setup/<slug:uuid>/", ProgressConsumer.as_asgi()),
-]
+app_name = "setup"
 
 
-__all__ = [
-    ProgressConsumer,
-    url_patterns,
+urlpatterns = [
+    path("<slug:uuid>/", ProgressConsumer.as_asgi(), name="progress"),
 ]

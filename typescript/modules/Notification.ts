@@ -3,12 +3,6 @@
 import "jquery";
 
 import ReconnectingWebSocket from "reconnecting-websocket";
-import * as Utl from "./Utl";
-
-export interface Options {
-    path?: string;
-    stub?: boolean;
-}
 
 type WireMessage = [string, string[], any, number, string];
 export interface Message {
@@ -43,24 +37,16 @@ export class NotificationSocket {
     private subscribers: DisplayCallback[];
     private tagActions: { [tag: string]: TagAction[] };
 
-    constructor(options?: Options) {
-        options = options || {};
-        const path: string = options.path || "ws/notify/";
-        const notify_url: URL = this.buildWebsocketURL(path);
-
+    constructor(path: string) {
         this.messages = {};
         this.count = 0;
         this.subscribers = [];
         this.tagActions = {};
 
-        if (options.stub) {
-            this.socket = null;
-        } else {
-            this.socket = new ReconnectingWebSocket(notify_url.toString());
-            this.socket.onopen = (e) => this.opened(e);
-            this.socket.onclose = (e) => this.closed(e);
-            this.socket.onmessage = (e) => this.receive(e);
-        }
+        this.socket = new ReconnectingWebSocket(path);
+        this.socket.onopen = (e) => this.opened(e);
+        this.socket.onclose = (e) => this.closed(e);
+        this.socket.onmessage = (e) => this.receive(e);
     }
 
     markAllRead(): void {
@@ -96,12 +82,6 @@ export class NotificationSocket {
         }
 
         actions.push(callback);
-    }
-
-    private buildWebsocketURL(path: string): URL {
-        const relativeURL = Utl.relativeURL(path, new URL(window.location.origin));
-        relativeURL.protocol = "https:" === relativeURL.protocol ? "wss:" : "ws:";
-        return relativeURL;
     }
 
     private opened(event) {

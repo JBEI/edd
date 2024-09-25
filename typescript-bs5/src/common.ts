@@ -4,12 +4,12 @@ import "bootstrap";
 import "jquery";
 
 import * as EDDAuto from "./utility/autocomplete";
-import * as Notification from "./utility/notification";
 import {
     handleChangeRequiredInput,
     handleInvalidRequiredInput,
     initializeInputsWithErrors,
 } from "./utility/form";
+import * as Notification from "./utility/notification";
 import "./utility/style";
 
 function buildMenu(
@@ -39,7 +39,8 @@ function prepareIt(): void {
     // adding handlers for notifications in menubar
     const menuElement = document.getElementById("notification-menu");
     if (menuElement instanceof HTMLElement) {
-        const socket = new Notification.Socket();
+        const url = $(menuElement).data("websocket");
+        const socket = new Notification.Socket(url);
         buildMenu(menuElement, socket);
 
         // Add a handler to auto-download messages with the "download" tag

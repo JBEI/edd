@@ -1,5 +1,5 @@
 <!doctype html>
-{% load branding i18n static %}
+{% load asgi branding i18n static %}
 <html
   dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}"
   lang="{{ LANGUAGE_CODE }}"
@@ -72,7 +72,7 @@
               </a>
             </li>
             {% if user.is_authenticated %}
-            <li class="dropdown" id="notification-dropdown">
+            <li class="dropdown" id="notification-dropdown" data-websocket="{% ws_url "notify:messages" %}">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
                   aria-controls="notification-list" aria-expanded="false">
                 <span class="fas fa-inbox"></span>

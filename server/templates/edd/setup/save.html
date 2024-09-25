@@ -1,5 +1,5 @@
 {% extends "edd_bs5.html" %}
-{% load i18n static %}
+{% load asgi i18n static %}
 
 {% block js_css %}
   {{ block.super }}
@@ -20,7 +20,7 @@
   <div
     class="container"
     id="edd-setup-save"
-    data-progress-path="/ws/setup/{{ setup.request_uuid }}/"
+    data-progress-path="{% ws_url "setup:progress" uuid=setup.request_uuid %}"
     data-progress-status="{{ setup.status }}"
     data-success-redirect="{{ study_url }}"
   >

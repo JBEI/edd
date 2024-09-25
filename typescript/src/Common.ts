@@ -44,7 +44,8 @@ function prepareIt(): void {
     // adding handlers for notifications in menubar
     const menuElement = document.getElementById("notification-dropdown");
     if (menuElement instanceof HTMLElement) {
-        const socket = new Notification.NotificationSocket();
+        const url = $(menuElement).data("websocket");
+        const socket = new Notification.NotificationSocket(url);
         buildMenu(menuElement, socket);
 
         // Add a handler to auto-download messages with the "download" tag

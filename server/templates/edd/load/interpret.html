@@ -1,12 +1,12 @@
 {% extends "edd/load/wizard_base.html" %}
-{% load i18n static %}
+{% load asgi i18n %}
 
 {% block content %}
   {{ block.super }}
   <div
     class="container"
     id="edd-interpret-block"
-    data-progress-path="/ws/load/{{ load_request.request_uuid }}/"
+    data-progress-path="{% ws_url "load:progress" uuid=load_request.request_uuid %}"
     data-progress-status="{{ load_request.status }}"
   >
     {% include subtemplate %}
