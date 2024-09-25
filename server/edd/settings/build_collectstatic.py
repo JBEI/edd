@@ -21,4 +21,6 @@ STATIC_ROOT = "/usr/local/edd-static"
 # URL where static assets will eventually get served; used in processing references
 STATIC_URL = "/static/"
 # do not need any hashing/manifest at this stage
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+STORAGES = {
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}

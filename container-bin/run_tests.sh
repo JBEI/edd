@@ -9,6 +9,8 @@ fi
 
 # run tests -- always with debug disabled
 EDD_DEBUG=false && {
+  # test static files may be different from dev
+  python manage.py collectstatic --noinput --settings "edd.settings.test"
   # reuse database for efficiency
   coverage run -m pytest --reuse-db || \
   # some async tests fail under load, re-run these to be sure
