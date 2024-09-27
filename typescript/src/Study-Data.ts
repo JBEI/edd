@@ -242,7 +242,6 @@ function setupEvents(): void {
 function setupExportButtonEvents(lazy: LazyAccess) {
     $(".edd-export-button").on("click", () => onExport($("#exportForm"), lazy));
     $(".edd-new-study-button").on("click", () => onExport($("#newStudyForm"), lazy));
-    $(".edd-sbml-button").on("click", () => onExport($("#sbmlForm"), lazy));
     $(".edd-worklist-button").on("click", () => onExport($("#worklistForm"), lazy));
 }
 

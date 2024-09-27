@@ -92,20 +92,11 @@ def search(request):
     # END uncovered
 
 
-AUTOCOMPLETE_VIEW_LOOKUP = {
-    "MetaboliteExchange": autocomplete.search_sbml_exchange,
-    "MetaboliteSpecies": autocomplete.search_sbml_species,
-}
-
-
 # /search/<model_name>/
 def model_search(request, model_name):
     # TODO: uncovered code
-    searcher = AUTOCOMPLETE_VIEW_LOOKUP.get(model_name, None)
     try:
-        if searcher:
-            return searcher(request)
-        elif meta_pattern.match(model_name):
+        if meta_pattern.match(model_name):
             match = meta_pattern.match(model_name)
             return autocomplete.search_metadata(request, match.group(1))
         return JsonResponse([], status=HTTPStatus.BAD_REQUEST)

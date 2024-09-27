@@ -89,7 +89,6 @@ class ProtocolFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ("name",)
 
     name = factory.Faker("bs")
-    sbml_category = factory.Iterator([code for code, _ in models.Protocol.CATEGORY_CHOICE])
 
 
 class AssayFactory(factory.django.DjangoModelFactory):
@@ -183,14 +182,6 @@ class UpdateFactory(factory.django.DjangoModelFactory):
     mod_by = factory.SubFactory(UserFactory)
     path = factory.Faker("uri_path")
     origin = factory.Faker("ipv4")
-
-
-class SBMLTemplateFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = models.SBMLTemplate
-
-    created = factory.SubFactory("main.tests.factory.UpdateFactory")
-    updated = factory.SelfAttribute("created")
 
 
 class MetadataTypeFactory(factory.django.DjangoModelFactory):

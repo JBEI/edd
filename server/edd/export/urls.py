@@ -10,5 +10,4 @@ urlpatterns = [
     # "export" URLs
     path("table/", login_required(views.ExportView.as_view()), name="export"),
     path("worklist/", login_required(views.WorklistView.as_view()), name="worklist"),
-    path("sbml/", login_required(views.SbmlView.as_view()), name="sbml"),
 ]

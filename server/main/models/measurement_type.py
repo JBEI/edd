@@ -63,12 +63,6 @@ class MeasurementType(EDDSerialize, models.Model):
         help_text=_("Name of this Measurement Type."),
         verbose_name=_("Measurement Type"),
     )
-    short_name = VarCharField(
-        blank=True,
-        help_text=_("(DEPRECATED) Short name used in SBML output."),
-        null=True,
-        verbose_name=_("Short Name"),
-    )
     type_group = VarCharField(
         choices=Group.GROUP_CHOICE,
         default=Group.GENERIC,

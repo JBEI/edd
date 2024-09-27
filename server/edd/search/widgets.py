@@ -173,22 +173,6 @@ class RegistryAutocomplete(Select2Mixin, forms.widgets.SelectMultiple):
         return mark_safe(text)
 
 
-class SbmlExchange(Select2Widget):
-    kind = "SbmlExchange"
-
-    def __init__(self, template_id, *, attrs=None):
-        self.default_attrs = {"data-eddauto-template": template_id}
-        super().__init__(attrs=attrs)
-
-
-class SbmlSpecies(Select2Widget):
-    kind = "SbmlSpecies"
-
-    def __init__(self, template_id, *, attrs=None):
-        self.default_attrs = {"data-eddauto-template": template_id}
-        super().__init__(attrs=attrs)
-
-
 class UnitAutocomplete(Select2CreateWidget):
     kind = "Unit"
 

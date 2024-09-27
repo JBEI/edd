@@ -582,7 +582,6 @@ class MeasurementTypeSearch(SolrSearch):
                 "synonym^8",  # high weight on matching synonyms
                 "synonym_edge^4",  # half as much on matching begin/end of synonym
                 "synonym_ng^2",  # smaller weight on matching substring of synonym
-                "code^10",  # high weight on matching the BIGG/SBML short name
                 "m_formula",  # small weight on matching formula string
             ]
         )

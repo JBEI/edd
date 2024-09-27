@@ -468,36 +468,6 @@ def test_select2_metadata_filter_multiple():
     assert 'data-eddauto-type-filter="[' in html
 
 
-def test_select2_sbml_exchange():
-    sbml_id = fake.pyint()
-    select2 = widgets.SbmlExchange(sbml_id)
-    fieldname = fake.domain_word()
-
-    html = select2.render(fieldname, "foobar")
-
-    assert fieldname in html
-    assert "autocomp2" in html
-    assert "form-select" in html
-    assert 'data-eddautocompletetype="SbmlExchange"' in html
-    assert "data-eddautocompleteurl" in html
-    assert f'data-eddauto-template="{sbml_id}"' in html
-
-
-def test_select2_sbml_species():
-    sbml_id = fake.pyint()
-    select2 = widgets.SbmlSpecies(sbml_id)
-    fieldname = fake.domain_word()
-
-    html = select2.render(fieldname, "foobar")
-
-    assert fieldname in html
-    assert "autocomp2" in html
-    assert "form-select" in html
-    assert 'data-eddautocompletetype="SbmlSpecies"' in html
-    assert "data-eddautocompleteurl" in html
-    assert f'data-eddauto-template="{sbml_id}"' in html
-
-
 def test_registry_search_empty_term(db, ice_users):
     ice = registry.StrainRegistry(ice_users["readonly"])
     results = ice.search("")

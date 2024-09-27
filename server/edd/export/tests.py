@@ -1,7 +1,5 @@
 import csv
-import decimal
 import io
-import math
 
 from django.http import QueryDict
 from django.urls import reverse
@@ -11,7 +9,7 @@ from edd.profile.factory import UserFactory
 from main import models
 from main.tests import factory
 
-from . import broker, sbml, table, tasks
+from . import broker, table, tasks
 
 
 def bad_function(*args, **kwargs):
@@ -145,11 +143,6 @@ class ExportViewPostTests(TestCase):
         url = reverse("export:export")
         response = self.client.post(url, data=self.payload, follow=True)
         self.assertTemplateUsed(response, "edd/export/export.html")
-
-    def test_lines_export_sbml(self):
-        url = reverse("export:sbml")
-        response = self.client.post(url, data=self.payload, follow=True)
-        self.assertTemplateUsed(response, "edd/export/sbml_export.html")
 
     def test_lines_export_worklist(self):
         url = reverse("export:worklist")
@@ -401,52 +394,3 @@ class WorklistExportTests(TestCase):
         self.assertEqual(lines[11], ",,")
         self.assertEqual(lines[22], ",,")
         self.assertEqual(lines[33], ",,")
-
-
-class SBMLUtilTests(TestCase):
-    """Unit tests for various utilities used in SBML export."""
-
-    def test_sbml_notes(self):
-        builder = sbml.SbmlBuilder()
-        notes = builder.create_note_body()
-        notes = builder.update_note_body(
-            notes,
-            **{
-                "CONCENTRATION_CURRENT": [0.5],
-                "CONCENTRATION_HIGHEST": [1.0],
-                "CONCENTRATION_LOWEST": [0.01],
-            },
-        )
-        notes_dict = builder.parse_note_body(notes)
-        self.assertEqual(
-            dict(notes_dict),
-            {
-                "CONCENTRATION_CURRENT": "0.5",
-                "CONCENTRATION_LOWEST": "0.01",
-                "CONCENTRATION_HIGHEST": "1.0",
-            },
-        )
-
-
-def test_templatetag_filter_ranged_x_floats():
-    point = sbml.Point(x=[33.3], y=[0.0])
-    x_range = sbml.Range(min=0.0, max=42.0)
-    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)
-
-
-def test_templatetag_filter_ranged_x_Decimals():
-    point = sbml.Point(x=[decimal.Decimal("33.3")], y=[0.0])
-    x_range = sbml.Range(min=0.0, max=decimal.Decimal("42.0"))
-    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)
-
-
-def test_templatetag_filter_ranged_x_float_value_Decimal_range():
-    point = sbml.Point(x=[33.3], y=[0.0])
-    x_range = sbml.Range(min=0.0, max=decimal.Decimal("42.0"))
-    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)
-
-
-def test_templatetag_filter_ranged_x_Decimal_value_float_range():
-    point = sbml.Point(x=[decimal.Decimal("33.3")], y=[0.0])
-    x_range = sbml.Range(min=0.0, max=42.0)
-    assert math.isclose(sbml.scaled_x(point, x_range), 366.7857142857143)

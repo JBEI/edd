@@ -603,40 +603,6 @@ export class MeasurementUnit extends BaseAuto {
     }
 }
 
-// .autocomp_sbml_r
-export class MetaboliteExchange extends BaseAuto {
-    static columns = [
-        new MultiColumnAuto.AutoColumn("Exchange", "200px", "exchange"),
-        new MultiColumnAuto.AutoColumn("Reactant", "200px", "reactant"),
-    ];
-
-    constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
-        super(opt, search_options);
-        this.modelName = "MetaboliteExchange";
-        this.columns = MetaboliteExchange.columns;
-        this.cacheId = "Exchange";
-        this.display_key = "exchange";
-        $.extend(this.search_opt, {
-            "template": $(this.visibleInput).data("template"),
-        });
-    }
-}
-
-// .autocomp_sbml_s
-export class MetaboliteSpecies extends BaseAuto {
-    static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
-
-    constructor(opt: AutocompleteOptions, search_options?: ExtraSearchParameters) {
-        super(opt, search_options);
-        this.modelName = "MetaboliteSpecies";
-        this.columns = MetaboliteSpecies.columns;
-        this.cacheId = "Species";
-        $.extend(this.search_opt, {
-            "template": $(this.visibleInput).data("template"),
-        });
-    }
-}
-
 export class StudyWritable extends BaseAuto {
     static columns = [new MultiColumnAuto.AutoColumn("Name", "300px", "name")];
 
@@ -705,8 +671,6 @@ export const class_lookup: { [name: string]: typeof BaseAuto } = {
     "MeasurementType": MeasurementType,
     "MeasurementCompartment": MeasurementCompartment,
     "MeasurementUnit": MeasurementUnit,
-    "MetaboliteExchange": MetaboliteExchange,
-    "MetaboliteSpecies": MetaboliteSpecies,
     "StudyWritable": StudyWritable,
     "StudyLine": StudyLine,
     "Registry": Registry,

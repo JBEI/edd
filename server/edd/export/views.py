@@ -12,7 +12,6 @@ from edd.notify.backend import RedisBroker
 
 from . import forms, tasks
 from .broker import ExportBroker
-from .sbml import SbmlExport
 from .table import ExportSelection
 
 logger = logging.getLogger(__name__)
@@ -69,17 +68,13 @@ class EDDExportView(generic.TemplateView):
         if download:
             broker = ExportBroker(context["user_id"])
             name = broker.load_export_name(download)
-            response = HttpResponse(
-                broker.load_export(download), content_type="text/csv"
-            )
+            response = HttpResponse(broker.load_export(download), content_type="text/csv")
             response["Content-Disposition"] = f'attachment; filename="{name}.csv"'
             return response
         return super().render_to_response(context, **kwargs)
 
     def submit_export(self, request, context):
-        raise NotImplementedError(
-            "Override submit_export in EDDExportView-derived classes"
-        )
+        raise NotImplementedError("Override submit_export in EDDExportView-derived classes")
 
 
 class ExportView(EDDExportView):
@@ -158,39 +153,3 @@ class WorklistView(EDDExportView):
                 ),
                 uuid=result.id,
             )
-
-
-class SbmlView(EDDExportView):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sbml_export = None
-
-    def get_template_names(self):
-        return ["edd/export/sbml_export.html"]
-
-    def init_forms(self, request, payload):
-        context = super().init_forms(request, payload)
-        self.sbml_export = SbmlExport(self.selection)
-        return self.sbml_export.init_forms(payload, context)
-
-    def render_to_response(self, context, **kwargs):
-        download = context.get("download", False)
-        if download and self.sbml_export:
-            match_form = context.get("match_form", None)
-            time_form = context.get("time_form", None)
-            if (
-                match_form
-                and time_form
-                and match_form.is_valid()
-                and time_form.is_valid()
-            ):
-                time = time_form.cleaned_data["time_select"]
-                response = HttpResponse(
-                    self.sbml_export.output(time, match_form.cleaned_data),
-                    content_type="application/sbml+xml",
-                )
-                # set download filename
-                filename = time_form.cleaned_data["filename"]
-                response["Content-Disposition"] = f'attachment; filename="{filename}"'
-                return response
-        return super().render_to_response(context, **kwargs)

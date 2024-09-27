@@ -69,8 +69,6 @@
     <field name="uuid" type="uuid" indexed="true" stored="true" required="true" />
     <!-- name of the measurement type -->
     <field name="name" type="text_lower" indexed="true" stored="true" />
-    <!-- short name / SBML code of the measurement type -->
-    <field name="code" type="text_lower" indexed="true" stored="true" />
     <!-- flag for the family of the measurement type -->
     <field name="family" type="text_lower" indexed="true" stored="true" />
     <!-- source of measurement type property data -->

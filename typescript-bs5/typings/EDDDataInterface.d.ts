@@ -141,7 +141,6 @@ interface ProtocolRecord {
     external_url: string;
     active: boolean;
     destructive: boolean;
-    sbml_category: string;
     created: UpdateRecord;
     updated: UpdateRecord;
 }

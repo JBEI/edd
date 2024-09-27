@@ -1,14 +1,12 @@
 """Tests for signal handlers."""
 
-from unittest.mock import patch
-
 import pytest
 from faker import Faker
 
 from edd.profile.factory import UserFactory
 
 from .. import models
-from ..signals import core, sbml
+from ..signals import core
 from . import factory
 
 fake = Faker()
@@ -86,45 +84,3 @@ def test_study_contact_extra_without_user():
     assert study.contact_extra is None
     core.study_contact_extra(models.Study, study, raw=False, using="default")
     assert study.contact_extra is None
-
-
-def test_sbml_template_saved_raw():
-    template = factory.SBMLTemplateFactory.build()
-    with patch("main.signals.sbml.tasks.template_sync_species") as task:
-        sbml.template_saved(
-            sender=models.SBMLTemplate,
-            instance=template,
-            created=False,
-            raw=True,
-            using="default",
-            update_fields=[],
-        )
-        assert task.delay.call_count == 0
-
-
-def test_sbml_template_saved_file_unchanged():
-    template = factory.SBMLTemplateFactory.build()
-    with patch("main.signals.sbml.tasks.template_sync_species") as task:
-        sbml.template_saved(
-            sender=models.SBMLTemplate,
-            instance=template,
-            created=False,
-            raw=False,
-            using="default",
-            update_fields=["template_name"],
-        )
-        assert task.delay.call_count == 0
-
-
-def test_sbml_template_saved():
-    template = factory.SBMLTemplateFactory.build()
-    with patch("main.signals.sbml.tasks.template_sync_species") as task:
-        sbml.template_saved(
-            sender=models.SBMLTemplate,
-            instance=template,
-            created=True,
-            raw=False,
-            using="default",
-            update_fields=None,
-        )
-        assert task.delay.call_count == 1

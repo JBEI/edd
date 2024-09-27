@@ -113,11 +113,8 @@ of EDD, during which they're likely to forget part or all of their training.
    based either on inspection of the line/assay definitions and meta-data, or on selective
    filtering of the plot. Common/anticipated use cases at JBEI are:
 
-    1. **SBML export:** SBML is a standard format used to describe metabolic networks. SBML's
-       purpose is to model organism metabolisms, so it has applications outside of Synthetic
-       Biology. EDD's support for the format is evolving along with the standard.
-    2. **CSV export:** for a variety of other uses, including custom analysis. Common analysis
+    1. **CSV export:** for a variety of other uses, including custom analysis. Common analysis
        tools are: Excel, R, MatLab, or iPython notebooks.
-    3. **REST API export:** for consumption by advanced users with more specific needs, by the
+    2. **REST API export:** for consumption by advanced users with more specific needs, by the
        EDD GUI, or by other software. This is partly available in the current version of EDD,
        but needs additional work and documentation.

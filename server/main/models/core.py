@@ -318,14 +318,6 @@ class Study(SlugMixin, EDDObject):
         ),
         verbose_name=_("Contact (extra)"),
     )
-    metabolic_map = models.ForeignKey(
-        "SBMLTemplate",
-        blank=True,
-        help_text=_("Metabolic map used by default in this Study."),
-        null=True,
-        on_delete=models.SET_NULL,
-        verbose_name=_("Metabolic Map"),
-    )
     # create a slug for a more human-readable URL
     slug = models.SlugField(
         help_text=_("Slug text used in links to this Study."),
@@ -588,7 +580,6 @@ class Protocol(models.Model):
         db_table = "main_protocol"
         indexes = [
             models.Index(fields=["active", "name"]),
-            models.Index(fields=["sbml_category"]),
         ]
 
     objects = EDDObjectManager()
@@ -643,14 +634,6 @@ class Protocol(models.Model):
         on_delete=models.PROTECT,
         related_name="protocol_updated",
         verbose_name=_("Last Modified"),
-    )
-    sbml_category = VarCharField(
-        blank=True,
-        choices=CATEGORY_CHOICE,
-        default=None,
-        help_text=_("SBML category for this Protocol."),
-        null=True,
-        verbose_name=_("SBML Category"),
     )
 
     @classmethod

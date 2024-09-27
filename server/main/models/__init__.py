@@ -27,7 +27,6 @@ from .permission import (
     StudyPermission,
     UserPermission,
 )
-from .sbml import MetaboliteExchange, MetaboliteSpecies, SBMLTemplate
 from .update import Datasource, Update
 from .worklist import WorklistColumn, WorklistTemplate
 
@@ -48,13 +47,10 @@ __all__ = [
     MeasurementUnit,
     MeasurementValue,
     Metabolite,
-    MetaboliteExchange,
-    MetaboliteSpecies,
     MetadataGroup,
     MetadataType,
     ProteinIdentifier,
     Protocol,
-    SBMLTemplate,
     Strain,
     Study,
     StudyPermission,

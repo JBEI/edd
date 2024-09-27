@@ -65,10 +65,6 @@ function extraParams(select: JQuery): Params {
                 params.fields = fields;
             }
             break;
-        case "SbmlExchange":
-        case "SbmlSpecies":
-            params.template = select.data("eddautoTemplate");
-            break;
     }
     // send back param "c" when autocomplete annotated with create
     if (select.data("eddautoCreate") !== undefined) {

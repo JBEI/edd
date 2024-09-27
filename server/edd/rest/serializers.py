@@ -320,7 +320,6 @@ class ProtocolSerializer(serializers.ModelSerializer):
             "external_url",
             "name",
             "pk",
-            "sbml_category",
             "updated",
             "uuid",
         )

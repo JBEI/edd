@@ -16,7 +16,6 @@ from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from edd.export.sbml import validate_sbml_attachment
 from edd.search.solr import StudySearch
 from edd.utilities import S3MediaStorage
 
@@ -197,7 +196,6 @@ class ProtocolAdmin(admin.ModelAdmin):
         "external_url",
         "active",
         "destructive",
-        "sbml_category",
     ]
     search_fields = ["name"]
 
@@ -590,84 +588,6 @@ class StudyAdmin(EDDObjectAdmin):
     solr_index.short_description = "Index in Solr"
 
 
-class SBMLTemplateAdmin(EDDObjectAdmin):
-    """Definition fro admin-edit of SBML Templates"""
-
-    fields = (
-        "name",
-        "description",
-        "sbml_file",
-        "biomass_calculation",
-        "biomass_exchange_name",
-    )
-    list_display = (
-        "name",
-        "description",
-        "biomass_calculation",
-        "biomass_exchange_name",
-        "created",
-    )
-    inlines = (AttachmentTabular, AttachmentStacked)
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "sbml_file":
-            kwargs["queryset"] = models.Attachment.objects.filter(object_ref=self._obj)
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-    def get_fields(self, request, obj=None):
-        if obj:
-            return self.fields
-        # Only show attachment inline for NEW templates
-        return ((),)
-
-    def get_form(self, request, obj=None, **kwargs):
-        # save model for later
-        self._obj = obj
-        return super().get_form(request, obj, **kwargs)
-
-    def get_queryset(self, request):
-        q = super().get_queryset(request)
-        q = q.select_related("sbml_file")
-        return q
-
-    def save_model(self, request, obj, form, change):
-        if change:
-            sbml = obj.sbml_file.file
-            sbml_data = validate_sbml_attachment(sbml.read())
-            if not obj.biomass_exchange_name:
-                obj.biomass_exchange_name = self._extract_biomass_exchange_name(
-                    sbml_data.getModel()
-                )
-        elif len(form.files) == 1:
-            sbml = list(form.files.values())[0]
-            sbml_data = validate_sbml_attachment(sbml.read())
-            sbml_model = sbml_data.getModel()
-            obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_model)
-            obj.name = obj.biomass_exchange_name
-            # stash the object so save_related can set obj.sbml_file
-            self._obj = obj
-        super().save_model(request, obj, form, change)
-
-    def save_related(self, request, form, formsets, change):
-        super().save_related(request, form, formsets, change)
-        if not change and len(form.files) == 1:
-            # there will only be one file at this point
-            self._obj.sbml_file = self._obj.files.all()[0]
-            self._obj.description = self._obj.sbml_file.description
-            self._obj.save()
-
-    def _extract_biomass_exchange_name(self, sbml_model):
-        possible_exchange_ids = set()
-        for reaction in sbml_model.getListOfReactions():
-            rxid = reaction.getId()
-            if ("biomass" in rxid) and ("core" in rxid):
-                possible_exchange_ids.add(rxid)
-        exchange_name = ""
-        if len(possible_exchange_ids) == 1:
-            exchange_name = list(possible_exchange_ids)[0]
-        return exchange_name
-
-
 class WorklistColumnInline(admin.TabularInline):
     """Inline submodel for editing worklist columns."""
 
@@ -706,7 +626,6 @@ admin.site.register(models.MetadataGroup, MetadataGroupAdmin)
 admin.site.register(models.MetadataType, MetadataTypeAdmin)
 admin.site.register(models.ProteinIdentifier, ProteinAdmin)
 admin.site.register(models.Protocol, ProtocolAdmin)
-admin.site.register(models.SBMLTemplate, SBMLTemplateAdmin)
 admin.site.register(models.Strain, StrainAdmin)
 admin.site.register(models.Study, StudyAdmin)
 admin.site.register(models.WorklistTemplate, WorklistTemplateAdmin)

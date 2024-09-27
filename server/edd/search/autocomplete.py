@@ -50,37 +50,3 @@ def optional_sort(request, queryset):
         return queryset
 
     return queryset.order_by(sort_field)
-
-
-def search_sbml_exchange(request):
-    """Autocomplete search within an SBMLTemplate's Reactions/Exchanges"""
-    term = request.GET.get("term", "")
-    re_term = re.escape(term)
-    template = request.GET.get("template", None)
-    found = edd_models.MetaboliteExchange.objects.filter(
-        Q(sbml_template_id=template),
-        Q(reactant_name__iregex=re_term) | Q(exchange_name__iregex=re_term),
-    ).order_by("exchange_name", "reactant_name")[:DEFAULT_RESULT_COUNT]
-    return JsonResponse(
-        {
-            "rows": [
-                {
-                    "id": item.pk,
-                    "exchange": item.exchange_name,
-                    "reactant": item.reactant_name,
-                }
-                for item in found
-            ]
-        }
-    )
-
-
-def search_sbml_species(request):
-    """Autocomplete search within an SBMLTemplate's Species"""
-    term = request.GET.get("term", "")
-    re_term = re.escape(term)
-    template = request.GET.get("template", None)
-    found = edd_models.MetaboliteSpecies.objects.filter(
-        sbml_template_id=template, species__iregex=re_term
-    ).order_by("species")[:DEFAULT_RESULT_COUNT]
-    return JsonResponse({"rows": [{"id": item.pk, "name": item.species} for item in found]})
