@@ -41,10 +41,7 @@ def add_form_validation_classes(form):
 
 
 def ws_reverse(url_name, *args, **kwargs):
-    path = reverse(url_name, urlconf=settings.WEBSOCKET_URLCONF, *args, **kwargs)
-    if domain := getattr(settings, "WEBSOCKET_DOMAIN", None):
-        return domain.rstrip("/") + path
-    return path
+    return reverse(url_name, urlconf=settings.WEBSOCKET_URLCONF, *args, **kwargs)
 
 
 class JSONEncoder(json.JSONEncoder):

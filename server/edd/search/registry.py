@@ -224,7 +224,6 @@ class AdminHmacRegistry:
                 comment="Generated via edd/search/registry.py",
                 secret_id=client_id,
                 secret=info["token"],
-                sort_key=1,
                 url=sub.base_url,
             )
 

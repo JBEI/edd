@@ -513,12 +513,6 @@ def test_ws_reverse_on_known_websocket_name():
     assert path == "/ws/notify/"
 
 
-@override_settings(WEBSOCKET_DOMAIN="wss://example.com/")
-def test_ws_reverse_with_websocket_domain():
-    path = utilities.ws_reverse("notify:messages")
-    assert path == "wss://example.com/ws/notify/"
-
-
 def test_ws_reverse_unknown_websocket_name_is_an_error():
     with pytest.raises(NoReverseMatch):
         utilities.ws_reverse("not a websocket name")
