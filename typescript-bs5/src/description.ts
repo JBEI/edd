@@ -4,10 +4,11 @@ import Collapse from "bootstrap/js/dist/collapse";
 import * as DataTables from "datatables.net";
 import "datatables.net-bs5";
 import "jquery";
+import { default as Dropzone } from "dropzone";
 
 import { LazyAccess, Query, QueryFilter, ReplicateFilter } from "./utility/access";
 import * as EDDAuto from "./utility/autocomplete";
-import { DescriptionDropzone } from "./utility/dropzone";
+import { findCSRFToken } from "./utility/form";
 import "./utility/style";
 import * as Time from "./utility/time";
 
@@ -449,7 +450,26 @@ class LinesTable {
     private setupDropzone(): void {
         const contentArea = $("#content");
         const dropzoneDiv = $("#edd-studydesc-dropzone");
-        DescriptionDropzone.initialize(dropzoneDiv);
+        const options = {
+            "params": { "csrfmiddlewaretoken": findCSRFToken() },
+            "timeout": 0,
+            "url": dropzoneDiv.data("url"),
+        };
+        const dropzone = new Dropzone(dropzoneDiv.addClass("dropzone").get(0), options);
+        dropzone.on("success", (file) => {
+            try {
+                const payload = JSON.parse(file.xhr?.response);
+                const target = payload.url;
+                window.setTimeout(() => {
+                    window.location.href = target;
+                }, 250);
+            } catch {
+                window.location.reload();
+            }
+        });
+        dropzone.on("error", (file, msg) => {
+            window.location.reload();
+        });
         contentArea.on("dragover", (e: JQueryMouseEventObject) => {
             e.stopPropagation();
             e.preventDefault();
@@ -507,8 +527,10 @@ class LinesTable {
      * Display generic error alert, if no details are available for an error.
      */
     private showUnknownFormError() {
-        DescriptionDropzone.clearAlerts();
-        DescriptionDropzone.showMessage("Error", "", "danger");
+        const content = $("#content");
+        const template = content.find(".alert-danger.d-none").first();
+        const alert = template.clone();
+        alert.prependTo(content).removeClass("d-none");
         this.closeExistingForms();
     }
 
