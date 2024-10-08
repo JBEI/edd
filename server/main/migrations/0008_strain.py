@@ -11,7 +11,7 @@ def copy_to_newstrain(apps, schema_editor):
     for s in OldStrain.objects.all():
         NewStrain.objects.create(
             created=s.created,
-            external_id=s.registry_id,
+            external_id=s.registry_id or s.registry_url,
             external_url=s.registry_url,
             name=s.name,
         )
