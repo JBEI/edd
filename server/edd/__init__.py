@@ -9,6 +9,7 @@ from django.core import mail
 from django.test import TestCase as DjangoTestCase
 from django.views import debug
 from threadlocals.threadlocals import set_thread_variable
+from uvicorn_worker import UvicornWorker as BaseUvicornWorker
 
 from .celery import app as celery_app
 
@@ -94,6 +95,10 @@ class SafeExceptionReporterFilter(debug.SafeExceptionReporterFilter):
             except Exception:
                 logger.exception("Exception cleansing URLs for error reporting")
         return cleansed
+
+
+class UvicornWorker(BaseUvicornWorker):
+    CONFIG_KWARGS = {"loop": "uvloop", "http": "httptools", "lifespan": "off"}
 
 
 def monkey_patch_mail():

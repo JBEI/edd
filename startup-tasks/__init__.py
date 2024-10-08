@@ -47,7 +47,7 @@ def gunicorn(context):
             # listening on all IPv4 interfaces port 8000
             "-b 0.0.0.0:8000 "
             # uvicorn worker
-            "-k uvicorn.workers.UvicornWorker "
+            "-k edd.UvicornWorker "
             # use /dev/shm for worker heartbeat files
             # https://pythonspeed.com/articles/gunicorn-in-docker/
             "--worker-tmp-dir /dev/shm "
