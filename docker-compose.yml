@@ -28,22 +28,6 @@ services:
     volumes:
       - edd_attachments:/var/www/uploads
       - edd_staticfiles:/var/www/static
-  websocket:
-    command: ["daphne"]
-    deploy: *default-deploy
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "-LSs", "http://localhost:8000/health/"]
-      interval: 15s
-      retries: 5
-      start_period: 120s
-      timeout: 5s
-    image: jbei/edd-core:latest
-    logging: *default-logging
-    networks:
-      - backnet
-    volumes:
-      - edd_attachments:/var/www/uploads
-      - edd_staticfiles:/var/www/static
   worker:
     command: ["celery"]
     deploy: *default-deploy
