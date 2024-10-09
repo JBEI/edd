@@ -112,6 +112,7 @@ class Migration(migrations.Migration):
             model_name="ProteinStrainLink",
             name="newstrain",
             field=models.OneToOneField(
+                null=True,
                 on_delete=CASCADE,
                 related_name="proteinlink",
                 to="main.newstrain",
@@ -121,6 +122,7 @@ class Migration(migrations.Migration):
             model_name="GeneStrainLink",
             name="newstrain",
             field=models.OneToOneField(
+                null=True,
                 on_delete=CASCADE,
                 related_name="genelink",
                 to="main.newstrain",
@@ -148,6 +150,24 @@ class Migration(migrations.Migration):
             model_name="GeneStrainLink",
             old_name="newstrain",
             new_name="strain",
+        ),
+        migrations.AlterField(
+            model_name="ProteinStrainLink",
+            name="strain",
+            field=models.OneToOneField(
+                on_delete=CASCADE,
+                related_name="proteinlink",
+                to="main.newstrain",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="GeneStrainLink",
+            name="strain",
+            field=models.OneToOneField(
+                on_delete=CASCADE,
+                related_name="genelink",
+                to="main.newstrain",
+            ),
         ),
         migrations.RenameModel(old_name="newstrain", new_name="strain"),
     ]
