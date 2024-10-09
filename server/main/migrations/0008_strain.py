@@ -8,12 +8,17 @@ from edd.fields import VarCharField
 def copy_to_newstrain(apps, schema_editor):
     OldStrain = apps.get_model("main", "Strain")
     NewStrain = apps.get_model("main", "newstrain")
-    for s in OldStrain.objects.all():
-        NewStrain.objects.create(
-            created=s.created,
-            external_id=s.registry_id or s.registry_url,
+    for s in OldStrain.objects.order_by("created__mod_time"):
+        defaults = {
+            "created": s.created,
+            "external_id": s.registry_id or s.registry_url,
+            "name": s.name,
+        }
+        # there should be no collisions in registry_url,
+        # but use get_or_create anyway to ensure collisions are impossible
+        NewStrain.objects.get_or_create(
             external_url=s.registry_url,
-            name=s.name,
+            defaults=defaults,
         )
 
 
