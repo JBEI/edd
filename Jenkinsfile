@@ -14,11 +14,21 @@ def result = buildRepo([
 // NOTE: single ${VARIABLE} replaced in Groovy; double $${VARIABLE} in Bash.
 def testScript = $/#!/bin/bash -e
 # loop until finding up container
-CONTAINER_ID=""
+printf "Waiting for EDD container to finish startup "
+CONTAINER_ID="$(docker ps -qf "name=$${ESE_STACK}_http" -f "health=healthy")"
 until [ ! -z "$${CONTAINER_ID}" ]; do
     sleep 1
+    printf "."
     CONTAINER_ID="$(docker ps -qf "name=$${ESE_STACK}_http" -f "health=healthy")"
 done
+echo "OK"
+# tests depend on ICE being up for integration, don't run until ICE is OK
+printf "Waiting for ICE container to finish startup "
+until docker exec "$${CONTAINER_ID}" curl --fail -ISs --output /dev/null http://ice:8080/; do
+    sleep 1
+    printf "."
+done
+echo "OK"
 docker exec "$${CONTAINER_ID}" run_tests.sh
 docker cp "$${CONTAINER_ID}:/code/coverage.json" . || true
 /$
