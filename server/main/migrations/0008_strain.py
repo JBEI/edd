@@ -28,13 +28,19 @@ def switch_strain(apps, schema_editor):
     Line = apps.get_model("main", "Line")
     ProteinStrainLink = apps.get_model("main", "ProteinStrainLink")
     GeneStrainLink = apps.get_model("main", "GeneStrainLink")
+    # loop over all old strain records, update one-to-one protein/gene links to new strain
     for s in OldStrain.objects.all():
         match = NewStrain.objects.filter(external_url=s.registry_url)
         new_pk = match.values_list("pk", flat=True).first()
-        for line in Line.objects.filter(strains__registry_url__in=[s.registry_url]):
-            line.newstrains.add(new_pk)
         ProteinStrainLink.objects.filter(strain=s).update(newstrain_id=new_pk)
         GeneStrainLink.objects.filter(strain=s).update(newstrain_id=new_pk)
+    # sanity check for strains on lines; loop over all lines having any strains
+    # update the IDs to the new strain model, in a *set*, to filter out duplicates
+    for line in Line.objects.filter(strains__id__gt=0).prefetch_related("strains"):
+        urls = {s.registry_url for s in line.strains}
+        matches = NewStrain.objects.filter(external_url__in=urls)
+        new_pks = matches.values_list("pk", flat=True)
+        line.newstrains.set(new_pks)
 
 
 class Migration(migrations.Migration):
