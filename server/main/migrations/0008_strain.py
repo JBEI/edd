@@ -37,7 +37,7 @@ def switch_strain(apps, schema_editor):
     # sanity check for strains on lines; loop over all lines having any strains
     # update the IDs to the new strain model, in a *set*, to filter out duplicates
     for line in Line.objects.filter(strains__id__gt=0).prefetch_related("strains"):
-        urls = {s.registry_url for s in line.strains}
+        urls = {s.registry_url for s in line.strains.all()}
         matches = NewStrain.objects.filter(external_url__in=urls)
         new_pks = matches.values_list("pk", flat=True)
         line.newstrains.set(new_pks)
