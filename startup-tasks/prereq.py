@@ -72,7 +72,7 @@ def staticfiles(context):
     # must grab a lock before proceeding
     cache = util.get_redis()
     try:
-        with cache.lock(b"edd.startup.staticfiles", timeout=60):
+        with cache.lock(b"edd.startup.staticfiles", timeout=300):
             context.run("/code/manage.py collectstatic --noinput")
     except Exception as e:
         print(e)
@@ -130,7 +130,7 @@ def migrations(context):
         version_hash = util.get_version_hash(context)
         prefix = "edd.startup.migrations"
         version_key = f"{prefix}.{version_hash}".encode()
-        with cache.lock(prefix.encode("utf-8"), timeout=60):
+        with cache.lock(prefix.encode("utf-8"), timeout=600):
             # check if another image recently ran check for this version
             if not cache.get(version_key):
                 # checks for any pending migrations
