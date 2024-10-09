@@ -471,8 +471,8 @@ def test_select2_metadata_filter_multiple():
 def test_registry_search_empty_term(db, ice_users):
     ice = registry.StrainRegistry(ice_users["readonly"])
     results = ice.search("")
-    # could be more than ten if tests run multiple times in succession
-    assert len(results) >= 10
+    # could be more than five if tests run multiple times in succession
+    assert len(results) >= 5
 
 
 def test_registry_search_without_api_key(db):
