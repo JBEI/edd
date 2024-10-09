@@ -716,6 +716,9 @@ class Strain(models.Model):
         verbose_name=_("Created"),
     )
 
+    def to_solr_value(self):
+        return f"{self.name}@{self.external_url}"
+
     def __str__(self):
         return self.name
 
