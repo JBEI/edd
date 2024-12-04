@@ -28,7 +28,7 @@ from .permission import (
     UserPermission,
 )
 from .update import Datasource, Update
-from .worklist import WorklistColumn, WorklistTemplate
+from .worklist import WorklistColumn, WorklistTemplate, flatten_json
 
 __all__ = [
     Assay,
@@ -58,4 +58,5 @@ __all__ = [
     UserPermission,
     WorklistColumn,
     WorklistTemplate,
+    flatten_json,
 ]

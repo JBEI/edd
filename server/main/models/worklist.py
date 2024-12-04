@@ -1,15 +1,38 @@
-"""
-Models defining worklist templates.
-"""
+"""Models defining worklist templates."""
+
+from collections import defaultdict
+from collections.abc import Iterable
 
 import arrow
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from edd.fields import VarCharField
-from main.utilities import flatten_json
 
 from . import core, metadata
+
+
+def flatten_json(source):
+    """
+    Takes a json-shaped input (usually a dict), and flattens any nested dict,
+    list, or tuple with dotted key names.
+    """
+    # using a defaultdict because this used in rendering worklists
+    # lookup of invalid key results in empty string instead of errors
+    output = defaultdict(str)
+    # convert lists/tuples to a dict
+    if not isinstance(source, dict) and isinstance(source, Iterable):
+        source = dict(enumerate(source))
+    for key, value in source.items():
+        key = str(key)
+        if isinstance(value, str):
+            output[key] = value
+        elif isinstance(value, (dict, Iterable)):
+            for sub, item in flatten_json(value).items():
+                output[f"{key}.{sub}"] = item
+        else:
+            output[key] = value
+    return output
 
 
 class WorklistTemplate(core.EDDObject):

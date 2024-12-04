@@ -50,7 +50,6 @@ drf-spectacular = {extras = ["sidecar"], version = "0.27.2"}
 gevent = "^23.9.1"
 gunicorn = ">=21.2.0"
 invoke = "^2.1.2"
-numpy = ">=2.0.0"
 openpyxl = "^3.1.2"
 pillow = "^10.0.1"
 psycopg = {extras = ["binary"], version = "^3.1.9"}

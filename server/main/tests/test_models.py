@@ -1,4 +1,3 @@
-import math
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +10,6 @@ from edd.profile.factory import GroupFactory, UserFactory
 from edd.utilities import JSONEncoder
 
 from .. import models
-from ..utilities import flatten_json
 from . import factory
 
 
@@ -147,25 +145,6 @@ class AssayDataTests(TestCase):
         x1, y1 = self._set_sample_values(m)
         assert m.extract_data_xvalues() == (x1 + [32])
         assert m.extract_data_xvalues(defined_only=True) == x1
-
-    def test_measurement_interpolate_inside(self):
-        m = factory.MeasurementFactory()
-        self._set_sample_values(m)
-        # interpolation inside domain gives value
-        y_interp = m.interpolate_at(21)
-        assert math.isclose(y_interp, 1.2)
-
-    def test_measurement_interpolate_outside(self):
-        m = factory.MeasurementFactory()
-        self._set_sample_values(m)
-        # interpolation outside domain is undefined/None
-        assert m.interpolate_at(25) is None
-
-    def test_measurement_interpolate_no_data(self):
-        m = factory.MeasurementFactory()
-        # interpolation with no data raises exception
-        with self.assertRaises(ValueError):
-            m.interpolate_at(20)
 
     def _set_sample_values(self, measurement):
         x1 = [0, 4, 8, 12, 18, 24]
@@ -478,31 +457,31 @@ def test_EDDMetadata_metadata_remove_unmatched_item(study_metadata):
 
 
 def test_Worklist_flatten_json_empty_dict():
-    result = flatten_json({})
+    result = models.flatten_json({})
     assert result == {}
     # verify that results won't throw KeyError when %-formatting strings
     assert "%(invalid)s" % result == ""
 
 
 def test_Worklist_flatten_json_list():
-    result = flatten_json(["Hello", "world"])
+    result = models.flatten_json(["Hello", "world"])
     assert result == {"0": "Hello", "1": "world"}
 
 
 def test_Worklist_flatten_json_nested_list():
-    result = flatten_json({"message": ["Hello", "world"]})
+    result = models.flatten_json({"message": ["Hello", "world"]})
     assert result == {"message.0": "Hello", "message.1": "world"}
 
 
 def test_Worklist_flatten_json_nested_dict():
     color = factory.fake.color()
-    result = flatten_json({"user": {"profile": {"favorite_color": color}}})
+    result = models.flatten_json({"user": {"profile": {"favorite_color": color}}})
     assert result == {"user.profile.favorite_color": color}
 
 
 def test_Worklist_flatten_json_numeric_value():
     number = factory.fake.pyint()
-    result = flatten_json({"user_count": number})
+    result = models.flatten_json({"user_count": number})
     assert result == {"user_count": number}
 
 

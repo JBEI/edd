@@ -1281,14 +1281,6 @@ class Measurement(EDDMetadata, EDDSerialize):
         # second index unpacks first value from X
         return [x[0][0] for x in qs.values_list("x")]
 
-    # this shouldn't need to handle vectors
-    def interpolate_at(self, x):
-        if self.measurement_format != Measurement.Format.SCALAR:
-            raise ValueError("Can only interpolate scalar values")
-        from main.utilities import interpolate_at
-
-        return interpolate_at(self.valid_data(), x)
-
     @property
     def y_axis_units_name(self):
         """
