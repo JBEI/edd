@@ -26,6 +26,7 @@ exclude_also = [
 
 [tool.pytest.ini_options]
 addopts = "--durations=10"
+asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
 DJANGO_SETTINGS_MODULE = "edd.settings.test"
 filterwarnings = [
